@@ -20,7 +20,8 @@ def _cargar_dotenv(ruta=".env"):
     """
     if not os.path.exists(ruta):
         return
-    with open(ruta, encoding="utf-8") as f:
+    # utf-8-sig: tolera el BOM que agregan Notepad/PowerShell al guardar.
+    with open(ruta, encoding="utf-8-sig") as f:
         for linea in f:
             linea = linea.strip()
             if not linea or linea.startswith("#") or "=" not in linea:

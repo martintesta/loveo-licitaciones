@@ -41,7 +41,15 @@ class ChileCompraClient:
             resp.raise_for_status()
             if self.delay:
                 time.sleep(self.delay)
-            return resp.json()
+            data = resp.json()
+            # La API responde 200 con {Codigo, Mensaje} (sin Listado) ante
+            # errores tipo "Ticket no válido". Eso hay que detectarlo: si no,
+            # se confundiría con "0 licitaciones".
+            if isinstance(data, dict) and "Listado" not in data and data.get("Mensaje"):
+                raise RuntimeError(
+                    f"API ChileCompra: {data.get('Mensaje')} (Codigo {data.get('Codigo')})"
+                )
+            return data
         return None
 
     def listar_por_fecha(self, fecha_ddmmaaaa):

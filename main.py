@@ -11,7 +11,16 @@ Orden: admisibles primero, luego por suma de tiers ascendente.
 import csv
 import json
 import os
+import sys
 from datetime import datetime, timedelta
+
+# La consola de Windows suele usar cp1252 y revienta al imprimir caracteres
+# fuera de ese set (acentos raros, guiones largos, etc.). Forzar UTF-8 evita
+# que main.py caiga por un nombre de licitación con un carácter inusual.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except (AttributeError, ValueError):
+    pass
 
 import config
 from api_client import ChileCompraClient
