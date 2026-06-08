@@ -6,6 +6,9 @@ config_local.py
 outputs/*
 !outputs/.gitkeep
 
+# Logs de las corridas automáticas
+logs/
+
 # Python
 __pycache__/
 *.pyc
