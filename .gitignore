@@ -1,0 +1,13 @@
+# Credenciales y calibración privada — NUNCA al repo
+.env
+config_local.py
+
+# Salidas (salvo el placeholder)
+outputs/*
+!outputs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

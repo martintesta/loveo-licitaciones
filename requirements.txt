@@ -1,0 +1,4 @@
+requests
+
+# Dev (solo para correr los tests; no es necesario en producción):
+# pytest
