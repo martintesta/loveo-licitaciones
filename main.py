@@ -26,6 +26,7 @@ import config
 from api_client import ChileCompraClient
 from filters import clasificar_keywords, region_sur, admisibilidad
 from prescore import prescore
+from alertas import evaluar_alertas, alertas_pendientes
 
 OUTPUTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
 
@@ -34,7 +35,9 @@ CAMPOS = [
     "codigo", "nombre", "etiqueta", "admisible", "suma_tiers",
     "tier_logistica", "tier_cashflow", "tier_alineacion",
     "region", "region_sur", "comuna", "organismo",
-    "estado", "fecha_cierre", "monto_estimado", "moneda",
+    "estado", "fecha_cierre", "dias_al_cierre", "alerta_cierre",
+    "fecha_visita", "dias_a_visita", "alerta_visita",
+    "monto_estimado", "moneda",
     "subcontratacion", "keywords_match", "motivos_admisibilidad", "nota",
 ]
 
@@ -45,7 +48,7 @@ def fechas_recientes(dias):
     return [(hoy - timedelta(days=i)).strftime("%d%m%Y") for i in range(dias)]
 
 
-def _fila(codigo, det, es_admisible, motivos, ps):
+def _fila(codigo, det, es_admisible, motivos, ps, al):
     comprador = det.get("Comprador") or {}
     return {
         "codigo": codigo,
@@ -61,7 +64,13 @@ def _fila(codigo, det, es_admisible, motivos, ps):
         "comuna": comprador.get("ComunaUnidad", ""),
         "organismo": comprador.get("NombreOrganismo", ""),
         "estado": det.get("Estado", ""),
-        "fecha_cierre": det.get("FechaCierre", ""),
+        # Fecha de cierre confiable (Fechas.FechaCierre) vía evaluar_alertas.
+        "fecha_cierre": al["fecha_cierre"],
+        "dias_al_cierre": al["dias_al_cierre"],
+        "alerta_cierre": al["alerta_cierre"],
+        "fecha_visita": al["fecha_visita"],
+        "dias_a_visita": al["dias_a_visita"],
+        "alerta_visita": al["alerta_visita"],
         "monto_estimado": det.get("MontoEstimado", ""),
         "moneda": det.get("Moneda", ""),
         "subcontratacion": det.get("SubContratacion", ""),
@@ -123,6 +132,19 @@ def _resumen(resultados):
             f"  [{r['etiqueta']:<14}] {adm} suma={r['suma_tiers']} "
             f"| {r['region_sur']:<11} | {r['codigo']} | {r['nombre'][:70]}"
         )
+
+
+def _resumen_alertas(resultados):
+    pend = alertas_pendientes(resultados)
+    print(f"\n⏰ ALERTAS: {len(pend)} candidata(s) con cierre/visita dentro de "
+          f"{config.DIAS_ALERTA_CIERRE} día(s)")
+    for r in pend:
+        marcas = []
+        if r.get("alerta_cierre"):
+            marcas.append(f"cierra en {r['dias_al_cierre']}d")
+        if r.get("alerta_visita"):
+            marcas.append(f"visita en {r['dias_a_visita']}d")
+        print(f"  [{', '.join(marcas)}] {r['codigo']} | {r['region_sur']} | {r['nombre'][:60]}")
 
 
 def main():
@@ -201,7 +223,8 @@ def main():
             continue
         es_admisible, motivos = admisibilidad(det)
         ps = prescore(det)
-        resultados.append(_fila(codigo, det, es_admisible, motivos, ps))
+        al = evaluar_alertas(det)
+        resultados.append(_fila(codigo, det, es_admisible, motivos, ps, al))
 
     # Orden: admisibles primero, luego por suma de tiers ascendente.
     resultados.sort(
@@ -212,6 +235,7 @@ def main():
     _exportar(resultados, ts)
     _exportar_descartadas(descartadas, ts)
     _resumen(resultados)
+    _resumen_alertas(resultados)
 
 
 if __name__ == "__main__":

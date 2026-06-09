@@ -49,6 +49,9 @@ DIAS_HACIA_ATRAS = int(os.environ.get("LOVEO_DIAS_HACIA_ATRAS", "3"))
 MAX_DETALLES = int(os.environ.get("LOVEO_MAX_DETALLES", "150"))
 DELAY = float(os.environ.get("LOVEO_DELAY", "0.5"))
 
+# Umbral (en días) para alertar cierre/visita próximos (M-2).
+DIAS_ALERTA_CIERRE = int(os.environ.get("LOVEO_DIAS_ALERTA", "5"))
+
 # --- Calibración (privada si existe, ejemplo si no) ------------------------
 try:
     from config_local import *  # noqa: F401,F403
