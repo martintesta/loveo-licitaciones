@@ -35,12 +35,29 @@ def _matchea(kw, texto_norm):
     return re.search(r"\b" + re.escape(_norm(kw)), texto_norm) is not None
 
 
+def clasificar_keywords(nombre):
+    """Clasifica el nombre contra las listas de keywords.
+
+    Devuelve (incluye, kw_incluir, kw_excluir):
+      - kw_incluir: keywords de INCLUIR que matchean.
+      - kw_excluir: keywords de EXCLUIR que matchean.
+      - incluye: True si matchea alguna de INCLUIR y NINGUNA de EXCLUIR
+        (misma lógica que `pasa_keywords`).
+
+    Permite distinguir, en el embudo, las que se caen por exclusión (matchearon
+    incluir Y excluir) de las que simplemente no son relevantes.
+    """
+    t = _norm(nombre)
+    kw_incluir = [kw for kw in KEYWORDS_INCLUIR if _matchea(kw, t)]
+    kw_excluir = [kw for kw in KEYWORDS_EXCLUIR if _matchea(kw, t)]
+    incluye = bool(kw_incluir) and not kw_excluir
+    return incluye, kw_incluir, kw_excluir
+
+
 def pasa_keywords(nombre):
     """True si el nombre matchea alguna keyword de INCLUIR y ninguna de EXCLUIR."""
-    t = _norm(nombre)
-    if any(_matchea(kw, t) for kw in KEYWORDS_EXCLUIR):
-        return False
-    return any(_matchea(kw, t) for kw in KEYWORDS_INCLUIR)
+    incluye, _, _ = clasificar_keywords(nombre)
+    return incluye
 
 
 def keywords_que_matchean(nombre):

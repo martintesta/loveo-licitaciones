@@ -24,7 +24,7 @@ except (AttributeError, ValueError):
 
 import config
 from api_client import ChileCompraClient
-from filters import pasa_keywords, region_sur, admisibilidad
+from filters import clasificar_keywords, region_sur, admisibilidad
 from prescore import prescore
 
 OUTPUTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
@@ -71,9 +71,14 @@ def _fila(codigo, det, es_admisible, motivos, ps):
     }
 
 
-def _exportar(resultados):
+CAMPOS_DESCARTADAS = [
+    "codigo", "nombre", "kw_incluir", "motivo",
+    "feedback", "score_correcto_sugerido", "notas",
+]
+
+
+def _exportar(resultados, ts):
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M")
     base = os.path.join(OUTPUTS_DIR, f"candidatas_sur_{ts}")
     csv_path, json_path = base + ".csv", base + ".json"
 
@@ -87,6 +92,23 @@ def _exportar(resultados):
 
     print(f"\nExportado: {csv_path}")
     print(f"Exportado: {json_path}")
+
+
+def _exportar_descartadas(descartadas, ts):
+    """Exporta las descartadas (matchearon una keyword de incluir pero se
+    cayeron: por exclusión o por no ser región sur) para feedback de recall.
+
+    La columna `feedback` queda vacía: Martin escribe `bien_descartada` o
+    `falso_positivo`. `score_correcto_sugerido` y `notas` también van vacías.
+    """
+    os.makedirs(OUTPUTS_DIR, exist_ok=True)
+    path = os.path.join(OUTPUTS_DIR, f"descartadas_{ts}.csv")
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=CAMPOS_DESCARTADAS)
+        writer.writeheader()
+        for d in descartadas:
+            writer.writerow({c: d.get(c, "") for c in CAMPOS_DESCARTADAS})
+    print(f"Exportado: {path} ({len(descartadas)} descartadas con keyword de incluir)")
 
 
 def _resumen(resultados):
@@ -117,6 +139,11 @@ def main():
 
     client = ChileCompraClient(config.TICKET, delay=config.DELAY)
 
+    # Descartadas: ítems que matchearon una keyword de INCLUIR pero se cayeron
+    # (por exclusión o por no ser región sur). Para feedback de recall (M-1).
+    descartadas = []
+    descartadas_vistas = set()  # dedup por código (o nombre si no hay código)
+
     # 1 + 2: listar por fecha y filtrar por keyword (barato, sin detalle).
     candidatos = {}  # codigo -> nombre (dedup por código)
     for fecha in fechas_recientes(config.DIAS_HACIA_ATRAS):
@@ -124,8 +151,23 @@ def main():
         for lic in listado:
             codigo = lic.get("CodigoExterno")
             nombre = lic.get("Nombre", "")
-            if codigo and pasa_keywords(nombre):
-                candidatos.setdefault(codigo, nombre)
+            incluye, kw_incluir, kw_excluir = clasificar_keywords(nombre)
+            if not kw_incluir:
+                continue  # no matchea ninguna keyword de incluir: irrelevante
+            if incluye:
+                if codigo:
+                    candidatos.setdefault(codigo, nombre)
+            else:
+                # matcheó incluir Y excluir -> se cae en el filtro de keyword
+                clave = codigo or nombre
+                if clave not in descartadas_vistas:
+                    descartadas_vistas.add(clave)
+                    descartadas.append({
+                        "codigo": codigo or "",
+                        "nombre": nombre,
+                        "kw_incluir": ", ".join(kw_incluir),
+                        "motivo": "excluida_por:" + ", ".join(kw_excluir),
+                    })
         print(f"  {fecha}: {len(listado):>5} licitaciones | acumulado keyword-match: {len(candidatos)}")
 
     print(f"Tras keyword + dedup: {len(candidatos)} candidatas únicas")
@@ -142,8 +184,20 @@ def main():
         if not det:
             continue
         comprador = det.get("Comprador") or {}
+        region = comprador.get("RegionUnidad", "")
         # 4: filtro sur (la región solo viene en el detalle).
-        if region_sur(comprador.get("RegionUnidad", "")) is None:
+        if region_sur(region) is None:
+            # pasó keyword pero el detalle no es región sur -> descartada (M-1)
+            if codigo not in descartadas_vistas:
+                descartadas_vistas.add(codigo)
+                nombre = det.get("Nombre", "") or candidatos.get(codigo, "")
+                _, kw_incluir, _ = clasificar_keywords(nombre)
+                descartadas.append({
+                    "codigo": codigo,
+                    "nombre": nombre,
+                    "kw_incluir": ", ".join(kw_incluir),
+                    "motivo": "fuera_de_zona:" + (region or "desconocida"),
+                })
             continue
         es_admisible, motivos = admisibilidad(det)
         ps = prescore(det)
@@ -154,7 +208,9 @@ def main():
         key=lambda r: (not r["admisible"], r["suma_tiers"] if r["suma_tiers"] is not None else 999)
     )
 
-    _exportar(resultados)
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    _exportar(resultados, ts)
+    _exportar_descartadas(descartadas, ts)
     _resumen(resultados)
 
 
