@@ -10,6 +10,9 @@ KEYWORDS_INCLUIR = ["container", "modular"]
 
 KEYWORDS_EXCLUIR = ["palabra excluida de ejemplo"]
 
+# Red ANCHA de recall (M-3): términos laxos para una cola de revisión.
+KEYWORDS_AMPLIO = ["posta", "policlinico"]
+
 REGIONES_SUR = ["los rios", "araucania", "los lagos", "aysen", "magallanes"]
 
 BASE_OPERATIVA = "puerto_montt"

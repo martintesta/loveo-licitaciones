@@ -8,7 +8,7 @@ dentales` y `prefabricad` SÍ matchea `prefabricado`. Ver nota abajo en `_matche
 import re
 import unicodedata
 
-from config import KEYWORDS_INCLUIR, KEYWORDS_EXCLUIR, REGIONES_SUR
+from config import KEYWORDS_INCLUIR, KEYWORDS_EXCLUIR, REGIONES_SUR, KEYWORDS_AMPLIO
 
 
 def _norm(s):
@@ -64,6 +64,23 @@ def keywords_que_matchean(nombre):
     """Lista de keywords de INCLUIR que matchean el nombre (para alineación)."""
     t = _norm(nombre)
     return [kw for kw in KEYWORDS_INCLUIR if _matchea(kw, t)]
+
+
+def keywords_amplio_que_matchean(nombre):
+    """Lista de keywords de la red AMPLIA (recall, M-3) que matchean el nombre."""
+    t = _norm(nombre)
+    return [kw for kw in KEYWORDS_AMPLIO if _matchea(kw, t)]
+
+
+def es_candidata_recall(nombre):
+    """True si matchea la red AMPLIA pero NINGUNA keyword estricta de INCLUIR.
+
+    Esos ítems van a la cola de revisión de recall (no al output principal): son
+    los que el filtro estricto no trajo pero podrían ser relevantes (M-3).
+    """
+    if keywords_que_matchean(nombre):
+        return False  # ya lo agarra el embudo estricto
+    return bool(keywords_amplio_que_matchean(nombre))
 
 
 def region_sur(region_unidad):

@@ -24,7 +24,12 @@ except (AttributeError, ValueError):
 
 import config
 from api_client import ChileCompraClient
-from filters import clasificar_keywords, region_sur, admisibilidad
+from filters import (
+    clasificar_keywords,
+    keywords_amplio_que_matchean,
+    region_sur,
+    admisibilidad,
+)
 from prescore import prescore
 from alertas import evaluar_alertas, alertas_pendientes
 
@@ -85,6 +90,8 @@ CAMPOS_DESCARTADAS = [
     "feedback", "score_correcto_sugerido", "notas",
 ]
 
+CAMPOS_RECALL = ["codigo", "nombre", "kw_amplio", "feedback"]
+
 
 def _exportar(resultados, ts):
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
@@ -118,6 +125,21 @@ def _exportar_descartadas(descartadas, ts):
         for d in descartadas:
             writer.writerow({c: d.get(c, "") for c in CAMPOS_DESCARTADAS})
     print(f"Exportado: {path} ({len(descartadas)} descartadas con keyword de incluir)")
+
+
+def _exportar_recall(recall, ts):
+    """Exporta la cola de recall (M-3): ítems que matchearon la red ANCHA pero
+    no la lista estricta. La columna `feedback` queda vacía: Martin escribe
+    `relevante` o `descartar`; eso retroalimenta qué keywords estrictas faltan.
+    """
+    os.makedirs(OUTPUTS_DIR, exist_ok=True)
+    path = os.path.join(OUTPUTS_DIR, f"revisar_recall_{ts}.csv")
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=CAMPOS_RECALL)
+        writer.writeheader()
+        for r in recall:
+            writer.writerow({c: r.get(c, "") for c in CAMPOS_RECALL})
+    print(f"Exportado: {path} ({len(recall)} en cola de recall léxico)")
 
 
 def _resumen(resultados):
@@ -166,6 +188,10 @@ def main():
     descartadas = []
     descartadas_vistas = set()  # dedup por código (o nombre si no hay código)
 
+    # Cola de recall (M-3): matchean la red ANCHA pero no la estricta.
+    recall = []
+    recall_vistas = set()
+
     # 1 + 2: listar por fecha y filtrar por keyword (barato, sin detalle).
     candidatos = {}  # codigo -> nombre (dedup por código)
     for fecha in fechas_recientes(config.DIAS_HACIA_ATRAS):
@@ -175,7 +201,18 @@ def main():
             nombre = lic.get("Nombre", "")
             incluye, kw_incluir, kw_excluir = clasificar_keywords(nombre)
             if not kw_incluir:
-                continue  # no matchea ninguna keyword de incluir: irrelevante
+                # No matchea la lista estricta. ¿Cae en la red ancha (M-3)?
+                kw_amplio = keywords_amplio_que_matchean(nombre)
+                if kw_amplio:
+                    clave = codigo or nombre
+                    if clave not in recall_vistas:
+                        recall_vistas.add(clave)
+                        recall.append({
+                            "codigo": codigo or "",
+                            "nombre": nombre,
+                            "kw_amplio": ", ".join(kw_amplio),
+                        })
+                continue  # no entra al embudo estricto
             if incluye:
                 if codigo:
                     candidatos.setdefault(codigo, nombre)
@@ -234,6 +271,7 @@ def main():
     ts = datetime.now().strftime("%Y%m%d_%H%M")
     _exportar(resultados, ts)
     _exportar_descartadas(descartadas, ts)
+    _exportar_recall(recall, ts)
     _resumen(resultados)
     _resumen_alertas(resultados)
 

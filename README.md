@@ -100,8 +100,33 @@ api_client.py             # wrapper de la API con backoff de 429
 filters.py                # keywords (límite de palabra), región sur, admisibilidad
 prescore.py               # pre-score de triage honesto
 main.py                   # orquesta el embudo y exporta a outputs/
+alertas.py                # M-2: alertas de cierre y visita a terreno
 tests/                    # pytest
 ```
+
+## Salidas en `outputs/`
+
+Cada corrida genera tres archivos con el mismo timestamp:
+
+- `candidatas_sur_<ts>.csv/.json` — candidatas del sur con triage y alertas.
+- `descartadas_<ts>.csv` (M-1) — licitaciones que matchearon una keyword de
+  incluir pero se cayeron (excluidas o fuera de zona). Columna `feedback` para
+  marcar `bien_descartada` / `falso_positivo`.
+- `revisar_recall_<ts>.csv` (M-3) — red ancha léxica: ítems que matchearon
+  `KEYWORDS_AMPLIO` pero no la lista estricta. Columna `feedback` para marcar
+  `relevante` / `descartar`. Retroalimenta qué keywords estrictas faltan.
+
+## Roadmap — recall profundo (futuro)
+
+M-3 es solo el **primer incremento léxico** del recall (una red de keywords más
+ancha hacia una cola de revisión). El recall profundo queda como roadmap:
+
+- **Matching semántico por embeddings** (capturar relevancia sin depender de que
+  la keyword exacta aparezca en el nombre).
+- **Filtro por código de rubro UNSPSC** de los `Items`, para pescar por
+  categoría de producto/servicio y no solo por texto del nombre.
+
+Estas dos vías exceden la Capa A y se abordan más adelante.
 
 ## Seguridad
 
