@@ -1,0 +1,19 @@
+# Blueprint de Render (opcional): define el servicio web. Render lo detecta al conectar el repo.
+# Los valores con sync:false se cargan a mano en el panel (son secretos).
+services:
+  - type: web
+    name: loveo-licitaciones
+    runtime: docker
+    plan: free                      # free = se duerme tras inactividad; subir a 'starter' (~USD 7/mes) para always-on
+    region: oregon                  # Render no tiene São Paulo; Oregon está OK (la DB Neon sí está en SA)
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL           # connection string de Neon
+        sync: false
+      - key: ANTHROPIC_API_KEY      # API key de Claude (Capa C + asistente)
+        sync: false
+      - key: LOVEO_CHILECOMPRA_TICKET
+        sync: false
+      - key: LOVEO_MODEL
+        value: claude-haiku-4-5

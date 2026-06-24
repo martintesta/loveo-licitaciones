@@ -1,0 +1,647 @@
+﻿
+==================== 2026-06-08 16:44:22  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  08062026:  1275 licitaciones | acumulado keyword-match: 5
+  07062026:     7 licitaciones | acumulado keyword-match: 5
+  06062026:    22 licitaciones | acumulado keyword-match: 5
+Tras keyword + dedup: 5 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260608_1644.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260608_1644.json
+
+=== RESUMEN: 2 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] INADMISIBLE suma=5 | araucania   | 1952-53-LP26 | SERVICIO DE INTERMEDIACIÓN DE RECURSOS HUMANOS PARA LA GESTIÓN DE REAS
+  [REVISAR       ] INADMISIBLE suma=6 | aysen       | 1343645-10-LE26 | Oficina Modular Escombrera Municipal
+==================== 2026-06-08 16:44:38  FIN (exit 0) ====================
+
+==================== 2026-06-08 18:00:01  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  08062026:  1479 licitaciones | acumulado keyword-match: 6
+  07062026:     7 licitaciones | acumulado keyword-match: 6
+  06062026:    22 licitaciones | acumulado keyword-match: 6
+Tras keyword + dedup: 6 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260608_1800.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260608_1800.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260608_1800.csv (4 descartadas con keyword de incluir)
+
+=== RESUMEN: 2 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] INADMISIBLE suma=5 | araucania   | 1952-53-LP26 | SERVICIO DE INTERMEDIACIÓN DE RECURSOS HUMANOS PARA LA GESTIÓN DE REAS
+  [REVISAR       ] INADMISIBLE suma=6 | aysen       | 1343645-10-LE26 | Oficina Modular Escombrera Municipal
+==================== 2026-06-08 18:00:22  FIN (exit 0) ====================
+
+==================== 2026-06-09 18:00:05  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  09062026:  1089 licitaciones | acumulado keyword-match: 5
+  08062026:  1585 licitaciones | acumulado keyword-match: 13
+  07062026:     7 licitaciones | acumulado keyword-match: 13
+Tras keyword + dedup: 13 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260609_1800.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260609_1800.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260609_1800.csv (11 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260609_1800.csv (33 en cola de recall léxico)
+
+=== RESUMEN: 2 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] INADMISIBLE suma=5 | araucania   | 1952-53-LP26 | SERVICIO DE INTERMEDIACIÓN DE RECURSOS HUMANOS PARA LA GESTIÓN DE REAS
+  [REVISAR       ] INADMISIBLE suma=6 | aysen       | 1343645-10-LE26 | Oficina Modular Escombrera Municipal
+
+⏰ ALERTAS: 0 candidata(s) con cierre/visita dentro de 5 día(s)
+==================== 2026-06-09 18:00:44  FIN (exit 0) ====================
+
+==================== 2026-06-10 18:00:04  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  10062026:  1057 licitaciones | acumulado keyword-match: 15
+  09062026:  1135 licitaciones | acumulado keyword-match: 20
+  08062026:  1573 licitaciones | acumulado keyword-match: 28
+Tras keyword + dedup: 28 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260610_1801.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260610_1801.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260610_1801.csv (22 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260610_1801.csv (38 en cola de recall léxico)
+
+=== RESUMEN: 6 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 1171142-64-LE26 | LIC 70-26 ARRIENDO DE CONTENEDORES PARA EL CAPLC
+  [PRIORITARIA   ] INADMISIBLE suma=4 | araucania   | 4993-44-LE26 | ADQUISICIÓN DE TRES CONTENEDORES MODULARES DE 300 X 600  PARA EL PROGR
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 4090-20-L126 | INSUMOS DENTALES PROGRAMA SALUD ORAL MODULO JUNAEB
+  [REVISAR       ] INADMISIBLE suma=5 | araucania   | 3151-20-LE26 | CONTENEDOR
+  [REVISAR       ] INADMISIBLE suma=5 | araucania   | 1952-53-LP26 | SERVICIO DE INTERMEDIACIÓN DE RECURSOS HUMANOS PARA LA GESTIÓN DE REAS
+  [REVISAR       ] INADMISIBLE suma=6 | aysen       | 1343645-10-LE26 | Oficina Modular Escombrera Municipal
+
+⏰ ALERTAS: 1 candidata(s) con cierre/visita dentro de 5 día(s)
+  [cierra en 0d] 3151-20-LE26 | araucania | CONTENEDOR
+==================== 2026-06-10 18:01:35  FIN (exit 0) ====================
+
+==================== 2026-06-11 18:00:05  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  11062026:  1130 licitaciones | acumulado keyword-match: 12
+  10062026:  1106 licitaciones | acumulado keyword-match: 29
+  09062026:  1130 licitaciones | acumulado keyword-match: 34
+Tras keyword + dedup: 34 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260611_1802.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260611_1802.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260611_1802.csv (24 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260611_1802.csv (29 en cola de recall léxico)
+
+=== RESUMEN: 10 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 2263-53-LE26 | Adquisición de MODULOS METALICOS DE 14 METROS destinados a la ejecució
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 2263-56-LE26 | ADQUISICIÓN DE MODULOS METALICOS DE 14 METROS DESTINADOS A LA EJECUCIÓ
+  [REVISAR       ] ADMISIBLE   suma=5 | los rios    | 3143-32-LP26 | SUMINISTRO E INSTALACIÓN DE CARPA DE ESTRUCTURA MODULAR EN SECTOR COST
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 4284-84-LE26 | Adquisición de container dependencias DOM y DDFIF de la municipalidad 
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 1171142-64-LE26 | LIC 70-26 ARRIENDO DE CONTENEDORES PARA EL CAPLC
+  [PRIORITARIA   ] INADMISIBLE suma=3 | los lagos   | 1057534-27-LE26 | Habilitacion de cubierta para modulos prefabricado
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 1057977-8-LE26 | Habilitacion Box Dental y Esterilizacion Prais
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 4090-20-L126 | INSUMOS DENTALES PROGRAMA SALUD ORAL MODULO JUNAEB
+  [PRIORITARIA   ] INADMISIBLE suma=4 | araucania   | 4993-44-LE26 | ADQUISICIÓN DE TRES CONTENEDORES MODULARES DE 300 X 600  PARA EL PROGR
+  [REVISAR       ] INADMISIBLE suma=5 | araucania   | 3151-20-LE26 | CONTENEDOR
+
+⏰ ALERTAS: 2 candidata(s) con cierre/visita dentro de 5 día(s)
+  [cierra en 0d] 4284-84-LE26 | araucania | Adquisición de container dependencias DOM y DDFIF de la muni
+  [cierra en 0d] 1057977-8-LE26 | los lagos | Habilitacion Box Dental y Esterilizacion Prais
+==================== 2026-06-11 18:02:37  FIN (exit 0) ====================
+
+==================== 2026-06-12 18:00:03  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  12062026:  1232 licitaciones | acumulado keyword-match: 17
+  11062026:  1187 licitaciones | acumulado keyword-match: 30
+  10062026:  1099 licitaciones | acumulado keyword-match: 47
+Tras keyword + dedup: 47 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260612_1801.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260612_1801.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260612_1801.csv (35 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260612_1801.csv (36 en cola de recall léxico)
+
+=== RESUMEN: 14 candidatas del sur ===
+Top candidatas:
+  [PRIORITARIA   ] ADMISIBLE   suma=4 | los lagos   | 4831-3-LR26 | VEHÍCULOS RECOLECTORES Y CONTENEDORES RSD
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 5586-78-LE26 | JG ADQUISICIÓN DE EQUIPAMIENTO POR LÍNEA: KIT  DE ROBÓTICA IMPRESORAS 
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 2263-56-LE26 | ADQUISICIÓN DE MODULOS METALICOS DE 14 METROS DESTINADOS A LA EJECUCIÓ
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 2263-53-LE26 | Adquisición de MODULOS METALICOS DE 14 METROS destinados a la ejecució
+  [REVISAR       ] ADMISIBLE   suma=5 | los rios    | 3143-32-LP26 | SUMINISTRO E INSTALACIÓN DE CARPA DE ESTRUCTURA MODULAR EN SECTOR COST
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 4284-84-LE26 | Adquisición de container dependencias DOM y DDFIF de la municipalidad 
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 1171142-64-LE26 | LIC 70-26 ARRIENDO DE CONTENEDORES PARA EL CAPLC
+  [REVISAR       ] ADMISIBLE   suma=6 | magallanes  | 1116007-11-LP26 | Adquisición y habilitación de contenedores
+  [PRIORITARIA   ] INADMISIBLE suma=3 | los lagos   | 1057534-27-LE26 | Habilitacion de cubierta para modulos prefabricado
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 1057977-8-LE26 | Habilitacion Box Dental y Esterilizacion Prais
+
+⏰ ALERTAS: 3 candidata(s) con cierre/visita dentro de 5 día(s)
+  [cierra en 0d] 4831-3-LR26 | los lagos | VEHÍCULOS RECOLECTORES Y CONTENEDORES RSD
+  [cierra en 0d] 5147-28-LE26 | magallanes | Adquisición de contenedores para reciclaje
+  [cierra en 5d] 4090-20-L126 | los lagos | INSUMOS DENTALES PROGRAMA SALUD ORAL MODULO JUNAEB
+==================== 2026-06-12 18:01:57  FIN (exit 0) ====================
+
+==================== 2026-06-13 18:00:04  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  13062026:    10 licitaciones | acumulado keyword-match: 0
+  12062026:  1299 licitaciones | acumulado keyword-match: 18
+  11062026:  1186 licitaciones | acumulado keyword-match: 31
+Tras keyword + dedup: 31 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260613_1801.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260613_1801.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260613_1801.csv (24 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260613_1801.csv (30 en cola de recall léxico)
+
+=== RESUMEN: 9 candidatas del sur ===
+Top candidatas:
+  [PRIORITARIA   ] ADMISIBLE   suma=4 | los lagos   | 4831-3-LR26 | VEHÍCULOS RECOLECTORES Y CONTENEDORES RSD
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 5586-78-LE26 | JG ADQUISICIÓN DE EQUIPAMIENTO POR LÍNEA: KIT  DE ROBÓTICA IMPRESORAS 
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 4284-84-LE26 | Adquisición de container dependencias DOM y DDFIF de la municipalidad 
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 2263-56-LE26 | ADQUISICIÓN DE MODULOS METALICOS DE 14 METROS DESTINADOS A LA EJECUCIÓ
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 2263-53-LE26 | Adquisición de MODULOS METALICOS DE 14 METROS destinados a la ejecució
+  [REVISAR       ] ADMISIBLE   suma=5 | los rios    | 3143-32-LP26 | SUMINISTRO E INSTALACIÓN DE CARPA DE ESTRUCTURA MODULAR EN SECTOR COST
+  [REVISAR       ] ADMISIBLE   suma=6 | magallanes  | 1116007-11-LP26 | Adquisición y habilitación de contenedores
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 1057977-8-LE26 | Habilitacion Box Dental y Esterilizacion Prais
+  [REVISAR       ] INADMISIBLE suma=6 | magallanes  | 5147-28-LE26 | Adquisición de contenedores para reciclaje
+
+⏰ ALERTAS: 0 candidata(s) con cierre/visita dentro de 5 día(s)
+==================== 2026-06-13 18:01:09  FIN (exit 0) ====================
+
+==================== 2026-06-16 05:11:55  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  16062026:     0 licitaciones | acumulado keyword-match: 0
+  15062026:  1559 licitaciones | acumulado keyword-match: 15
+  14062026:     0 licitaciones | acumulado keyword-match: 15
+Tras keyword + dedup: 15 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260616_0512.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260616_0512.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260616_0512.csv (13 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260616_0512.csv (17 en cola de recall léxico)
+
+=== RESUMEN: 2 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 1091-14-LE26 | ADQUISICION DE 2 CONTENEDORES MARITIMO TIPO OFICIN
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 707423-48-LE26 | ADQUISICIÓN DE CONTENEDORES DE 10 PIES PARA JARDINES INFANTILES Y SALA
+
+⏰ ALERTAS: 0 candidata(s) con cierre/visita dentro de 5 día(s)
+==================== 2026-06-16 05:12:25  FIN (exit 0) ====================
+
+==================== 2026-06-16 18:00:03  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  16062026:  1103 licitaciones | acumulado keyword-match: 16
+  15062026:  1553 licitaciones | acumulado keyword-match: 31
+  14062026:     0 licitaciones | acumulado keyword-match: 31
+Tras keyword + dedup: 31 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260616_1801.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260616_1801.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260616_1801.csv (27 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260616_1801.csv (31 en cola de recall léxico)
+
+=== RESUMEN: 4 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 1091-14-LE26 | ADQUISICION DE 2 CONTENEDORES MARITIMO TIPO OFICIN
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 707423-48-LE26 | ADQUISICIÓN DE CONTENEDORES DE 10 PIES PARA JARDINES INFANTILES Y SALA
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 1895-22-LE26 | Compra Cunetas prefabricadas de Hormigón trapezoidal
+  [REVISAR       ] INADMISIBLE suma=5 | los rios    | 1057553-4-LE26 | ARRIENDO DE 4 CONTENEDORES DE ALMACENAMIENTO
+
+⏰ ALERTAS: 0 candidata(s) con cierre/visita dentro de 5 día(s)
+==================== 2026-06-16 18:01:28  FIN (exit 0) ====================
+
+==================== 2026-06-17 18:45:57  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+python.exe : Traceback (most recent call last):
+En C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\run_daily.ps1: 19 Carácter: 11
++ $salida = & python main.py 2>&1 | Out-String
++           ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program 
+Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\socket.py", line 962, in 
+getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x0000017CD285EB90>: Failed to 
+resolve 'api.mercadopublico.cl' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.mercadopublico.cl', port=443): Max retries exceeded 
+with url: /servicios/v1/publico/licitaciones.json?fecha=17062026&ticket=A9C0D7D7-9B14-45A7-8D48-06E8A96C1C20 (Caused 
+by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000017CD285EB90>: Failed to resolve 
+'api.mercadopublico.cl' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\main.py", line 280, in <module>
+    main()
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\main.py", line 198, in main
+    listado = client.listar_por_fecha(fecha)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\api_client.py", line 57, in 
+listar_por_fecha
+    data = self._get({"fecha": fecha_ddmmaaaa})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\api_client.py", line 34, in _get
+    resp = self.session.get(BASE_URL, params=params, timeout=self.timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\sessions.py", line 602, in get
+    return self.request("GET", url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.mercadopublico.cl', port=443): Max retries exceeded 
+with url: /servicios/v1/publico/licitaciones.json?fecha=17062026&ticket=A9C0D7D7-9B14-45A7-8D48-06E8A96C1C20 (Caused 
+by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000017CD285EB90>: Failed to resolve 
+'api.mercadopublico.cl' ([Errno 11001] getaddrinfo failed)"))
+==================== 2026-06-17 18:46:00  FIN (exit 1) ====================
+
+==================== 2026-06-18 18:01:24  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  18062026:  1217 licitaciones | acumulado keyword-match: 9
+  17062026:  1204 licitaciones | acumulado keyword-match: 23
+  16062026:  1149 licitaciones | acumulado keyword-match: 42
+Tras keyword + dedup: 42 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260618_1803.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260618_1803.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260618_1803.csv (38 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260618_1803.csv (42 en cola de recall léxico)
+
+=== RESUMEN: 6 candidatas del sur ===
+Top candidatas:
+  [REVISAR       ] ADMISIBLE   suma=6 | magallanes  | 5147-31-LP26 | ADQUISICION E INSTALACION VIVIENDAS PREFABRICADAS
+  [REVISAR       ] ADMISIBLE   suma=6 | magallanes  | 5147-30-LE26 | ADQUISICION ESCENARIO MODULAR DESMONTABLE
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 4090-20-L126 | INSUMOS DENTALES PROGRAMA SALUD ORAL MODULO JUNAEB
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 1895-22-LE26 | Compra Cunetas prefabricadas de Hormigón trapezoidal
+  [REVISAR       ] INADMISIBLE suma=5 | los rios    | 1057553-4-LE26 | ARRIENDO DE 4 CONTENEDORES DE ALMACENAMIENTO
+  [REVISAR       ] INADMISIBLE suma=6 | magallanes  | 5147-28-LE26 | Adquisición de contenedores para reciclaje
+
+⏰ ALERTAS: 0 candidata(s) con cierre/visita dentro de 5 día(s)
+==================== 2026-06-18 18:03:15  FIN (exit 0) ====================
+
+==================== 2026-06-19 18:00:02  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  19062026:  1189 licitaciones | acumulado keyword-match: 6
+  18062026:  1283 licitaciones | acumulado keyword-match: 16
+  17062026:  1187 licitaciones | acumulado keyword-match: 30
+Tras keyword + dedup: 30 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260619_1801.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260619_1801.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260619_1801.csv (29 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260619_1801.csv (37 en cola de recall léxico)
+
+=== RESUMEN: 4 candidatas del sur ===
+Top candidatas:
+  [PRIORITARIA   ] INADMISIBLE suma=4 | los lagos   | 4090-20-L126 | INSUMOS DENTALES PROGRAMA SALUD ORAL MODULO JUNAEB
+  [REVISAR       ] INADMISIBLE suma=5 | magallanes  | 3542-14-LE26 | SERVICIO DE ELABORACIÓN DE BODEGAS SUSPEL-RESPEL
+  [REVISAR       ] INADMISIBLE suma=6 | aysen       | 1195-20-LP26 | SERV. ADQUISICIÓN HABILITACIÓN 8 MODULOS
+  [REVISAR       ] INADMISIBLE suma=6 | magallanes  | 5147-28-LE26 | Adquisición de contenedores para reciclaje
+
+⏰ ALERTAS: 0 candidata(s) con cierre/visita dentro de 5 día(s)
+==================== 2026-06-19 18:01:18  FIN (exit 0) ====================
+
+==================== 2026-06-20 18:00:49  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+python.exe : Traceback (most recent call last):
+En C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\run_daily.ps1: 19 Carácter: 11
++ $salida = & python main.py 2>&1 | Out-String
++           ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connection.py", line 741, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connection.py", line 920, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\ssl_.py", line 480, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\ssl_.py", line 524, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\ssl.py", 
+line 517, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\ssl.py", 
+line 1104, in _create
+    self.do_handshake()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\ssl.py", 
+line 1382, in do_handshake
+    self._sslobj.do_handshake()
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connection.py", line 741, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\connection.py", line 920, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\ssl_.py", line 480, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\urllib3\util\ssl_.py", line 524, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\ssl.py", 
+line 517, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\ssl.py", 
+line 1104, in _create
+    self.do_handshake()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.11_3.11.2544.0_x64__qbz5n2kfra8p0\Lib\ssl.py", 
+line 1382, in do_handshake
+    self._sslobj.do_handshake()
+urllib3.exceptions.ProtocolError: ('Connection aborted.', ConnectionResetError(10054, 'Se ha forzado la interrupción 
+de una conexión existente por el host remoto', None, 10054, None))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\main.py", line 280, in <module>
+    main()
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\main.py", line 198, in main
+    listado = client.listar_por_fecha(fecha)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\api_client.py", line 57, in 
+listar_por_fecha
+    data = self._get({"fecha": fecha_ddmmaaaa})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\api_client.py", line 34, in _get
+    resp = self.session.get(BASE_URL, params=params, timeout=self.timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\sessions.py", line 671, in get
+    return self.request("GET", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marti\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packa
+ges\Python311\site-packages\requests\adapters.py", line 711, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(10054, 'Se ha forzado la 
+interrupción de una conexión existente por el host remoto', None, 10054, None))
+==================== 2026-06-20 18:55:26  FIN (exit 1) ====================
+
+==================== 2026-06-22 07:39:32  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  22062026:     1 licitaciones | acumulado keyword-match: 0
+  21062026:     1 licitaciones | acumulado keyword-match: 0
+  20062026:    20 licitaciones | acumulado keyword-match: 1
+Tras keyword + dedup: 1 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260622_0739.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260622_0739.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260622_0739.csv (1 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260622_0739.csv (1 en cola de recall léxico)
+
+=== RESUMEN: 0 candidatas del sur ===
+Sin candidatas del sur en la ventana consultada.
+
+⏰ ALERTAS: 0 candidata(s) con cierre/visita dentro de 5 día(s)
+==================== 2026-06-22 07:39:44  FIN (exit 0) ====================
+
+==================== 2026-06-22 18:00:03  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  22062026:  1494 licitaciones | acumulado keyword-match: 14
+  21062026:     1 licitaciones | acumulado keyword-match: 14
+  20062026:    20 licitaciones | acumulado keyword-match: 15
+Tras keyword + dedup: 15 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260622_1800.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260622_1800.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260622_1800.csv (14 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260622_1800.csv (17 en cola de recall léxico)
+
+=== RESUMEN: 1 candidatas del sur ===
+Top candidatas:
+  [PRIORITARIA   ] INADMISIBLE suma=3 | los lagos   | 1057534-27-LE26 | Habilitacion de cubierta para modulos prefabricado
+
+⏰ ALERTAS: 1 candidata(s) con cierre/visita dentro de 5 día(s)
+  [cierra en 0d] 1057534-27-LE26 | los lagos | Habilitacion de cubierta para modulos prefabricado
+==================== 2026-06-22 18:00:36  FIN (exit 0) ====================
+
+==================== 2026-06-23 18:00:03  INICIO ====================
+[config] Calibración cargada: config_local.py (calibración privada)
+Calibración cargada: config_local.py (calibración privada)
+Base operativa: puerto_montt
+Ticket: configurado desde el entorno
+Ventana: últimos 3 día(s) | tope detalles: 150 | delay: 0.5s
+
+  23062026:  1120 licitaciones | acumulado keyword-match: 6
+  22062026:  1600 licitaciones | acumulado keyword-match: 20
+  21062026:     1 licitaciones | acumulado keyword-match: 20
+Tras keyword + dedup: 20 candidatas únicas
+
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260623_1801.csv
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\candidatas_sur_20260623_1801.json
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\descartadas_20260623_1801.csv (15 descartadas con keyword de incluir)
+Exportado: C:\Users\marti\OneDrive\Escritorio\Personal\AI projects\loveo-licitaciones\outputs\revisar_recall_20260623_1801.csv (35 en cola de recall léxico)
+
+=== RESUMEN: 5 candidatas del sur ===
+Top candidatas:
+  [PRIORITARIA   ] ADMISIBLE   suma=4 | los lagos   | 2902-19-LP26 | HABILITACIÓN SOLUCIÓN MODULAR DE URGENCIA LICEO HORNOPIRÉN HUALAIHUÉ
+  [PRIORITARIA   ] ADMISIBLE   suma=4 | los lagos   | 2332-5-LP26 | CS RETIRO TRANSPORTE ELIMINACION Y DISP FINAL REAS
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 5586-78-LE26 | JG ADQUISICIÓN DE EQUIPAMIENTO POR LÍNEA: KIT  DE ROBÓTICA IMPRESORAS 
+  [REVISAR       ] ADMISIBLE   suma=5 | araucania   | 707423-48-LE26 | ADQUISICIÓN DE CONTENEDORES DE 10 PIES PARA JARDINES INFANTILES Y SALA
+  [PRIORITARIA   ] INADMISIBLE suma=3 | los lagos   | 1057534-27-LE26 | Habilitacion de cubierta para modulos prefabricado
+
+⏰ ALERTAS: 2 candidata(s) con cierre/visita dentro de 5 día(s)
+  [cierra en 0d] 2332-5-LP26 | los lagos | CS RETIRO TRANSPORTE ELIMINACION Y DISP FINAL REAS
+  [cierra en 0d] 5586-78-LE26 | araucania | JG ADQUISICIÓN DE EQUIPAMIENTO POR LÍNEA: KIT  DE ROBÓTICA I
+==================== 2026-06-23 18:01:00  FIN (exit 0) ====================

@@ -1,135 +1,109 @@
-# loveo-licitaciones — Capa A (descubrimiento + triage)
+# loveo-licitaciones — pipeline de descubrimiento + admisibilidad + scoring + descarga + tablero
 
-Herramienta de descubrimiento y triage de licitaciones públicas de Chile
-(Mercado Público / ChileCompra) para **Loveo Construcciones SPA** (construcción
-modular en acero). Corre a diario, acotada a la **zona sur** de Chile, porque la
-empresa abre base en Puerto Montt y ahí tiene ventaja logística.
+Producto interno (H1) y semilla del SaaS (H2). Local-first, "online y offline".
 
-Esta es la **Capa A**: surfacing rápido de candidatas del sur a partir de la API
-oficial. **No** descarga documentos (bases/anexos): la API no los entrega —
-viven en la ficha web (JavaScript). Eso es la **Capa B** (futura, navegador
-headless) y queda explícitamente fuera de alcance acá.
-
-## Qué hace (el embudo)
-
-1. **Descubre** las licitaciones publicadas en los últimos N días vía la API oficial.
-2. **Filtra por keywords** sobre el nombre (barato, sin gastar llamadas de detalle).
-3. Pide **detalle** solo a las que pasan el filtro (con tope configurable).
-4. Filtra **zona sur** + corre **admisibilidad** + un **pre-score** de triage.
-5. **Exporta** las candidatas a `outputs/` (CSV + JSON), ordenadas.
+## El embudo (8 pasos) — estado
 
 ```
-listar por fecha  →  filtro keyword  →  dedup  →  detalle  →  filtro sur  →  admisibilidad + prescore  →  outputs/
-   (~1000/día)        (barato)                    (con tope)    (la región solo viene en el detalle)
+1. DESCUBRIR    → API oficial ChileCompra (diaria)          ✅ LISTO     discover.py
+2. FILTRAR      → keywords límite palabra + exclusiones      ✅ LISTO     discover.py (+ aprendidas)
+3. ADMISIBILIDAD→ filtro eliminatorio Loveo (regla dura)     ✅ LISTO     rules.py
+4. DESCARGAR    → adjuntos vía navegador headless            ◻ CALIBRANDO download.py (corre local)
+5. PUNTUAR      → provisional (API) ✅  ·  final (LLM+bases) ◻  scoring.py / Capa C
+6. PRESENTAR    → tablero + acceso a documentos              ✅ LISTO     tablero.py (Streamlit)
+7. FEEDBACK     → aprobar/descartar/aprender/corregir        ✅ LISTO     feedback.py
+8. ESTADO       → trazabilidad doble eje + eventos + runs    ✅ LISTO     db.py
 ```
 
-## Honestidad del pre-score
+Orquestación: `run_daily.py` (descubrir→admisibilidad→scoring provisional, con bookkeeping en `runs`).
 
-Con la sola API solo se puede puntuar de forma defendible:
+## Hallazgos que definen la arquitectura (probe 14-jun-2026)
 
-- **Cash flow** (modalidad de pago)
-- **Logística** (región vs. base operativa)
-- **Alineación** (fuerza de keywords en el nombre)
+| Hallazgo | Consecuencia |
+|----------|--------------|
+| `api.mercadopublico.cl` → 200 (CloudFront) | Descubrimiento corre donde sea. |
+| El detalle de API trae todo menos los archivos | Adjuntos solo en la ficha → navegador (Capa B). |
+| `www.mercadopublico.cl` → 403 a IP de datacenter | La descarga corre LOCAL (IP residencial CL). |
+| Ticket de pruebas rate-limited (429) | Pedí ticket propio: api.mercadopublico.cl/modules/Participa.aspx |
 
-**No** se inventan margen, complejidad ni repetibilidad: eso requiere los
-documentos y se delega al scoring completo (Capa B, futura). Cada fila exportada
-incluye una `nota` que lo aclara.
+## Scoring: provisional vs final (honestidad)
 
-## Instalación
+`scoring.py` calcula lo derivable de la API: **logístico** (distancia a la base más cercana, ×3 si >300 km),
+**alineación**, **repetibilidad** y **cash flow** parcial. **Margen** y **complejidad** quedan marcados
+*pendientes de bases + cubicación*. Por eso es un **score provisional para triage** (Priorizar / Revisar /
+Descartar candidato), NO un GO/NO-GO. El GO/NO-GO final es la Capa C (LLM + bases + cubicación de Valentina).
+
+Dual-base: el logístico se evalúa contra la base más cercana (Pirque + Puerto Montt). Distancias en
+`scoring.py:BASES` son aproximadas — CALIBRAR.
+
+## Estado / máquina de estados (doble eje)
+
+```
+estado_revision : nueva → en_revision → (descartada | aprobada)
+estado_resultado: (si aprobada) pendiente → presentada → (ganada | perdida | desierta)
+```
+
+## Cómo correr
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt --break-system-packages
+python -m playwright install chromium
+
+python db.py                       # crea loveo.db + ./storage
+python run_daily.py 11062026       # descubrir + admisibilidad + scoring (necesita ticket propio para detalle)
+python run_daily.py --backfill 5   # últimos 5 días hábiles no procesados
+
+# Descarga de adjuntos — CORRER LOCAL (IP chilena):
+python calibrate_ficha.py 2263-53-LE26   # 1) calibrar navegación a la ficha
+python download.py                       # 2) bajar adjuntos de las admisibles
+
+streamlit run tablero.py           # revisar, descargar docs, dar feedback
 ```
 
-Python 3.9+ (probado en 3.11).
+## Archivos
 
-## Configuración
+- `db.py` — esquema SQLite (licitaciones, documentos, eventos, runs) + helpers de estado.
+- `discover.py` — Capa A: API, filtro (con exclusiones aprendidas), detalle.
+- `rules.py` — admisibilidad (paso 3). No rechaza por boilerplate de ProhibicionContratacion.
+- `scoring.py` — scoring Atlas provisional (paso 5a) + mapa región→distancia dual-base.
+- `feedback.py` — loop de feedback (paso 7): aprobar/descartar/aprender exclusión/corregir score.
+- `run_daily.py` — orquestador con bookkeeping (`runs`) y manejo de errores.
+- `download.py` — Capa B (paso 4), corre local; navegación a la ficha pendiente de calibración.
+- `tablero.py` — tablero Streamlit (paso 6): pipeline + acceso a documentos + feedback.
+- `calibrate_ficha.py` — sonda local para fijar selectores de la ficha.
+- `config_local.example.py` — plantilla: TICKET propio + keywords/umbrales (gitignored).
+- `exclusiones_aprendidas.txt` — generado por feedback; lo lee discover en cada corrida.
+- `docs/build_deck.js` + `docs/package.json` — generador del Documento de Producto PO/BA (versionado).
 
-Las **credenciales** y los **parámetros operativos** van en `.env` (gitignored).
-La **calibración real** (keywords, tiers) va en `config_local.py` (gitignored).
+## Pendiente (post-calibración / Capa C)
 
-1. Copiá `.env.example` a `.env` y poné tu ticket de ChileCompra:
+- Calibrar la navegación código→ficha en `download.py` (corré `calibrate_ficha.py` local).
+- Capa C: lectura de bases con Claude API → score FINAL (margen + complejidad) → GO/NO-GO.
+- Mapear códigos de `TipoPago` para afinar el score de cash flow.
 
-   ```
-   LOVEO_CHILECOMPRA_TICKET=tu-ticket-aca
-   ```
+## Capa de datos v2 (inteligencia competitiva, desiertas, seguimiento)
 
-   Si no ponés ticket, el sistema usa el **ticket público de PRUEBA** de
-   ChileCompra (rate-limit alto, solo para arrancar). Para producción pedí el
-   tuyo a api@chilecompra.cl.
+Migración y módulos que llevan el tablero a data real (ver `PLAN_DATOS.md`):
 
-2. Copiá `config_local_example.py` a `config_local.py` y ajustá la calibración
-   real (keywords de Loveo, tiers de logística y cash flow).
+- `schema_v2.py` — tablas: adjudicaciones, items, competidores, participaciones, relicitaciones.
+- `extract.py` — `json_detalle` → adjudicación + items + competidores + participaciones (ganadas). Verificado: PABYMAC en 2263-53.
+- `competencia.py` — `resumen()`, `ficha(rut)`, `facturado_por_anio(rut)`.
+- `relicitaciones.py` — `detectar()`: enlaza desierta → re-licitación (heurístico Jaccard).
+- Cableado en `run_daily.py`: `extract.extraer` tras cada upsert + `relicitaciones.detectar` al cierre.
 
-`config.py` carga `config_local.py` si existe; si no, cae a
-`config_local_example.py` y te avisa cuál cargó.
+Pendiente de segundo endpoint: perdidas (ofertas públicas), facturado exacto (OC por RUT), contacto del competidor.
 
-### Parámetros (env, opcionales)
+## Capa C (lectura de bases con IA) — bases.py + capa_c.py
 
-| Variable                    | Default      | Qué hace                                  |
-|-----------------------------|--------------|-------------------------------------------|
-| `LOVEO_CHILECOMPRA_TICKET`  | ticket prueba| Ticket de la API.                         |
-| `LOVEO_DIAS_HACIA_ATRAS`    | `3`          | Cuántos días hacia atrás listar.          |
-| `LOVEO_MAX_DETALLES`        | `150`        | Tope de llamadas de detalle por corrida.  |
-| `LOVEO_DELAY`               | `0.5`        | Delay (seg) entre llamadas a la API.      |
-| `LOVEO_BASE`                | `puerto_montt`| Base operativa (override de calibración).|
+Convierte el PDF de las bases a TEXTO local y manda **solo texto** a Claude (nunca el PDF como imagen):
+~1/3 de los tokens y sin tope de 100 páginas / 32 MB.
 
-## Uso
+- `bases.py` — `pdf_a_texto` (pdfplumber + fallback OCR pytesseract para PDFs escaneados) y
+  `texto_para_analisis` (recorta a secciones: presupuesto, plazo, garantías, evaluación, requisitos, subcontrato).
+  Verificado contra un PDF real de imágenes de MP: 9 págs → OCR → 14.875 chars, 6 secciones detectadas.
+- `capa_c.py` — `analizar_bases` (JSON estructurado para el score: presupuesto, plazos, garantías,
+  criterios+pesos, requisitos, señales de complejidad) y `preguntar` (Q&A N3). API key SOLO del entorno
+  (ANTHROPIC_API_KEY); modelo barato por defecto (Haiku). `--dry` estima tokens sin llamar a la API.
 
-```bash
-python main.py
-```
-
-Genera `outputs/candidatas_sur_AAAAMMDD_HHMM.csv` y `.json`, e imprime un
-resumen de las top candidatas. El CSV se escribe en `utf-8-sig` (abre bien en
-Excel con acentos).
-
-## Tests
-
-```bash
-pytest
-```
-
-## Estructura
-
-```
-config.py                 # MECANISMO (público): credenciales desde env + carga de calibración
-config_local.py           # CALIBRACIÓN REAL (privada, gitignored)
-config_local_example.py   # plantilla neutra (pública)
-api_client.py             # wrapper de la API con backoff de 429
-filters.py                # keywords (límite de palabra), región sur, admisibilidad
-prescore.py               # pre-score de triage honesto
-main.py                   # orquesta el embudo y exporta a outputs/
-alertas.py                # M-2: alertas de cierre y visita a terreno
-tests/                    # pytest
-```
-
-## Salidas en `outputs/`
-
-Cada corrida genera tres archivos con el mismo timestamp:
-
-- `candidatas_sur_<ts>.csv/.json` — candidatas del sur con triage y alertas.
-- `descartadas_<ts>.csv` (M-1) — licitaciones que matchearon una keyword de
-  incluir pero se cayeron (excluidas o fuera de zona). Columna `feedback` para
-  marcar `bien_descartada` / `falso_positivo`.
-- `revisar_recall_<ts>.csv` (M-3) — red ancha léxica: ítems que matchearon
-  `KEYWORDS_AMPLIO` pero no la lista estricta. Columna `feedback` para marcar
-  `relevante` / `descartar`. Retroalimenta qué keywords estrictas faltan.
-
-## Roadmap — recall profundo (futuro)
-
-M-3 es solo el **primer incremento léxico** del recall (una red de keywords más
-ancha hacia una cola de revisión). El recall profundo queda como roadmap:
-
-- **Matching semántico por embeddings** (capturar relevancia sin depender de que
-  la keyword exacta aparezca en el nombre).
-- **Filtro por código de rubro UNSPSC** de los `Items`, para pescar por
-  categoría de producto/servicio y no solo por texto del nombre.
-
-Estas dos vías exceden la Capa A y se abordan más adelante.
-
-## Seguridad
-
-- Credenciales solo en `.env`. La calibración de negocio solo en `config_local.py`.
-- Ambos están en `.gitignore`. Repo público = solo tooling genérico.
-- Datos de la empresa, financieros e inversionistas **nunca** entran al repo.
+Requiere: el binario `tesseract-ocr` (+ `tesseract-ocr-spa`) para el OCR. El margen FINAL del score
+sigue dependiendo de la cubicación de Valentina; Capa C aporta el techo de presupuesto y la complejidad.

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loveo Licitaciones — Inteligencia competitiva + Asistente IA (mockup)</title>
+<style>
+  :root{
+    --slate:#0F172A; --teal:#0E7490; --teald:#155E75; --amber:#F59E0B;
+    --light:#F1F5F9; --body:#1E293B; --mute:#64748B; --line:#E2E8F0;
+    --green:#047857; --red:#B91C1C; --tint:#F0F9FB; --white:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--light);color:var(--body);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 22px 44px}
+
+  .topbar{background:var(--slate);color:#fff;padding:15px 22px 0}
+  .topbar .inner{max-width:1240px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:11px}
+  .mark{width:30px;height:30px;border-radius:8px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+  .brand h1{font-size:18px;font-weight:700}
+  .brand .sub{font-size:11px;color:#94A3B8;margin-top:1px}
+  .runchip{background:#1E293B;border:1px solid #334155;border-radius:999px;padding:7px 14px;font-size:12px;color:#CBD5E1}
+  .runchip b{color:#fff}
+  .nav{max-width:1240px;margin:13px auto 0;display:flex;gap:4px}
+  .nav a{padding:11px 16px;font-size:13px;color:#94A3B8;text-decoration:none;border-bottom:2px solid transparent}
+  .nav a.on{color:#fff;font-weight:600;border-bottom-color:var(--amber)}
+
+  .mock{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:8px;padding:8px 14px;font-size:12px;margin:16px 0 14px}
+  .mock b{color:#78350F}
+
+  .sectit{display:flex;align-items:center;gap:10px;margin:22px 0 13px}
+  .sectit h2{font-size:17px;color:var(--slate);font-weight:700}
+  .sectit .tag{font-size:11px;color:var(--mute);background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 11px}
+
+  /* Insights strip */
+  .insights{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .ins{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .ins .n{font-size:24px;font-weight:800;color:var(--teald)}
+  .ins .l{font-size:11.5px;color:var(--mute);margin-top:3px}
+  .ins.warn .n{color:var(--red)} .ins.warn{background:#FEF2F2;border-color:#FECACA}
+
+  /* Comp table */
+  .tbl{background:#fff;border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  table{width:100%;border-collapse:collapse}
+  th{background:var(--slate);color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:11px 14px;font-weight:600}
+  td{padding:12px 14px;font-size:12.5px;border-top:1px solid var(--line);color:var(--body);vertical-align:middle}
+  tr:nth-child(even) td{background:#FAFCFD}
+  .code{font-family:"SFMono-Regular",Consolas,monospace;color:var(--teald);font-weight:600;font-size:11.5px}
+  .win{font-weight:700;color:var(--slate)}
+  .price{font-weight:700;color:var(--slate);text-align:right}
+  .pill{font-size:10.5px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap}
+  .pill.fp{background:#FEE2E2;color:#991B1B}
+  .pill.core{background:#DCFCE7;color:#166534}
+  .pill.solo{background:#FEF3C7;color:#92400E}
+  .real{font-size:9.5px;color:var(--teal);font-weight:700;margin-left:6px}
+
+  /* AI chat */
+  .chatwrap{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .chathead{background:var(--slate);color:#fff;padding:13px 18px;display:flex;align-items:center;gap:10px}
+  .chathead .ai{width:26px;height:26px;border-radius:7px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .chathead .t{font-size:14px;font-weight:700}
+  .chathead .s{font-size:11px;color:#94A3B8}
+  .chatbody{padding:18px;display:flex;flex-direction:column;gap:14px;background:#FBFDFE}
+  .msg{max-width:78%}
+  .msg.u{align-self:flex-end}
+  .bub{padding:11px 14px;border-radius:13px;font-size:13px;line-height:1.5}
+  .u .bub{background:var(--teal);color:#fff;border-bottom-right-radius:4px}
+  .a .bub{background:#fff;border:1px solid var(--line);color:var(--body);border-bottom-left-radius:4px}
+  .tool{font-size:10.5px;color:var(--teald);background:var(--tint);border:1px solid #CFE9EF;border-radius:6px;padding:2px 8px;display:inline-block;margin-bottom:6px;font-weight:600}
+  .tool.web{color:#92400E;background:#FEF3C7;border-color:#FDE68A}
+  .a .bub b{color:var(--slate)}
+  .chatin{display:flex;gap:9px;padding:14px 18px;border-top:1px solid var(--line);background:#fff}
+  .chatin input{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--mute)}
+  .chatin button{background:var(--slate);color:#fff;border:0;border-radius:9px;padding:0 18px;font-weight:700;font-size:13px;cursor:pointer}
+  .suggest{display:flex;gap:7px;flex-wrap:wrap;padding:0 18px 16px;background:#fff}
+  .suggest span{font-size:11.5px;color:var(--mute);background:var(--light);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="inner">
+      <div class="brand"><div class="mark">L</div>
+        <div><h1>Loveo Licitaciones</h1><div class="sub">Inteligencia de licitaciones · Pipeline interno</div></div>
+      </div>
+      <div class="runchip">Última corrida: <b>día 11-jun</b> · 1.186 → <b>11 candidatos</b></div>
+    </div>
+    <div class="nav"><a href="#">Pipeline</a><a href="#" class="on">Inteligencia competitiva</a><a href="#">Asistente IA</a></div>
+  </div>
+
+  <div class="wrap">
+    <div class="mock"><b>MOCKUP DE DISEÑO.</b> La fila de PABYMAC y su conversación en el chat usan datos reales del bloque <i>Adjudicación</i> de la API (2263-53-LE26). El resto son ejemplos.</div>
+
+    <!-- INTELIGENCIA COMPETITIVA -->
+    <div class="sectit"><h2>Inteligencia competitiva</h2><span class="tag">adjudicadas · quién gana, a qué precio, con cuántos oferentes</span></div>
+
+    <div class="insights">
+      <div class="ins"><div class="n">1.894</div><div class="l">adjudicadas en contenedores (nacional)</div></div>
+      <div class="ins warn"><div class="n">25%</div><div class="l">quedan desiertas → oportunidad</div></div>
+      <div class="ins"><div class="n">$13,0M</div><div class="l">precio unitario ganador (Malleco, real)</div></div>
+      <div class="ins warn"><div class="n">1</div><div class="l">oferente en Malleco → baja competencia</div></div>
+    </div>
+
+    <div class="tbl">
+      <table>
+        <tr><th>Código</th><th>Producto / ítem</th><th>Organismo</th><th>Ganador</th><th style="text-align:right">Precio unit.</th><th style="text-align:center">Oferentes</th><th>Señal</th></tr>
+        <tr>
+          <td><span class="code">2263-53-LE26</span><span class="real">REAL</span></td>
+          <td>Vigas de acero (2 un.)</td>
+          <td>MOP Vialidad · Malleco</td>
+          <td class="win">PABYMAC Ltda.</td>
+          <td class="price">$13.000.000</td>
+          <td style="text-align:center">1</td>
+          <td><span class="pill fp">Falso positivo (viga)</span></td>
+        </tr>
+        <tr>
+          <td><span class="code">2450-31-LE26</span></td>
+          <td>Box dental container (1 un.)</td>
+          <td>Muni · La Reina</td>
+          <td class="win">Modular Sur SpA</td>
+          <td class="price">$18.900.000</td>
+          <td style="text-align:center">4</td>
+          <td><span class="pill core">Core Loveo</span></td>
+        </tr>
+        <tr>
+          <td><span class="code">3344-12-LE26</span></td>
+          <td>Container oficina + bodega</td>
+          <td>Muni · Osorno</td>
+          <td class="win">Containers del Sur</td>
+          <td class="price">$11.200.000</td>
+          <td style="text-align:center">2</td>
+          <td><span class="pill solo">Baja competencia</span></td>
+        </tr>
+        <tr>
+          <td><span class="code">1188-7-LE26</span></td>
+          <td>Sala modular REAS</td>
+          <td>Hospital · Puerto Montt</td>
+          <td class="win">Modular Sur SpA</td>
+          <td class="price">$24.500.000</td>
+          <td style="text-align:center">3</td>
+          <td><span class="pill core">Core Loveo</span></td>
+        </tr>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--mute);margin-top:9px;font-style:italic">Insight: "Modular Sur SpA" aparece 2 veces como ganador en el sur — competidor a vigilar. La de Malleco se filtró por "módulos" pero su ítem es viga → candidata a descarte + aprender exclusión.</div>
+
+    <!-- ASISTENTE IA -->
+    <div class="sectit" style="margin-top:30px"><h2>Asistente IA</h2><span class="tag">preguntá sobre tu pipeline, los competidores y el mercado</span></div>
+
+    <div class="chatwrap">
+      <div class="chathead"><div class="ai">IA</div><div><div class="t">Asistente Loveo</div><div class="s">consulta la base del sistema, los adjudicados y la web</div></div></div>
+      <div class="chatbody">
+        <div class="msg u"><div class="bub">¿Qué licitaciones admisibles tengo y cuál miro primero?</div></div>
+        <div class="msg a"><div class="tool">⛁ consultó la base</div><div class="bub">Tenés <b>11 candidatos</b> del 11-jun, todos admisibles. El de mejor score evaluable es <b>2263-53</b> (65/120, “Revisar”) — pero su ítem es <b>“Vigas de acero”</b>, no edificación modular. Probable falso positivo. ¿Lo descarto y aprendo el término “viga”?</div></div>
+
+        <div class="msg u"><div class="bub">¿Quién ganó esa de Malleco y a qué precio?</div></div>
+        <div class="msg a"><div class="tool">⛁ consultó la base · bloque Adjudicación</div><div class="bub"><b>PABYMAC Ltda.</b>, <b>único oferente</b>, a <b>$13.000.000</b> por unidad (2 vigas = $26M, vs $40M estimado). Adjudicada el 11-jun. Un solo oferente = baja competencia en esa zona.</div></div>
+
+        <div class="msg u"><div class="bub">¿Cuántas licitaciones de containers se adjudican al año en Los Lagos? ¿Y cuándo cierra la próxima de box dental?</div></div>
+        <div class="msg a"><div class="tool web">🌐 buscó en la web</div><div class="tool">⛁ consultó la base</div><div class="bub">En la categoría “unidades para contenedores”, Los Lagos registra <b>~216</b> licitaciones; a nivel nacional ~1.894 adjudicadas y 25% desiertas <i>(fuente: web)</i>. En tu pipeline, la próxima de box dental que cierra es <b>1221016-20</b> (CECOSF La Reina) <i>(fuente: base interna)</i>.</div></div>
+      </div>
+      <div class="suggest">
+        <span>"¿Qué cierra esta semana?"</span><span>"Score promedio por región"</span>
+        <span>"¿Quién es Modular Sur SpA?"</span><span>"¿Cuánto se paga por un box dental?"</span>
+      </div>
+      <div class="chatin"><input placeholder="Preguntá lo que quieras sobre licitaciones, competidores o mercado…"><button>Enviar</button></div>
+    </div>
+  </div>
+</body>
+</html>

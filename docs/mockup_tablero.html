@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loveo Licitaciones — Tablero (mockup)</title>
+<style>
+  :root{
+    --slate:#0F172A; --teal:#0E7490; --teald:#155E75; --amber:#F59E0B;
+    --light:#F1F5F9; --body:#1E293B; --mute:#64748B; --line:#E2E8F0;
+    --green:#047857; --red:#B91C1C; --tint:#F0F9FB; --white:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--light);color:var(--body);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 22px 40px}
+
+  /* Topbar */
+  .topbar{background:var(--slate);color:#fff;padding:16px 22px}
+  .topbar .inner{max-width:1240px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:11px}
+  .mark{width:30px;height:30px;border-radius:8px;background:var(--teal);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px}
+  .brand h1{font-size:18px;font-weight:700;letter-spacing:.2px}
+  .brand .sub{font-size:11px;color:#94A3B8;margin-top:1px}
+  .runchip{background:#1E293B;border:1px solid #334155;border-radius:999px;
+    padding:7px 14px;font-size:12px;color:#CBD5E1}
+  .runchip b{color:#fff}
+
+  /* Mockup banner */
+  .mock{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:8px;
+    padding:8px 14px;font-size:12px;margin:16px 0 14px}
+  .mock b{color:#78350F}
+
+  /* Toolbar */
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:7px 13px;font-size:12.5px;color:var(--mute);cursor:pointer}
+  .seg button.on{background:var(--slate);color:#fff;font-weight:600}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--body);
+    background:var(--tint);border:1px solid #CFE9EF;border-radius:9px;padding:7px 12px}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .triage-filter{display:flex;gap:6px;font-size:12px;color:var(--mute)}
+  .triage-filter span{display:flex;align-items:center;gap:5px;border:1px solid var(--line);
+    border-radius:999px;padding:5px 11px;background:#fff}
+  .search{margin-left:auto;border:1px solid var(--line);border-radius:9px;padding:7px 12px;
+    font-size:12.5px;color:var(--mute);min-width:200px;background:#fff}
+
+  .count{font-size:12.5px;color:var(--mute);margin:0 2px 10px}
+
+  /* Cards */
+  .card{background:#fff;border:1px solid var(--line);border-radius:13px;margin-bottom:11px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .row{display:flex;align-items:center;gap:14px;padding:15px 18px;cursor:pointer}
+  .row .tdot{width:11px;height:11px;border-radius:50%;flex:none}
+  .code{font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;color:var(--teald);
+    font-weight:600;min-width:118px}
+  .name{flex:1;font-size:13.5px;color:var(--slate);font-weight:600;overflow:hidden;
+    white-space:nowrap;text-overflow:ellipsis}
+  .chip{font-size:11px;color:var(--mute);background:var(--light);border-radius:999px;padding:3px 10px;white-space:nowrap}
+  .monto{font-size:12.5px;color:var(--body);min-width:96px;text-align:right}
+  .score{font-weight:800;font-size:15px;min-width:62px;text-align:right}
+  .tlabel{font-size:11px;font-weight:700;min-width:78px;text-align:right;text-transform:uppercase;letter-spacing:.4px}
+  .chev{color:var(--mute);font-size:13px;width:14px;text-align:center}
+
+  /* Expanded body */
+  .body{border-top:1px solid var(--line);display:grid;grid-template-columns:1.55fr 1fr;gap:0}
+  .left{padding:18px 20px;border-right:1px solid var(--line)}
+  .right{padding:18px 20px;background:#FBFDFE}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:9px 18px;margin-bottom:14px}
+  .meta .k{font-size:10.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.4px}
+  .meta .v{font-size:13px;color:var(--slate);font-weight:600;margin-top:1px}
+  .adm{background:var(--tint);border:1px solid #CFE9EF;border-radius:8px;padding:9px 12px;
+    font-size:12px;color:var(--teald);margin-bottom:16px}
+
+  .sec{font-size:12px;font-weight:700;color:var(--slate);text-transform:uppercase;
+    letter-spacing:.5px;margin-bottom:11px}
+  .dim{display:grid;grid-template-columns:128px 1fr 34px;align-items:center;gap:11px;margin-bottom:9px}
+  .dim .dl{font-size:12.5px;color:var(--body)}
+  .dim .dl .w{font-size:10px;color:var(--mute);margin-left:4px}
+  .track{height:9px;background:var(--light);border-radius:6px;overflow:hidden}
+  .fill{height:100%;border-radius:6px;background:var(--teal)}
+  .fill.pend{background:repeating-linear-gradient(45deg,#FCD9A0,#FCD9A0 5px,#FBE7C4 5px,#FBE7C4 10px)}
+  .dim .ds{font-size:12.5px;font-weight:700;color:var(--slate);text-align:right}
+  .pendtag{font-size:9.5px;color:#92400E;background:#FEF3C7;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:700}
+
+  .flag{display:flex;align-items:center;gap:8px;background:#FEF2F2;border:1px solid #FECACA;
+    border-radius:8px;padding:8px 12px;font-size:12px;color:#991B1B;margin:13px 0}
+  .prov{font-size:11.5px;color:var(--mute);font-style:italic;border-top:1px dashed var(--line);padding-top:10px;margin-top:4px}
+
+  .docbox{margin-bottom:18px}
+  .docempty{font-size:12px;color:var(--mute);background:#fff;border:1px dashed var(--line);
+    border-radius:8px;padding:12px;text-align:center}
+  .docbtn{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);
+    border-radius:8px;padding:9px 12px;font-size:12.5px;color:var(--slate);margin-bottom:7px}
+  .docbtn .fileico{width:22px;height:22px;border-radius:5px;background:var(--teal);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
+  .docbtn .dlico{margin-left:auto;color:var(--teal);font-weight:800}
+
+  .fbtns{display:flex;gap:8px;margin-bottom:9px}
+  .btn{border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid transparent}
+  .btn.ok{background:var(--green);color:#fff}
+  .btn.no{background:#fff;color:var(--red);border-color:#FCA5A5}
+  .fin{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:12.5px;
+    color:var(--mute);margin-top:7px;background:#fff}
+
+  .dimmed{opacity:.55}
+  .badge-desc{font-size:10px;font-weight:700;color:#991B1B;background:#FEE2E2;border-radius:999px;
+    padding:3px 10px;text-transform:uppercase;letter-spacing:.4px}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="inner">
+      <div class="brand">
+        <div class="mark">L</div>
+        <div>
+          <h1>Loveo Licitaciones</h1>
+          <div class="sub">Inteligencia de licitaciones · Pipeline interno</div>
+        </div>
+      </div>
+      <div class="runchip">Última corrida: <b>día 11-jun</b> · 1.186 → <b>11 candidatos</b> · 11 admisibles</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="mock"><b>MOCKUP DE DISEÑO.</b> El hero (2263-53-LE26) usa datos y score reales del 11-jun. Las filas colapsadas son ejemplos para mostrar el sistema de triage — todavía no tienen score real.</div>
+
+    <div class="toolbar">
+      <div class="seg">
+        <button class="on">Nueva</button><button>En revisión</button><button>Aprobada</button><button>Descartada</button>
+      </div>
+      <div class="toggle"><span class="dot" style="background:var(--teal)"></span> Solo admisibles</div>
+      <div class="triage-filter">
+        <span><span class="dot" style="background:var(--green)"></span> Priorizar</span>
+        <span><span class="dot" style="background:var(--amber)"></span> Revisar</span>
+        <span><span class="dot" style="background:var(--red)"></span> Descartar</span>
+      </div>
+      <input class="search" placeholder="Buscar código, organismo, comuna…">
+    </div>
+
+    <div class="count">11 licitaciones · ordenadas por score provisional</div>
+
+    <!-- HERO (real) -->
+    <div class="card">
+      <div class="row">
+        <span class="tdot" style="background:var(--amber)"></span>
+        <span class="code">2263-53-LE26</span>
+        <span class="name">Adquisición de módulos metálicos de 14 m — Vialidad Malleco (Administración directa)</span>
+        <span class="chip">Araucanía · Angol</span>
+        <span class="monto">$40.000.000</span>
+        <span class="score" style="color:var(--amber)">65<span style="font-size:11px;color:var(--mute)">/120</span></span>
+        <span class="tlabel" style="color:var(--amber)">Revisar</span>
+        <span class="chev">▲</span>
+      </div>
+      <div class="body">
+        <div class="left">
+          <div class="meta">
+            <div><div class="k">Organismo</div><div class="v">MOP · Dirección de Vialidad IX</div></div>
+            <div><div class="k">Comuna</div><div class="v">Angol, Malleco</div></div>
+            <div><div class="k">Cierre</div><div class="v">01-jun-2026</div></div>
+            <div><div class="k">Estado MP</div><div class="v">Adjudicada (intel)</div></div>
+          </div>
+          <div class="adm">✓ Admisible · ProhibiciónContratación presente (boilerplate, no eliminatorio) · vigente para oferta: no</div>
+
+          <div class="sec">Score provisional · 6 dimensiones</div>
+          <div class="dim"><div class="dl">Margen<span class="w">×3</span></div><div class="track"><div class="fill pend" style="width:50%"></div></div><div class="ds">—<span class="pendtag">bases</span></div></div>
+          <div class="dim"><div class="dl">Cash flow<span class="w">×3</span></div><div class="track"><div class="fill" style="width:50%"></div></div><div class="ds">5</div></div>
+          <div class="dim"><div class="dl">Complejidad<span class="w">×2</span></div><div class="track"><div class="fill pend" style="width:50%"></div></div><div class="ds">—<span class="pendtag">bases</span></div></div>
+          <div class="dim"><div class="dl">Logístico<span class="w">×2</span></div><div class="track"><div class="fill" style="width:40%"></div></div><div class="ds">4</div></div>
+          <div class="dim"><div class="dl">Alineación<span class="w">×1</span></div><div class="track"><div class="fill" style="width:90%"></div></div><div class="ds">9</div></div>
+          <div class="dim"><div class="dl">Repetibilidad<span class="w">×1</span></div><div class="track"><div class="fill" style="width:80%"></div></div><div class="ds">8</div></div>
+
+          <div class="flag">⚠ <b>×3 logístico disparado</b> — 350 km desde Puerto Montt (&gt;300 km). Desde Pirque serían 680 km.</div>
+          <div class="prov">Score PROVISIONAL (solo metadata de API). Margen y complejidad quedan pendientes de bases + cubicación de Valentina. No es GO/NO-GO.</div>
+        </div>
+        <div class="right">
+          <div class="docbox">
+            <div class="sec">Documentos</div>
+            <div class="docempty">Sin documentos descargados.<br>Correr <b>download.py</b> (local) para bajar bases y anexos.</div>
+          </div>
+          <div class="sec">Feedback</div>
+          <div class="fbtns">
+            <button class="btn ok">✓ Aprobar</button>
+            <button class="btn no">🗑 Descartar</button>
+          </div>
+          <input class="fin" placeholder="Motivo de descarte (ej: módulos de vialidad, no edificación)">
+          <input class="fin" placeholder="Término a excluir → lo aprende el filtro">
+          <input class="fin" placeholder="Corregir score (0–120) + nota">
+        </div>
+      </div>
+    </div>
+
+    <!-- Ejemplos colapsados -->
+    <div class="card"><div class="row">
+      <span class="tdot" style="background:var(--green)"></span>
+      <span class="code">1221016-20-LE26</span>
+      <span class="name">Mejoramiento Box Dental CECOSF D. de la Reina</span>
+      <span class="chip">Metropolitana · La Reina</span>
+      <span class="monto">$—</span>
+      <span class="score" style="color:var(--green)">—<span style="font-size:11px;color:var(--mute)">/120</span></span>
+      <span class="tlabel" style="color:var(--green)">Priorizar</span><span class="chev">▾</span>
+    </div></div>
+
+    <div class="card"><div class="row">
+      <span class="tdot" style="background:var(--green)"></span>
+      <span class="code">4284-84-LE26</span>
+      <span class="name">Adquisición de container dependencias DOM y DDFIF — Cunco</span>
+      <span class="chip">Araucanía · Cunco</span>
+      <span class="monto">$—</span>
+      <span class="score" style="color:var(--green)">—<span style="font-size:11px;color:var(--mute)">/120</span></span>
+      <span class="tlabel" style="color:var(--green)">Priorizar</span><span class="chev">▾</span>
+    </div></div>
+
+    <div class="card"><div class="row">
+      <span class="tdot" style="background:var(--amber)"></span>
+      <span class="code">4367-10-LE26</span>
+      <span class="name">Adquisición container bodega farmacia CESFAM</span>
+      <span class="chip">—</span>
+      <span class="monto">$—</span>
+      <span class="score" style="color:var(--amber)">—<span style="font-size:11px;color:var(--mute)">/120</span></span>
+      <span class="tlabel" style="color:var(--amber)">Revisar</span><span class="chev">▾</span>
+    </div></div>
+
+    <div class="card"><div class="row">
+      <span class="tdot" style="background:var(--red)"></span>
+      <span class="code">527481-43-LE26</span>
+      <span class="name">Construcción paradero en Av. Poniente</span>
+      <span class="chip">—</span>
+      <span class="monto">$—</span>
+      <span class="score" style="color:var(--red)">—<span style="font-size:11px;color:var(--mute)">/120</span></span>
+      <span class="tlabel" style="color:var(--red)">Descartar</span><span class="chev">▾</span>
+    </div></div>
+
+    <div class="card dimmed"><div class="row">
+      <span class="tdot" style="background:#94A3B8"></span>
+      <span class="code">1471-8-LE26</span>
+      <span class="name">Mobiliario para modular con herramientas</span>
+      <span class="chip">descartada · aprendió «mobiliario»</span>
+      <span class="monto">$—</span>
+      <span style="flex:none"><span class="badge-desc">Descartada</span></span>
+      <span class="chev">▾</span>
+    </div></div>
+
+  </div>
+</body>
+</html>

@@ -1,16 +1,34 @@
-# Credenciales y calibración privada — NUNCA al repo
-.env
+# --- Credenciales y calibración (NUNCA al repo) ---
 config_local.py
+.env
+*.env
+# Credenciales de Google Drive (API)
+credentials.json
+token.json
+service_account.json
+client_secret_*.json
+OAuth Drive/
 
-# Salidas (salvo el placeholder)
-outputs/*
-!outputs/.gitkeep
+# --- Datos y artefactos locales ---
+loveo.db
+loveo.db-wal
+loveo.db-shm
+storage/
+calibration/
+outputs/
+dia.json
+detalle.json
 
-# Logs de las corridas automáticas
-logs/
-
-# Python
+# --- Python ---
 __pycache__/
 *.pyc
 .venv/
-.pytest_cache/
+venv/
+
+# --- Node (generador del deck) ---
+docs/node_modules/
+node_modules/
+
+# --- Salidas del deck (se versionan a mano, no en git) ---
+*.pptx
+*.pdf

@@ -1,0 +1,26 @@
+# Secretos (van como env vars / secret files en Render, NUNCA en la imagen)
+.env
+config_local.py
+credentials.json
+token.json
+service_account.json
+
+# Datos / artefactos locales
+loveo.db
+loveo.db-wal
+loveo.db-shm
+storage/
+outputs/
+calibration/
+dia.json
+detalle.json
+
+# Python / git / node
+.git
+__pycache__/
+*.pyc
+.venv/
+venv/
+docs/node_modules/
+node_modules/
+.pytest_cache/

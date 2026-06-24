@@ -1,4 +1,18 @@
-requests
+# Motor del pipeline loveo-licitaciones
+# pip install -r requirements.txt --break-system-packages
+# python -m playwright install chromium   (para Capa B / calibración)
 
-# Dev (solo para correr los tests; no es necesario en producción):
-# pytest
+requests==2.32.3
+playwright==1.48.0
+streamlit==1.39.0
+pdfplumber==0.11.9
+pytesseract==0.3.13
+pdf2image==1.17.0
+anthropic>=0.40.0
+openpyxl>=3.1                 # ingestión del Excel de cubicación (cubicacion.py)
+google-api-python-client>=2.0  # Capa Drive: leer carpetas de licitaciones (drive.py)
+google-auth>=2.0
+google-auth-httplib2>=0.2
+google-auth-oauthlib>=1.0
+psycopg[binary]>=3.1         # backend Postgres (producción, H1); SQLite sigue siendo default
+extra-streamlit-components>=0.1  # cookie manager → sesión de login persistente

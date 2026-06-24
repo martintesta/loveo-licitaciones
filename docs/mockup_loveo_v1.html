@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loveo Licitaciones — Tablero (mockup interactivo)</title>
+<style>
+  :root{
+    --slate:#0F172A; --teal:#0E7490; --teald:#155E75; --amber:#F59E0B;
+    --light:#F1F5F9; --body:#1E293B; --mute:#64748B; --line:#E2E8F0;
+    --green:#047857; --red:#B91C1C; --tint:#F0F9FB; --white:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--light);color:var(--body);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 22px 44px}
+
+  .topbar{background:var(--slate);color:#fff;padding:15px 22px 0}
+  .topbar .inner{max-width:1240px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:11px}
+  .mark{width:30px;height:30px;border-radius:8px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+  .brand h1{font-size:18px;font-weight:700}
+  .brand .sub{font-size:11px;color:#94A3B8;margin-top:1px}
+  .runchip{background:#1E293B;border:1px solid #334155;border-radius:999px;padding:7px 14px;font-size:12px;color:#CBD5E1}
+  .runchip b{color:#fff}
+  .nav{max-width:1240px;margin:13px auto 0;display:flex;gap:2px}
+  .nav button{padding:11px 17px;font-size:13px;color:#94A3B8;background:none;border:0;border-bottom:2px solid transparent;cursor:pointer}
+  .nav button.on{color:#fff;font-weight:600;border-bottom-color:var(--amber)}
+  .nav button:hover{color:#CBD5E1}
+
+  .mock{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:8px;padding:8px 14px;font-size:12px;margin:16px 0 14px}
+  .mock b{color:#78350F}
+  .panel{display:none}
+  .panel.on{display:block}
+
+  .sectit{display:flex;align-items:center;gap:10px;margin:6px 0 13px}
+  .sectit h2{font-size:17px;color:var(--slate);font-weight:700}
+  .sectit .tag{font-size:11px;color:var(--mute);background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 11px}
+
+  .insights{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .ins{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .ins .n{font-size:23px;font-weight:800;color:var(--teald)}
+  .ins .l{font-size:11.5px;color:var(--mute);margin-top:3px}
+  .ins.warn{background:#FEF2F2;border-color:#FECACA}.ins.warn .n{color:var(--red)}
+  .ins.good{background:#ECFDF5;border-color:#A7F3D0}.ins.good .n{color:var(--green)}
+
+  .tbl{background:#fff;border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  table{width:100%;border-collapse:collapse}
+  th{background:var(--slate);color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:11px 13px;font-weight:600}
+  td{padding:11px 13px;font-size:12.5px;border-top:1px solid var(--line);color:var(--body);vertical-align:middle}
+  tr:nth-child(even) td{background:#FAFCFD}
+  .code{font-family:"SFMono-Regular",Consolas,monospace;color:var(--teald);font-weight:600;font-size:11.5px}
+  .win{font-weight:700;color:var(--slate)}
+  .price,.num{font-weight:700;color:var(--slate);text-align:right}
+  .ctr{text-align:center}
+  .pill{font-size:10px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap}
+  .pill.fp{background:#FEE2E2;color:#991B1B}.pill.core{background:#DCFCE7;color:#166534}
+  .pill.solo{background:#FEF3C7;color:#92400E}.pill.opp{background:#DBEAFE;color:#1E40AF}
+  .pill.re{background:#EDE9FE;color:#5B21B6}
+  .real{font-size:9px;color:var(--teal);font-weight:700;margin-left:5px}
+  .muted{color:var(--mute)}
+  .link{color:var(--teal);font-weight:600;font-family:"SFMono-Regular",Consolas,monospace;font-size:11.5px;text-decoration:none}
+  .note{font-size:11px;color:var(--mute);margin-top:9px;font-style:italic}
+
+  /* Pipeline hero (condensado) */
+  .card{background:#fff;border:1px solid var(--line);border-radius:13px;margin-bottom:11px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .row{display:flex;align-items:center;gap:13px;padding:14px 17px}
+  .row .tdot{width:11px;height:11px;border-radius:50%;flex:none}
+  .name{flex:1;font-size:13.5px;color:var(--slate);font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .chip{font-size:11px;color:var(--mute);background:var(--light);border-radius:999px;padding:3px 10px;white-space:nowrap}
+  .monto{font-size:12.5px;min-width:92px;text-align:right}
+  .score{font-weight:800;font-size:15px;min-width:60px;text-align:right}
+  .tlabel{font-size:11px;font-weight:700;min-width:74px;text-align:right;text-transform:uppercase;letter-spacing:.4px}
+  .pbody{border-top:1px solid var(--line);display:grid;grid-template-columns:1.55fr 1fr}
+  .pleft{padding:17px 19px;border-right:1px solid var(--line)}.pright{padding:17px 19px;background:#FBFDFE}
+  .sec{font-size:11.5px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .dim{display:grid;grid-template-columns:118px 1fr 30px;align-items:center;gap:10px;margin-bottom:8px}
+  .dim .dl{font-size:12px;color:var(--body)} .dim .dl .w{font-size:10px;color:var(--mute);margin-left:3px}
+  .track{height:9px;background:var(--light);border-radius:6px;overflow:hidden}
+  .fill{height:100%;border-radius:6px;background:var(--teal)}
+  .fill.pend{background:repeating-linear-gradient(45deg,#FCD9A0,#FCD9A0 5px,#FBE7C4 5px,#FBE7C4 10px)}
+  .dim .ds{font-size:12.5px;font-weight:700;color:var(--slate);text-align:right}
+  .pendtag{font-size:9px;color:#92400E;background:#FEF3C7;border-radius:4px;padding:1px 4px;margin-left:4px;font-weight:700}
+  .flag{display:flex;gap:8px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;font-size:11.5px;color:#991B1B;margin:11px 0}
+  .docempty{font-size:12px;color:var(--mute);background:#fff;border:1px dashed var(--line);border-radius:8px;padding:11px;text-align:center}
+  .fbtns{display:flex;gap:8px;margin:11px 0 0}
+  .btn{border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid transparent}
+  .btn.ok{background:var(--green);color:#fff}.btn.no{background:#fff;color:var(--red);border-color:#FCA5A5}
+
+  /* Seguimiento detail */
+  .splitcol{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+  .compcard{background:#fff;border:1px solid var(--line);border-radius:13px;padding:18px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .compcard h3{font-size:15px;color:var(--slate)}
+  .compcard .rut{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:var(--mute);margin:2px 0 12px}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .kv .k{color:var(--mute)} .kv .v{color:var(--slate);font-weight:600}
+  .bars{display:flex;align-items:flex-end;gap:14px;height:120px;margin:14px 0 4px;padding:0 4px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+  .bar .b{width:100%;background:var(--teal);border-radius:5px 5px 0 0;margin-top:auto}
+  .bar .y{font-size:10.5px;color:var(--mute)} .bar .amt{font-size:10px;color:var(--slate);font-weight:700}
+  .miniwin{display:inline-flex;gap:2px}
+  .miniwin i{width:5px;height:14px;border-radius:1px;display:inline-block}
+
+  /* Chat */
+  .chatwrap{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .chathead{background:var(--slate);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:10px}
+  .chathead .ai{width:26px;height:26px;border-radius:7px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .chathead .t{font-size:14px;font-weight:700}.chathead .s{font-size:11px;color:#94A3B8}
+  .chatbody{padding:18px;display:flex;flex-direction:column;gap:13px;background:#FBFDFE}
+  .msg{max-width:80%}.msg.u{align-self:flex-end}
+  .bub{padding:11px 14px;border-radius:13px;font-size:13px;line-height:1.5}
+  .u .bub{background:var(--teal);color:#fff;border-bottom-right-radius:4px}
+  .a .bub{background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+  .tool{font-size:10.5px;color:var(--teald);background:var(--tint);border:1px solid #CFE9EF;border-radius:6px;padding:2px 8px;display:inline-block;margin-bottom:6px;font-weight:600;margin-right:5px}
+  .tool.web{color:#92400E;background:#FEF3C7;border-color:#FDE68A}
+  .a .bub b{color:var(--slate)}
+  .chatin{display:flex;gap:9px;padding:14px 18px;border-top:1px solid var(--line);background:#fff}
+  .chatin input{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--mute)}
+  .chatin button{background:var(--slate);color:#fff;border:0;border-radius:9px;padding:0 18px;font-weight:700;font-size:13px;cursor:pointer}
+
+  :root{--slate:#0F172A;--teal:#0E7490;--teald:#155E75;--amber:#F59E0B;--light:#F1F5F9;--body:#1E293B;--mute:#64748B;--line:#E2E8F0;--green:#047857;--red:#B91C1C;--tint:#F0F9FB}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--light);color:var(--body);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1300px;margin:0 auto;padding:0 18px 40px}
+  .topbar{background:var(--slate);color:#fff;padding:15px 22px 0}
+  .topbar .inner{max-width:1300px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:11px}
+  .mark{width:30px;height:30px;border-radius:8px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+  .brand h1{font-size:18px;font-weight:700}.brand .sub{font-size:11px;color:#94A3B8;margin-top:1px}
+  .runchip{background:#1E293B;border:1px solid #334155;border-radius:999px;padding:7px 14px;font-size:12px;color:#CBD5E1}.runchip b{color:#fff}
+  .nav{max-width:1300px;margin:13px auto 0;display:flex;gap:2px}
+  .nav a{padding:11px 16px;font-size:13px;color:#94A3B8;text-decoration:none;border-bottom:2px solid transparent}
+  .nav a.on{color:#fff;font-weight:600;border-bottom-color:var(--amber)}
+
+  .mock{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:8px;padding:8px 14px;font-size:12px;margin:16px 0 14px}
+  .mock b{color:#78350F}
+
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:16px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:7px 13px;font-size:12.5px;color:var(--mute);cursor:pointer}
+  .seg button.on{background:var(--slate);color:#fff;font-weight:600}
+  .pillbtn{font-size:12px;color:var(--mute);background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+  .search{margin-left:auto;border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:12.5px;color:var(--mute);min-width:220px}
+
+  .board{display:flex;gap:13px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
+  .col{flex:1 0 233px;max-width:260px;background:#EEF2F6;border:1px solid var(--line);border-radius:12px;padding:10px}
+  .colhead{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 11px}
+  .colhead .t{font-size:12.5px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.4px}
+  .colhead .c{font-size:11px;font-weight:700;color:var(--mute);background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  .colhead .dotc{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+
+  .kcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-bottom:9px;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.05);transition:.12s}
+  .kcard:hover{border-color:#94A3B8;box-shadow:0 3px 8px rgba(15,23,42,.10);transform:translateY(-1px)}
+  .kc-top{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+  .kc-top .tdot{width:9px;height:9px;border-radius:50%;flex:none}
+  .kc-top .code{font-family:"SFMono-Regular",Consolas,monospace;font-size:10.5px;color:var(--teald);font-weight:600}
+  .kc-top .sc{margin-left:auto;font-size:12px;font-weight:800}
+  .kc-name{font-size:12.5px;color:var(--slate);font-weight:600;line-height:1.35;margin-bottom:9px}
+  .kc-foot{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tagc{font-size:10px;color:var(--mute);background:var(--light);border-radius:999px;padding:2px 8px}
+  .tagc.docs{color:var(--teald);background:var(--tint)}
+  .tagc.fp{color:#991B1B;background:#FEE2E2}
+  .tagc.win{color:#166534;background:#DCFCE7;font-weight:700}
+  .tagc.lose{color:#991B1B;background:#FEE2E2;font-weight:700}
+  .ej{font-size:9px;color:var(--mute);font-style:italic;margin-left:auto}
+
+  /* Modal */
+  .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow:auto;z-index:50}
+  .backdrop.on{display:flex}
+  .sheet{background:#fff;border-radius:16px;max-width:920px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+  .sheet-h{background:var(--slate);color:#fff;padding:18px 22px;display:flex;align-items:flex-start;gap:14px}
+  .sheet-h .x{margin-left:auto;cursor:pointer;color:#94A3B8;font-size:20px;line-height:1;background:none;border:0}
+  .sheet-h .scode{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:#7DD3FC;font-weight:600}
+  .sheet-h h2{font-size:17px;margin:3px 0 7px}
+  .sheet-h .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .b{font-size:10px;font-weight:700;border-radius:999px;padding:3px 9px;text-transform:uppercase;letter-spacing:.3px}
+  .b.rev{background:#FEF3C7;color:#92400E}.b.adm{background:#DCFCE7;color:#166534}.b.fp{background:#FEE2E2;color:#991B1B}
+  .sheet-b{display:grid;grid-template-columns:1.5fr 1fr;gap:0}
+  .sb-l{padding:20px 22px;border-right:1px solid var(--line)}
+  .sb-r{padding:20px 22px;background:#FBFDFE}
+  .sec{font-size:11.5px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;margin:0 0 11px}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:18px}
+  .meta .k{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.4px}.meta .v{font-size:12.5px;color:var(--slate);font-weight:600}
+  .dim{display:grid;grid-template-columns:108px 1fr 28px;align-items:center;gap:9px;margin-bottom:7px}
+  .dim .dl{font-size:11.5px}.dim .dl .w{font-size:9.5px;color:var(--mute);margin-left:3px}
+  .track{height:8px;background:var(--light);border-radius:5px;overflow:hidden}.fill{height:100%;background:var(--teal);border-radius:5px}
+  .fill.pend{background:repeating-linear-gradient(45deg,#FCD9A0,#FCD9A0 5px,#FBE7C4 5px,#FBE7C4 10px)}
+  .dim .ds{font-size:12px;font-weight:700;text-align:right}
+
+  .doc{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:7px;font-size:12px}
+  .doc .ic{width:20px;height:20px;border-radius:4px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800}
+  .doc .acts{margin-left:auto;display:flex;gap:8px}
+  .doc .acts a{font-size:11px;color:var(--teal);font-weight:700;text-decoration:none}
+  .docempty{font-size:11.5px;color:var(--mute);background:#fff;border:1px dashed var(--line);border-radius:8px;padding:10px;text-align:center;margin-bottom:8px}
+  .ghost{opacity:.5}
+
+  .tl{position:relative;padding-left:18px;margin-top:4px}
+  .tl::before{content:"";position:absolute;left:5px;top:4px;bottom:4px;width:2px;background:var(--line)}
+  .tli{position:relative;margin-bottom:13px}
+  .tli .d{position:absolute;left:-17px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--teal);border:2px solid #fff}
+  .tli .ev{font-size:12px;font-weight:600;color:var(--slate)}
+  .tli .ts{font-size:10.5px;color:var(--mute)}
+
+  .sheet-f{display:flex;align-items:center;gap:9px;padding:14px 22px;border-top:1px solid var(--line);background:#fff}
+  .btn{border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid transparent}
+  .btn.ok{background:var(--green);color:#fff}.btn.no{background:#fff;color:var(--red);border-color:#FCA5A5}
+  .btn.gh{background:#fff;color:var(--slate);border-color:var(--line)}
+  .mvto{margin-left:auto;font-size:12px;color:var(--mute);border:1px solid var(--line);border-radius:8px;padding:8px 11px;background:#fff}
+
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="inner">
+      <div class="brand"><div class="mark">L</div>
+        <div><h1>Loveo Licitaciones</h1><div class="sub">Inteligencia de licitaciones · Pipeline interno</div></div>
+      </div>
+      <div class="runchip">Última corrida: <b>día 11-jun</b> · 1.186 → <b>11 candidatos</b></div>
+    </div>
+    <div class="nav">
+      <button data-tab="pipeline" class="on">Pipeline</button>
+      <button data-tab="tablero">Tablero</button>
+      <button data-tab="competencia">Inteligencia competitiva</button>
+      <button data-tab="desiertas">Desiertas</button>
+      <button data-tab="seguimiento">Seguimiento de Competencia</button>
+      <button data-tab="asistente">Asistente IA</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="mock"><b>MOCKUP INTERACTIVO.</b> Convención: los <b>códigos reales</b> (ej. 2263-53, 2450-56, 4284-84) llevan su <b>título y dato reales</b> del 11-jun; las filas ilustrativas usan IDs <b>EJEMPLO-##</b> para no confundirlas con licitaciones reales.</div>
+
+    <!-- ================= PIPELINE ================= -->
+    <section class="panel on" id="pipeline">
+      <div class="sectit"><h2>Pipeline</h2><span class="tag">descubrir → admisibilidad → score provisional → decisión</span></div>
+      <div class="card">
+        <div class="row">
+          <span class="tdot" style="background:var(--amber)"></span>
+          <span class="code" style="min-width:118px">2263-53-LE26</span>
+          <span class="name">Adquisición de módulos metálicos 14 m — Vialidad Malleco</span>
+          <span class="chip">Araucanía · Angol</span>
+          <span class="monto">$40.000.000</span>
+          <span class="score" style="color:var(--amber)">65<span style="font-size:11px;color:var(--mute)">/120</span></span>
+          <span class="tlabel" style="color:var(--amber)">Revisar</span>
+        </div>
+        <div class="pbody">
+          <div class="pleft">
+            <div class="sec">Score provisional · 6 dimensiones</div>
+            <div class="dim"><div class="dl">Margen<span class="w">×3</span></div><div class="track"><div class="fill pend" style="width:50%"></div></div><div class="ds">—<span class="pendtag">bases</span></div></div>
+            <div class="dim"><div class="dl">Cash flow<span class="w">×3</span></div><div class="track"><div class="fill" style="width:50%"></div></div><div class="ds">5</div></div>
+            <div class="dim"><div class="dl">Complejidad<span class="w">×2</span></div><div class="track"><div class="fill pend" style="width:50%"></div></div><div class="ds">—<span class="pendtag">bases</span></div></div>
+            <div class="dim"><div class="dl">Logístico<span class="w">×2</span></div><div class="track"><div class="fill" style="width:40%"></div></div><div class="ds">4</div></div>
+            <div class="dim"><div class="dl">Alineación<span class="w">×1</span></div><div class="track"><div class="fill" style="width:90%"></div></div><div class="ds">9</div></div>
+            <div class="dim"><div class="dl">Repetibilidad<span class="w">×1</span></div><div class="track"><div class="fill" style="width:80%"></div></div><div class="ds">8</div></div>
+            <div class="flag">⚠ <b>×3 logístico disparado</b> — 350 km desde Puerto Montt (&gt;300). Desde Pirque: 680 km.</div>
+          </div>
+          <div class="pright">
+            <div class="sec">Documentos</div>
+            <div class="docempty">Sin documentos. Correr <b>download.py</b> (local).</div>
+            <div class="fbtns"><button class="btn ok">✓ Aprobar</button><button class="btn no">🗑 Descartar</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="card"><div class="row">
+        <span class="tdot" style="background:var(--red)"></span><span class="code" style="min-width:118px">2450-56-LE26</span>
+        <span class="name">Mejoramiento infraestructura — quioscos en desuso → espacio modular + cierre perimetral (La Serena) <span class="pill fp" style="margin-left:6px">posible falso positivo</span></span>
+        <span class="chip">Coquimbo · La Serena</span><span class="monto">$—</span>
+        <span class="score" style="color:var(--red)">—<span style="font-size:11px;color:var(--mute)">/120</span></span><span class="tlabel" style="color:var(--red)">Revisar</span>
+      </div></div>
+      <div class="card"><div class="row">
+        <span class="tdot" style="background:var(--teal)"></span><span class="code" style="min-width:118px">629373-4-LE26</span>
+        <span class="name">Convenio de suministro REAS</span>
+        <span class="chip">adjudicada · intel</span><span class="monto">$—</span>
+        <span class="score" style="color:var(--mute)">—<span style="font-size:11px;color:var(--mute)">/120</span></span><span class="tlabel" style="color:var(--mute)">Detalle</span>
+      </div></div>
+      <div class="card"><div class="row">
+        <span class="tdot" style="background:var(--green)"></span><span class="code" style="min-width:118px">4284-84-LE26</span>
+        <span class="name">Container dependencias DOM y DDFIF — Cunco</span>
+        <span class="chip">Araucanía · Cunco</span><span class="monto">$—</span>
+        <span class="score" style="color:var(--green)">—<span style="font-size:11px;color:var(--mute)">/120</span></span><span class="tlabel" style="color:var(--green)">Priorizar</span>
+      </div></div>
+    </section>
+
+    <section class="panel" id="tablero">
+  <div class="sectit"><h2>Tablero</h2><span class="tag">histórico tipo Trello · clickeá una tarjeta para abrir el proyecto y su documentación</span></div>
+<div class="toolbar">
+      <div class="seg"><button class="on">Tablero</button><button>Lista</button></div>
+      <span class="pillbtn">⬇ Solo admisibles</span>
+      <span class="pillbtn">🗑 Descartadas (2)</span>
+      <span class="pillbtn">Región: todas</span>
+      <input class="search" placeholder="Buscar código, organismo, comuna…">
+    </div>
+
+    <div class="board">
+      <!-- NUEVAS -->
+      <div class="col">
+        <div class="colhead"><span class="t"><span class="dotc" style="background:#94A3B8"></span>Nuevas</span><span class="c">4</span></div>
+        <div class="kcard" data-code="1057489-169-CO26" data-name="Arriendo de contenedor metálico especial con tapa" data-est="Publicada · vigente" data-region="—" data-score="" data-tri="rev">
+          <div class="kc-top"><span class="tdot" style="background:#94A3B8"></span><span class="code">1057489-169-CO26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Arriendo de contenedor metálico especial</div>
+          <div class="kc-foot"><span class="tagc">Publicada</span><span class="tagc docs">⛁ pend.</span></div>
+        </div>
+        <div class="kcard" data-code="3143-32-LP26" data-name="Suministro e instalación de carpa de estructura modular en sector costanera" data-est="Publicada · vigente" data-region="—" data-score="" data-tri="rev">
+          <div class="kc-top"><span class="tdot" style="background:#94A3B8"></span><span class="code">3143-32-LP26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Carpa de estructura modular — costanera</div>
+          <div class="kc-foot"><span class="tagc">Publicada</span><span class="tagc docs">⛁ pend.</span></div>
+        </div>
+        <div class="kcard" data-code="1057977-8-LE26" data-name="Habilitación Box Dental y Esterilización Prais" data-est="Cerrada" data-region="—" data-score="" data-tri="rev">
+          <div class="kc-top"><span class="tdot" style="background:#94A3B8"></span><span class="code">1057977-8-LE26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Habilitación Box Dental y Esterilización Prais</div>
+          <div class="kc-foot"><span class="tagc">Cerrada</span></div>
+        </div>
+        <div class="kcard" data-code="527481-43-LE26" data-name="Construcción paradero en Av. Poniente" data-est="Cerrada" data-region="—" data-score="" data-tri="rev">
+          <div class="kc-top"><span class="tdot" style="background:#94A3B8"></span><span class="code">527481-43-LE26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Construcción paradero en Av. Poniente</div>
+          <div class="kc-foot"><span class="tagc">Cerrada</span></div>
+        </div>
+      </div>
+
+      <!-- EN REVISIÓN -->
+      <div class="col">
+        <div class="colhead"><span class="t"><span class="dotc" style="background:var(--amber)"></span>En revisión</span><span class="c">4</span></div>
+        <div class="kcard" data-code="2263-53-LE26" data-name="Adquisición de módulos metálicos de 14 m — Vialidad Malleco (Administración directa)" data-est="Adjudicada · intel" data-region="Araucanía · Angol" data-score="65" data-tri="fp">
+          <div class="kc-top"><span class="tdot" style="background:var(--amber)"></span><span class="code">2263-53-LE26</span><span class="sc" style="color:var(--amber)">65</span></div>
+          <div class="kc-name">Módulos metálicos 14 m — Vialidad Malleco</div>
+          <div class="kc-foot"><span class="tagc">Araucanía</span><span class="tagc fp">posible falso positivo</span></div>
+        </div>
+        <div class="kcard" data-code="2450-56-LE26" data-name="Mejoramiento de infraestructura — quioscos en desuso con creación de espacio modular + cierre perimetral (La Serena)" data-est="Publicada · vigente" data-region="Coquimbo · La Serena" data-score="" data-tri="fp">
+          <div class="kc-top"><span class="tdot" style="background:var(--red)"></span><span class="code">2450-56-LE26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Quioscos en desuso → espacio modular (La Serena)</div>
+          <div class="kc-foot"><span class="tagc">Coquimbo</span><span class="tagc fp">posible falso positivo</span></div>
+        </div>
+        <div class="kcard" data-code="1221016-20-LE26" data-name="Mejoramiento Box Dental CECOSF D. de la Reina" data-est="Cerrada" data-region="Metropolitana · La Reina" data-score="" data-tri="core">
+          <div class="kc-top"><span class="tdot" style="background:var(--green)"></span><span class="code">1221016-20-LE26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Box Dental CECOSF D. de la Reina</div>
+          <div class="kc-foot"><span class="tagc">Metropolitana</span></div>
+        </div>
+        <div class="kcard" data-code="4367-10-LE26" data-name="Adquisición container bodega farmacia CESFAM" data-est="Adjudicada · intel" data-region="—" data-score="" data-tri="core">
+          <div class="kc-top"><span class="tdot" style="background:var(--green)"></span><span class="code">4367-10-LE26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Container bodega farmacia CESFAM</div>
+          <div class="kc-foot"><span class="tagc">Adjudicada</span></div>
+        </div>
+      </div>
+
+      <!-- APROBADAS -->
+      <div class="col">
+        <div class="colhead"><span class="t"><span class="dotc" style="background:var(--teal)"></span>Aprobadas · a ofertar</span><span class="c">2</span></div>
+        <div class="kcard" data-code="4284-84-LE26" data-name="Adquisición de container para dependencias DOM y DDFIF — Municipalidad de Cunco" data-est="Cerrada" data-region="Araucanía · Cunco" data-score="" data-tri="core">
+          <div class="kc-top"><span class="tdot" style="background:var(--green)"></span><span class="code">4284-84-LE26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Container dependencias DOM — Cunco</div>
+          <div class="kc-foot"><span class="tagc">Araucanía</span><span class="tagc docs">⛁ 3 docs</span></div>
+        </div>
+        <div class="kcard" data-code="629373-4-LE26" data-name="Convenio de suministro REAS" data-est="Adjudicada · intel" data-region="—" data-score="" data-tri="core">
+          <div class="kc-top"><span class="tdot" style="background:var(--green)"></span><span class="code">629373-4-LE26</span><span class="sc" style="color:var(--mute)">—</span></div>
+          <div class="kc-name">Convenio de suministro REAS</div>
+          <div class="kc-foot"><span class="tagc">Convenio</span></div>
+        </div>
+      </div>
+
+      <!-- PRESENTADAS -->
+      <div class="col">
+        <div class="colhead"><span class="t"><span class="dotc" style="background:var(--teald)"></span>Presentadas</span><span class="c">1</span></div>
+        <div class="kcard" data-code="EJEMPLO-P1" data-name="Box dental container — oferta presentada (ejemplo)" data-est="Oferta presentada" data-region="Los Lagos" data-score="88" data-tri="core">
+          <div class="kc-top"><span class="tdot" style="background:var(--teald)"></span><span class="code">EJEMPLO-P1</span><span class="sc" style="color:var(--green)">88</span></div>
+          <div class="kc-name">Box dental container — oferta enviada</div>
+          <div class="kc-foot"><span class="tagc">Los Lagos</span><span class="tagc docs">⛁ 5 docs</span><span class="ej">ejemplo</span></div>
+        </div>
+      </div>
+
+      <!-- CERRADAS -->
+      <div class="col">
+        <div class="colhead"><span class="t"><span class="dotc" style="background:#475569"></span>Cerradas</span><span class="c">2</span></div>
+        <div class="kcard" data-code="EJEMPLO-G1" data-name="Sala modular REAS — ganada (ejemplo)" data-est="Ganada" data-region="Los Lagos" data-score="92" data-tri="win">
+          <div class="kc-top"><span class="tdot" style="background:var(--green)"></span><span class="code">EJEMPLO-G1</span><span class="sc" style="color:var(--green)">92</span></div>
+          <div class="kc-name">Sala modular REAS — Puerto Montt</div>
+          <div class="kc-foot"><span class="tagc win">✓ Ganada</span><span class="ej">ejemplo</span></div>
+        </div>
+        <div class="kcard" data-code="EJEMPLO-L1" data-name="Container oficina — perdida (ejemplo)" data-est="Perdida" data-region="Los Lagos" data-score="71" data-tri="lose">
+          <div class="kc-top"><span class="tdot" style="background:var(--red)"></span><span class="code">EJEMPLO-L1</span><span class="sc" style="color:var(--mute)">71</span></div>
+          <div class="kc-name">Container oficina — Osorno</div>
+          <div class="kc-foot"><span class="tagc lose">✕ Perdida</span><span class="ej">ejemplo</span></div>
+        </div>
+      </div>
+    </div>
+</section>
+
+    <!-- ================= INTELIGENCIA COMPETITIVA ================= -->
+    <section class="panel" id="competencia">
+      <div class="sectit"><h2>Inteligencia competitiva</h2><span class="tag">adjudicadas · quién gana, a qué precio, con cuántos oferentes</span></div>
+      <div class="insights">
+        <div class="ins"><div class="n">1.894</div><div class="l">adjudicadas en contenedores (nacional)</div></div>
+        <div class="ins"><div class="n">$13,0M</div><div class="l">precio unitario ganador (Malleco, real)</div></div>
+        <div class="ins warn"><div class="n">1</div><div class="l">oferente en Malleco → baja competencia</div></div>
+        <div class="ins"><div class="n">2×</div><div class="l">Modular Sur SpA gana en el sur → vigilar</div></div>
+      </div>
+      <div class="tbl"><table>
+        <tr><th>Código</th><th>Producto / ítem</th><th>Organismo</th><th>Ganador</th><th style="text-align:right">Precio unit.</th><th class="ctr">Oferentes</th><th>Señal</th></tr>
+        <tr><td><span class="code">2263-53-LE26</span><span class="real">REAL</span></td><td>Vigas de acero (2 un.)</td><td>MOP Vialidad · Malleco</td><td class="win">PABYMAC Ltda.</td><td class="price">$13.000.000</td><td class="ctr">1</td><td><span class="pill fp">Falso positivo (viga)</span></td></tr>
+        <tr><td><span class="code muted">EJEMPLO-01</span></td><td>Box dental container</td><td>Muni · La Reina</td><td class="win">Modular Sur SpA</td><td class="price">$18.900.000</td><td class="ctr">4</td><td><span class="pill core">Core Loveo</span></td></tr>
+        <tr><td><span class="code muted">EJEMPLO-02</span></td><td>Container oficina + bodega</td><td>Muni · Osorno</td><td class="win">Containers del Sur</td><td class="price">$11.200.000</td><td class="ctr">2</td><td><span class="pill solo">Baja competencia</span></td></tr>
+        <tr><td><span class="code muted">EJEMPLO-03</span></td><td>Sala modular REAS</td><td>Hospital · Puerto Montt</td><td class="win">Modular Sur SpA</td><td class="price">$24.500.000</td><td class="ctr">3</td><td><span class="pill core">Core Loveo</span></td></tr>
+      </table></div>
+      <div class="note">La de Malleco se filtró por "módulos" pero su ítem es viga → candidata a descarte + aprender exclusión.</div>
+    </section>
+
+    <!-- ================= DESIERTAS ================= -->
+    <section class="panel" id="desiertas">
+      <div class="sectit"><h2>Licitaciones desiertas</h2><span class="tag">el 25% que quedó sin adjudicar · oportunidad de baja competencia</span></div>
+      <div class="insights">
+        <div class="ins warn"><div class="n">25%</div><div class="l">de las de contenedores quedan desiertas</div></div>
+        <div class="ins good"><div class="n">8</div><div class="l">desiertas fit Loveo (últimos 90 días)</div></div>
+        <div class="ins"><div class="n">3</div><div class="l">ya re-licitadas → seguir el nuevo ID</div></div>
+        <div class="ins"><div class="n">$112M</div><div class="l">monto estimado sin adjudicar (acumulado)</div></div>
+      </div>
+      <div class="tbl"><table>
+        <tr><th>Código desierto</th><th>Nombre</th><th>Organismo</th><th>Región</th><th style="text-align:right">Monto est.</th><th>Fecha desierta</th><th>Estado de re-licitación</th></tr>
+        <tr><td><span class="code muted">EJEMPLO-D1</span></td><td>Box dental container CESFAM</td><td>Muni · La Reina</td><td>Metropolitana</td><td class="price">$19.500.000</td><td>02-may-26</td><td><span class="pill re">↻ Re-licitada → <a class="link" href="#">EJEMPLO-D1b</a></span></td></tr>
+        <tr><td><span class="code muted">EJEMPLO-D2</span></td><td>Salas modulares educación</td><td>DAEM · Castro</td><td>Los Lagos</td><td class="price">$31.000.000</td><td>28-abr-26</td><td><span class="pill re">↻ Re-licitada → <a class="link" href="#">EJEMPLO-D2b</a></span></td></tr>
+        <tr><td><span class="code muted">EJEMPLO-D3</span></td><td>Container bodega municipal</td><td>Muni · Frutillar</td><td>Los Lagos</td><td class="price">$9.800.000</td><td>15-may-26</td><td><span class="pill opp">Sin republicar — oportunidad</span></td></tr>
+        <tr><td><span class="code muted">EJEMPLO-D4</span></td><td>Box veterinario móvil</td><td>Muni · Osorno</td><td>Los Lagos</td><td class="price">$14.200.000</td><td>09-may-26</td><td><span class="pill opp">Sin republicar — oportunidad</span></td></tr>
+        <tr><td><span class="code muted">EJEMPLO-D5</span></td><td>Sala REAS recinto salud</td><td>Hospital · Ancud</td><td>Los Lagos</td><td class="price">$22.500.000</td><td>21-abr-26</td><td><span class="pill re">↻ Re-licitada → <a class="link" href="#">EJEMPLO-D5b</a></span></td></tr>
+      </table></div>
+      <div class="note">Filas de ejemplo (IDs EJEMPLO-##): la tabla real se llena al detectar estado = desierta y enlazar la re-licitación. Por qué importa: una desierta sin republicar suele ser segunda oportunidad con baja competencia; al re-licitarse, el sistema enlaza el nuevo ID con el original para ver qué condiciones fallaron (monto, plazo, requisitos).</div>
+    </section>
+
+    <!-- ================= SEGUIMIENTO DE COMPETENCIA ================= -->
+    <section class="panel" id="seguimiento">
+      <div class="sectit"><h2>Seguimiento de Competencia</h2><span class="tag">empresas que participan en licitaciones fit Loveo — hayamos competido o no</span></div>
+      <div class="insights">
+        <div class="ins"><div class="n">23</div><div class="l">competidores rastreados</div></div>
+        <div class="ins"><div class="n">Modular Sur</div><div class="l">el más activo (14 participaciones)</div></div>
+        <div class="ins"><div class="n">38%</div><div class="l">tasa de adjudicación promedio del sector</div></div>
+        <div class="ins good"><div class="n">$312M</div><div class="l">facturado del líder (acumulado MP)</div></div>
+      </div>
+      <div class="splitcol">
+        <div class="tbl"><table>
+          <tr><th>Razón social</th><th>RUT</th><th>Contacto</th><th class="ctr">Part.</th><th class="ctr">G</th><th class="ctr">P</th><th class="ctr">%</th><th style="text-align:right">Facturado total</th></tr>
+          <tr><td class="win">Modular Sur SpA <span class="muted" style="font-weight:400;font-size:10px">(ej.)</span></td><td class="code muted">EJEMPLO</td><td class="muted">ventas@modularsur.cl</td><td class="ctr">14</td><td class="ctr" style="color:var(--green);font-weight:700">6</td><td class="ctr" style="color:var(--red)">8</td><td class="ctr">43%</td><td class="price">$312.000.000</td></tr>
+          <tr><td class="win">Containers del Sur Ltda <span class="muted" style="font-weight:400;font-size:10px">(ej.)</span></td><td class="code muted">EJEMPLO</td><td class="muted">contacto@containersur.cl</td><td class="ctr">9</td><td class="ctr" style="color:var(--green);font-weight:700">3</td><td class="ctr" style="color:var(--red)">6</td><td class="ctr">33%</td><td class="price">$128.400.000</td></tr>
+          <tr><td class="win">PABYMAC Ltda.<span class="real">REAL</span></td><td class="code">76.383.813-7</td><td class="muted">— (vía API)</td><td class="ctr">1</td><td class="ctr" style="color:var(--green);font-weight:700">1</td><td class="ctr">0</td><td class="ctr">100%</td><td class="price">$26.000.000</td></tr>
+          <tr><td class="win">Prefabricados Austral <span class="muted" style="font-weight:400;font-size:10px">(ej.)</span></td><td class="code muted">EJEMPLO</td><td class="muted">info@pfaustral.cl</td><td class="ctr">7</td><td class="ctr" style="color:var(--green);font-weight:700">2</td><td class="ctr" style="color:var(--red)">5</td><td class="ctr">29%</td><td class="price">$74.900.000</td></tr>
+        </table>
+        <div class="note">Datos de participación/ganadas/perdidas se reconstruyen del bloque Adjudicación + ofertas públicas tras apertura. Facturado por año, de las órdenes de compra por RUT (API).</div></div>
+
+        <div class="compcard">
+          <h3>Modular Sur SpA <span class="muted" style="font-weight:400;font-size:11px">(ejemplo)</span></h3>
+          <div class="rut">empresa ilustrativa · desde 2022</div>
+          <div class="kv"><span class="k">Contacto</span><span class="v">ventas@modularsur.cl</span></div>
+          <div class="kv"><span class="k">Teléfono</span><span class="v">+56 9 7654 3210</span></div>
+          <div class="kv"><span class="k">Participaciones</span><span class="v">14</span></div>
+          <div class="kv"><span class="k">Ganadas / Perdidas</span><span class="v"><span class="miniwin"><i style="background:var(--green)"></i><i style="background:var(--green)"></i><i style="background:var(--green)"></i><i style="background:var(--green)"></i><i style="background:var(--green)"></i><i style="background:var(--green)"></i><i style="background:#CBD5E1"></i><i style="background:#CBD5E1"></i></span> 6 / 8</span></div>
+          <div class="kv"><span class="k">Facturado total MP</span><span class="v">$312.000.000</span></div>
+          <div class="sec" style="margin:16px 0 4px">Facturado por año</div>
+          <div class="bars">
+            <div class="bar"><div class="amt">$40M</div><div class="b" style="height:40%"></div><div class="y">2022</div></div>
+            <div class="bar"><div class="amt">$78M</div><div class="b" style="height:78%"></div><div class="y">2023</div></div>
+            <div class="bar"><div class="amt">$95M</div><div class="b" style="height:95%"></div><div class="y">2024</div></div>
+            <div class="bar"><div class="amt">$99M</div><div class="b" style="height:100%"></div><div class="y">2025</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ASISTENTE IA ================= -->
+    <section class="panel" id="asistente">
+      <div class="sectit"><h2>Asistente IA</h2><span class="tag">preguntá sobre tu pipeline, los competidores y el mercado</span></div>
+      <div class="chatwrap">
+        <div class="chathead"><div class="ai">IA</div><div><div class="t">Asistente Loveo</div><div class="s">consulta la base, los adjudicados, las desiertas y la web</div></div></div>
+        <div class="chatbody">
+          <div class="msg u"><div class="bub">¿Cuántos candidatos del 11-jun tengo y cuál tiene score?</div></div>
+          <div class="msg a"><div class="tool">⛁ consultó la base</div><div class="bub">Tras el filtro quedaron <b>~10 candidatos</b> del 11-jun. El único con score evaluable hoy es <b>2263-53</b> (65/120, “Revisar”) — pero su ítem es <b>“vigas de acero”</b>: probable falso positivo. El resto está pendiente de detalle. ¿Lo descarto y aprendo “viga”?</div></div>
+          <div class="msg u"><div class="bub">¿Quién ganó esa de Malleco y a qué precio?</div></div>
+          <div class="msg a"><div class="tool">⛁ consultó la base · bloque Adjudicación</div><div class="bub"><b>PABYMAC Ltda.</b> (RUT 76.383.813-7), <b>único oferente</b>, a <b>$13.000.000</b> por unidad (2 vigas = $26M, vs $40M estimado). Adjudicada el 11-jun. Un solo oferente = baja competencia en esa zona.</div></div>
+          <div class="msg u"><div class="bub">¿Cuántas licitaciones de containers se adjudican al año en Los Lagos?</div></div>
+          <div class="msg a"><div class="tool web">🌐 buscó en la web</div><div class="bub">En la categoría “unidades para contenedores”, Los Lagos registra <b>~216</b> licitaciones; a nivel nacional ~1.894 adjudicadas y ~25% desiertas <i>(fuente: web, no la base interna)</i>.</div></div>
+        </div>
+        <div class="chatin"><input placeholder="Preguntá sobre licitaciones, desiertas, competidores o mercado…"><button>Enviar</button></div>
+      </div>
+    </section>
+
+  </div>
+
+
+<div class="backdrop" id="bd">
+    <div class="sheet">
+      <div class="sheet-h">
+        <div>
+          <div class="scode" id="m-code">—</div>
+          <h2 id="m-name">—</h2>
+          <div class="badges"><span class="b adm">Admisible</span><span class="b rev" id="m-est">En revisión</span><span class="b fp" id="m-fp" style="display:none">Posible falso positivo</span></div>
+        </div>
+        <button class="x" id="x">✕</button>
+      </div>
+      <div class="sheet-b">
+        <div class="sb-l">
+          <div class="meta">
+            <div><div class="k">Región</div><div class="v" id="m-region">—</div></div>
+            <div><div class="k">Score provisional</div><div class="v" id="m-score">—</div></div>
+            <div><div class="k">Estado MP</div><div class="v" id="m-mp">—</div></div>
+            <div><div class="k">Última corrida</div><div class="v">11-jun-2026</div></div>
+          </div>
+          <div class="sec">Score · 6 dimensiones</div>
+          <div class="dim"><div class="dl">Margen<span class="w">×3</span></div><div class="track"><div class="fill pend" style="width:50%"></div></div><div class="ds">—</div></div>
+          <div class="dim"><div class="dl">Cash flow<span class="w">×3</span></div><div class="track"><div class="fill" style="width:50%"></div></div><div class="ds">5</div></div>
+          <div class="dim"><div class="dl">Complejidad<span class="w">×2</span></div><div class="track"><div class="fill pend" style="width:50%"></div></div><div class="ds">—</div></div>
+          <div class="dim"><div class="dl">Logístico<span class="w">×2</span></div><div class="track"><div class="fill" style="width:40%"></div></div><div class="ds">4</div></div>
+          <div class="dim"><div class="dl">Alineación<span class="w">×1</span></div><div class="track"><div class="fill" style="width:90%"></div></div><div class="ds">9</div></div>
+          <div class="dim"><div class="dl">Repetibilidad<span class="w">×1</span></div><div class="track"><div class="fill" style="width:80%"></div></div><div class="ds">8</div></div>
+        </div>
+        <div class="sb-r">
+          <div class="sec">Documentos · acceso permanente</div>
+          <div class="doc"><span class="ic">PDF</span> Bases administrativas.pdf <span class="acts"><a href="#">Descargar</a><a href="#">Re-leer IA</a></span></div>
+          <div class="doc"><span class="ic">PDF</span> Especificaciones técnicas.pdf <span class="acts"><a href="#">Descargar</a><a href="#">Re-leer IA</a></span></div>
+          <div class="doc ghost"><span class="ic" style="background:#94A3B8">XLS</span> Anexo económico.xlsx <span class="acts"><a href="#">pendiente</a></span></div>
+          <div class="docempty" style="margin-top:4px">Para licitaciones sin docs: correr <b>download.py</b> (local) y aparecen acá.</div>
+
+          <div class="sec" style="margin-top:18px">Seguimiento · trazabilidad</div>
+          <div class="tl">
+            <div class="tli"><span class="d"></span><div class="ev">Descubierta por la API</div><div class="ts">11-jun 09:04 · keyword “módulo”</div></div>
+            <div class="tli"><span class="d"></span><div class="ev">Admisible</div><div class="ts">11-jun 09:04 · sin objeciones eliminatorias</div></div>
+            <div class="tli"><span class="d"></span><div class="ev">Score provisional 65/120</div><div class="ts">11-jun 09:05 · “Revisar”</div></div>
+            <div class="tli"><span class="d" style="background:var(--amber)"></span><div class="ev">En revisión manual</div><div class="ts">pendiente tu decisión</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="sheet-f">
+        <button class="btn ok">✓ Aprobar</button>
+        <button class="btn no">🗑 Descartar</button>
+        <button class="btn gh">↗ Abrir ficha en Mercado Público</button>
+        <select class="mvto"><option>Mover a…</option><option>En revisión</option><option>Aprobada</option><option>Presentada</option><option>Descartada</option></select>
+      </div>
+    </div>
+  </div>
+
+<script>
+  document.querySelectorAll('.nav button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('on'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+      btn.classList.add('on');
+      document.getElementById(btn.dataset.tab).classList.add('on');
+      window.scrollTo(0,0);
+    });
+  });
+
+  var bd=document.getElementById('bd');
+  function open(card){
+    document.getElementById('m-code').textContent=card.dataset.code;
+    document.getElementById('m-name').textContent=card.dataset.name;
+    document.getElementById('m-region').textContent=card.dataset.region||'—';
+    document.getElementById('m-score').textContent=card.dataset.score?card.dataset.score+'/120':'— (pendiente detalle)';
+    document.getElementById('m-mp').textContent=card.dataset.est||'—';
+    document.getElementById('m-est').textContent=card.dataset.est||'En revisión';
+    document.getElementById('m-fp').style.display=(card.dataset.tri==='fp')?'inline-block':'none';
+    bd.classList.add('on');
+  }
+  document.querySelectorAll('.kcard').forEach(function(c){c.addEventListener('click',function(){open(c)})});
+  document.getElementById('x').addEventListener('click',function(){bd.classList.remove('on')});
+  bd.addEventListener('click',function(e){if(e.target===bd)bd.classList.remove('on')});
+
+</script>
+</body>
+</html>

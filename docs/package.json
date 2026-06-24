@@ -1,0 +1,16 @@
+{
+  "name": "loveo-licitaciones-deck",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generador del Documento de Producto PO/BA de Loveo Licitaciones (versionado, reproducible).",
+  "scripts": {
+    "build": "node build_deck.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.2.1",
+    "sharp": "^0.33.4"
+  }
+}
