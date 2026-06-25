@@ -8,6 +8,8 @@ token.json
 service_account.json
 client_secret_*.json
 OAuth Drive/
+# Secretos en texto plano (ticket ChileCompra, API key Anthropic)
+credentials/
 
 # --- Datos y artefactos locales ---
 loveo.db
