@@ -1,0 +1,12 @@
+# Fuerza el tema claro en el login (Streamlit nativo). Sin esto, el browser en
+# modo oscuro lava los colores y el formulario queda ilegible. La consola
+# (components/console) es un iframe con su propio estilo oscuro, no se ve afectada.
+[theme]
+base = "light"
+backgroundColor = "#EBEEF1"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1A1F24"
+primaryColor = "#2D6CDF"
+
+[server]
+headless = true
