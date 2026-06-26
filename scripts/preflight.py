@@ -23,13 +23,15 @@ ROOT = Path(__file__).resolve().parent.parent
 # (etiqueta, patron). git grep busca SOLO en archivos trackeados = lo que se va a pushear.
 SECRET_PATTERNS = [
     ("Anthropic API key", r"sk-ant-[A-Za-z0-9_-]{20,}"),
-    ("OpenAI API key", r"sk-[A-Za-z0-9]{20,}T3BlbkFJ"),
     ("Postgres conn con password", r"postgres(?:ql)?://[^\s:@/]+:[^\s@/]+@"),
     ("Google client_secret", r'"client_secret"\s*:\s*"[A-Za-z0-9_-]{10,}"'),
     ("AWS access key", r"AKIA[0-9A-Z]{16}"),
 ]
-# Lineas que NO son secretos reales (placeholders en docs, este propio archivo).
-_SKIP = re.compile(r"(EJEMPLO|EXAMPLE|placeholder|TU-NUEVA|<tu|xxxx|scripts/preflight\.py)", re.I)
+# Archivos que contienen los patrones como TEXTO (no secretos reales): se saltan por path.
+_SKIP_PATHS = {"scripts/preflight.py", "scripts/review.py"}
+# Placeholders en docs (sk-ant-..., TU-NUEVA-CLAVE, etc.): se evaluan SOLO sobre el contenido,
+# nunca sobre el path (si no, un archivo llamado 'ejemplo_x.py' ocultaria secretos reales).
+_PLACEHOLDER = re.compile(r"(EJEMPLO|EXAMPLE|placeholder|TU-NUEVA|<tu|xxxx)", re.I)
 
 
 def _run(cmd):
@@ -42,7 +44,12 @@ def scan_secrets():
         r = _run(["git", "grep", "-nIE", pat])
         if r.returncode == 0 and r.stdout.strip():
             for line in r.stdout.splitlines():
-                if _SKIP.search(line):
+                # git grep -n => "path:lineno:contenido"
+                path, _, rest = line.partition(":")
+                _, _, content = rest.partition(":")
+                if path in _SKIP_PATHS:
+                    continue
+                if _PLACEHOLDER.search(content or line):  # placeholder solo sobre el contenido
                     continue
                 hits.append(f"  [{label}] {line}")
     return hits

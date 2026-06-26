@@ -12,11 +12,22 @@ solares; bases en Pirque + Puerto Montt). App interna (H1) con futuro SaaS (H2).
 ## Comandos
 ```bash
 streamlit run tablero3.py            # levantar el tablero (puerto 8502 local)
-python scripts/preflight.py          # correr TODOS los sensores a mano
+python scripts/preflight.py          # sensores BLOQUEANTES: secretos + ruff + pytest
+python scripts/review.py             # reviewer ADVERSARIAL del diff (advisory, no bloquea)
 python -m pytest tests/ -q           # solo tests
 python usuarios.py passwd <user>     # cambiar contraseña (pega contra la base activa)
 python schema_v3.py                  # aplicar migraciones (idempotente)
 ```
+
+## Cómo trabajamos (spec → sensores → loop)
+1. **Spec primero**: antes de codear, copiar `specs/_templates/` a `specs/<feature>/` y llenar
+   SPEC (qué/criterios de aceptación con comando) + PHASES (fases con su sensor). La spec viva de
+   H1 está en `specs/h1-produccion/`.
+2. **Sensores**: `scripts/preflight.py` (bloqueante, corre solo en el pre-push) decide "listo",
+   no la palabra del agente. `scripts/review.py` (adversarial, advisory) se corre antes de mergear
+   y sus hallazgos los juzga un humano (puede dar falsos positivos: conocimiento desactualizado de
+   model IDs, contexto de `db.py` que no ve, etc.).
+3. **Cerrar**: cuando una fase pasa, anotarla en `specs/<feature>/DONE.md` (fecha + commit + cómo se verificó).
 
 ## Criterio de "listo" (exit 0, nadie marca el check a mano)
 Un cambio está terminado cuando `python scripts/preflight.py` devuelve 0. Eso corre, en orden:

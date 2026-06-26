@@ -16,8 +16,11 @@ import pytest
 import db
 
 ROOT = Path(__file__).resolve().parent.parent
-# Modulos top-level del proyecto (no tests, no scripts/)
-PY_FILES = sorted(ROOT.glob("*.py"))
+# Todo el codigo del proyecto que ejecuta SQL: top-level + subdirs (scripts/, etc.).
+# Excluye tests/ y las herramientas del harness (preflight.py, review.py mencionan
+# los patrones como TEXTO y darian falsos positivos).
+SQL_FILES = sorted(p for p in ROOT.rglob("*.py")
+                   if "tests" not in p.parts and p.name not in {"preflight.py", "review.py"})
 
 
 # --------------------------------------------------------------- shim _prep (unit)
@@ -46,7 +49,7 @@ def test_prep_no_double_on_conflict():
 # --------------------------------------------------- guardas anti-regresion (estaticas)
 def test_no_lastrowid():
     """cur.lastrowid devuelve None en Postgres -> usar INSERT ... RETURNING id."""
-    offenders = [p.name for p in PY_FILES
+    offenders = [p.name for p in SQL_FILES
                  if ".lastrowid" in p.read_text(encoding="utf-8", errors="ignore")]
     assert not offenders, f"Reemplazar .lastrowid por 'INSERT ... RETURNING id' en: {offenders}"
 
@@ -54,7 +57,7 @@ def test_no_lastrowid():
 def test_no_boolean_sum():
     """SUM(col = 'x') funciona en SQLite (1/0) pero falla en Postgres (SUM de boolean)."""
     pat = re.compile(r"SUM\s*\(\s*[A-Za-z_][\w.]*\s*=")
-    offenders = [p.name for p in PY_FILES
+    offenders = [p.name for p in SQL_FILES
                  if pat.search(p.read_text(encoding="utf-8", errors="ignore"))]
     assert not offenders, f"Usar SUM(CASE WHEN ... THEN 1 ELSE 0 END) en: {offenders}"
 
