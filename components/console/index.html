@@ -153,6 +153,7 @@ body{font-family:var(--body);font-size:13.5px;color:#0F1216;background:#EBEEF1;-
     <div class="grp">USO</div>
     <button class="item" onclick="go('metricas')"><span class="ic" id="ic-metricas"></span>Métricas</button>
     <button class="item" onclick="go('keywords')"><span class="ic" id="ic-keywords"></span>Keywords</button>
+    <button class="item" onclick="go('aprendizaje')"><span class="ic"></span>Aprendizaje</button>
     <div class="who" id="who"><div class="av">··</div><div><div class="wn">—</div><div class="wr">…</div></div></div>
   </aside>
   <main class="main">
@@ -188,7 +189,7 @@ var ICONS={
 var D={lics:{},order:[],groups:{},meta:{}};
 var stack=[{t:'inicio'}], openForm=null;
 var TRI={'Priorizar':['#3B6D11','#EAF3DE','PRIORIZAR'],'Revisar':['#854F0B','#FAEEDA','REVISAR'],'Descartar candidato':['#791F1F','#FCEBEB','DESCARTAR']};
-var CRUMBS={inicio:'INICIO',senales:'SEÑALES',listado:'LISTADO',radar:'RADAR',mapa:'MAPA',competitiva:'INTELIGENCIA',desiertas:'DESIERTAS',competencia:'COMPETENCIA',asistente:'ASISTENTE IA',metricas:'MÉTRICAS',keywords:'KEYWORDS'};
+var CRUMBS={inicio:'INICIO',senales:'SEÑALES',listado:'LISTADO',radar:'RADAR',mapa:'MAPA',competitiva:'INTELIGENCIA',desiertas:'DESIERTAS',competencia:'COMPETENCIA',asistente:'ASISTENTE IA',metricas:'MÉTRICAS',keywords:'KEYWORDS',aprendizaje:'APRENDIZAJE'};
 var PHLABEL={mapa:'Mapa',competitiva:'Inteligencia competitiva',desiertas:'Desiertas',competencia:'Seguimiento de Competencia',asistente:'Asistente IA'};
 var MP='https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=';
 var REASONS=['Título','Título + monto','Monto','Nuevo nicho','Estudio de mercado','Otros'];
@@ -272,6 +273,13 @@ function renderFicha(cod){
   var l=D.lics[cod];if(!l)return backBtn()+'<div class="empty">No encontrada.</div>';
   var h='<div>'+backBtn();
   h+='<div class="fhead"><div style="flex:1;min-width:240px"><div class="code" style="font-size:12px">'+esc(l.cod)+'</div><div class="h1" style="margin-top:4px">'+esc(l.nom)+'</div><div class="badges">'+pill(l.tri)+'<span class="badge">'+esc(l.estadoLbl)+'</span>'+(l.adm?'<span class="badge adm">Admisible</span>':'')+'</div></div><div class="verdict"><div class="vk">SCORE PROV.</div><div class="vv">'+(l.score==null?'—':l.score)+'<span>/120</span></div>'+(l.reqBases?'<div class="vx">falta cubicación</div>':'')+'</div></div>';
+  var aj=l.ajuste;
+  if(aj&&(aj.delta<0||(aj.alertas&&aj.alertas.length))){
+    h+='<div class="card" style="border-left:3px solid '+(aj.delta<0?'#B45309':'#0E7490')+'"><div class="ct">APRENDIZAJE · AJUSTE ASISTIDO</div>';
+    if(aj.delta<0){h+='<div style="font-size:13px;margin-bottom:2px"><b>Score ajustado: '+(l.score==null?'—':Math.max(0,l.score+aj.delta))+'</b> <span class="mut">(provisional '+(l.score==null?'—':l.score)+', '+aj.delta+')</span></div>';for(var ri=0;ri<aj.razones.length;ri++)h+='<div class="ptxt">• '+esc(aj.razones[ri])+'</div>';}
+    for(var qi=0;qi<(aj.alertas||[]).length;qi++)h+='<div class="ptxt" style="color:#0E7490">⚠ '+esc(aj.alertas[qi])+'</div>';
+    h+='<div class="dochint" style="margin-top:6px">Sugerido por tus descartes; no reemplaza el score y es reversible (sale de la tabla de descartes).</div></div>';
+  }
   h+='<div class="card"><div class="ct">DATOS</div><div class="meta"><div><div class="mk">Organismo</div><div class="mv lnk" data-org="'+escA(cod)+'">'+esc(l.org||'—')+'</div></div><div><div class="mk">Región</div><div class="mv lnk" data-reg="'+escA(cod)+'">'+esc(l.regc||'—')+'</div></div><div><div class="mk">Monto estimado</div><div class="mv">'+esc(l.monto)+' '+esc(l.moneda)+'</div></div><div><div class="mk">Cierre</div><div class="mv">'+esc(l.cierreFmt||'—')+(l.dias!=null?' · '+diasTxt(l.dias):'')+'</div></div><div><div class="mk">Visita a terreno</div><div class="mv">'+esc(l.visita||'—')+'</div></div><div><div class="mk">Estado MP</div><div class="mv">'+(l.estMp!=null?('código '+l.estMp):'—')+'</div></div></div></div>';
   if(l.dims&&l.dims.length){h+='<div class="card"><div class="ct">SCORE · 6 DIMENSIONES</div>';for(var i=0;i<l.dims.length;i++){var d=l.dims[i],w=(d.score!=null?d.score*10:0);h+='<div class="dim" title="'+escA(d.nota)+'"><div class="dl">'+esc(d.n)+(d.ev?'':'<span class="pend">pend.</span>')+'</div><div class="track"><div class="fill'+(d.ev?'':' pend')+'" style="width:'+w+'%"></div></div><div class="ds">'+(d.ev&&d.score!=null?d.score:'—')+'</div></div>';}h+='</div>';}
   if(l.admMot)h+='<div class="card"><div class="ct">ADMISIBILIDAD</div><div class="ptxt">'+esc(l.admMot)+'</div></div>';
@@ -341,6 +349,21 @@ function renderKeywords(){
   });
   return h;
 }
+function renderAprendizaje(){
+  var a=D.aprendizaje||{};
+  var h='<div class="eyebrow">APRENDE DE TUS DESCARTES</div><div class="h1">Aprendizaje</div>';
+  h+='<div class="dochint" style="margin-top:6px">Patrones de por qué descartás. Los de <b>calidad</b> ajustan el score de licitaciones parecidas (umbral: '+(a.umbral||3)+' descartes); los <b>operativos</b> (visita / capacidad) no tocan el score.</div>';
+  if(a.buenas_perdidas){h+='<div class="panel" style="margin-top:13px;border-left:3px solid #0E7490"><div class="plabel">⚠ BUENAS PERDIDAS POR NO IR A LA VISITA</div><div class="ptxt" style="padding:4px 0">Perdiste <b>'+a.buenas_perdidas+'</b> licitación(es) buena(s) por no llegar a la visita obligatoria. No bajan el score; te las marca para que no se repita.</div></div>';}
+  var pc=a.por_categoria||[];
+  h+='<div class="panel" style="margin-top:13px"><div class="plabel">DESCARTES POR CATEGORÍA</div>';
+  if(!pc.length)h+='<div class="mut" style="padding:6px 0">Todavía no descartaste nada con categoría. Cuando lo hagas, los patrones aparecen acá.</div>';
+  for(var i=0;i<pc.length;i++)h+='<div class="kwrow"><span class="kwt">'+esc(pc[i].categoria)+'</span><span class="kwo">'+esc(pc[i].tipo||'')+'</span><span class="kwo">'+pc[i].n+'</span></div>';
+  h+='</div>';
+  function plist(title,arr){var hh='<div class="panel" style="margin-top:13px"><div class="plabel">'+title+'</div>';if(!arr||!arr.length){hh+='<div class="mut" style="padding:6px 0">— sin patrón aún</div>';}else{for(var j=0;j<arr.length;j++)hh+='<div class="kwrow"><span class="kwt">'+esc(arr[j].k)+'</span><span class="kwo">'+arr[j].n+' descartes</span></div>';}return hh+'</div>';}
+  h+=plist('MUY LEJOS · POR REGIÓN',a.muy_lejos_region);
+  h+=plist('MAL PAGADOR · POR COMPRADOR',a.mal_pagador_org);
+  return h;
+}
 function mkpi(l,n,c){return '<div class="kpi" style="cursor:default"><div class="l">'+l+'</div><div class="n" style="color:'+c+'">'+n+'</div></div>';}
 function renderMetricas(){
   var m=D.metricas||{};
@@ -360,7 +383,7 @@ function renderPH(v){return '<div class="eyebrow">EN CONSTRUCCIÓN</div><div cla
 
 function doSearch(v){if(!v||!v.trim()){paint();return;}var q=naLC(v),out=[];for(var i=0;i<D.order.length;i++){var c=D.order[i],l=D.lics[c];if(naLC(l.cod+' '+l.nom+' '+l.org+' '+l.reg).indexOf(q)>=0)out.push(c);}var h='<div class="eyebrow">BÚSQUEDA</div><div class="h1">"'+esc(v)+'"</div><div class="dsub">'+out.length+(out.length===1?' resultado':' resultados')+'</div>';h+= out.length?('<div class="tbl">'+thead()+listRowsHTML(out)+'</div>'):'<div class="empty">Sin resultados.</div>';document.getElementById('app-content').innerHTML=h;}
 
-function viewHTML(){var s=stack[stack.length-1];if(s.t==='inicio')return renderInicio();if(s.t==='list')return renderList(s.key,s.title);if(s.t==='ficha')return renderFicha(s.cod);if(s.t==='listado')return renderListado();if(s.t==='radar')return renderRadar();if(s.t==='senales')return renderSenales();if(s.t==='asistente')return renderAsistente();if(s.t==='metricas')return renderMetricas();if(s.t==='keywords')return renderKeywords();return renderPH(s.t);}
+function viewHTML(){var s=stack[stack.length-1];if(s.t==='inicio')return renderInicio();if(s.t==='list')return renderList(s.key,s.title);if(s.t==='ficha')return renderFicha(s.cod);if(s.t==='listado')return renderListado();if(s.t==='radar')return renderRadar();if(s.t==='senales')return renderSenales();if(s.t==='asistente')return renderAsistente();if(s.t==='metricas')return renderMetricas();if(s.t==='keywords')return renderKeywords();if(s.t==='aprendizaje')return renderAprendizaje();return renderPH(s.t);}
 function paint(){var html=viewHTML();if(D.flash)html='<div class="flash">'+esc(D.flash)+'</div>'+html;document.getElementById('app-content').innerHTML=html;var sc=document.querySelector('.scroll');if(sc)sc.scrollTop=0;var n=document.getElementById('nota');if(n)n.focus();fit();}
 function nav(s){openForm=null;stack.push(s);paint();}
 function back(){openForm=null;if(stack.length>1){stack.pop();paint();}}

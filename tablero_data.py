@@ -12,6 +12,7 @@ import db
 import schema_v3
 import competencia
 import keywords as kwmod
+import aprendizaje
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
          "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -159,6 +160,11 @@ def build_data():
     groups["cierran"].sort(key=lambda x: lics[x]["dias"])
     groups["nuevas"].sort(key=lambda x: lics[x]["desc"], reverse=True)
 
+    # Ajuste asistido por descartes (Fase 3): se carga 1 vez y se aplica por lic (display-only).
+    _ap = aprendizaje.cargar()
+    for _l in lics.values():
+        _l["ajuste"] = aprendizaje.ajuste_lic(_ap, _l["reg"], _l["org"])
+
     # --- Inteligencia / oportunidades (panel del Inicio) ---
     desiertas = [{"cod": l["cod"], "nom": l["nom"], "regc": l["regc"]}
                  for l in lics.values() if l.get("estMp") == 7][:6]
@@ -223,6 +229,7 @@ def build_data():
     return {
         "lics": lics, "order": order, "groups": groups, "intel": intel, "metricas": metricas,
         "keywords": kws,
+        "aprendizaje": aprendizaje.resumen(_ap),
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
             "mesAb": MESES_AB, "meses": MESES,

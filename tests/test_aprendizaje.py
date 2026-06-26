@@ -6,6 +6,7 @@ Verifica que feedback.descartar guarda la categoría y deriva bien el tipo
 
   python -m pytest tests/test_aprendizaje.py -q
 """
+import aprendizaje
 import db
 import feedback
 import schema_v3
@@ -54,3 +55,48 @@ def test_categorias_para_ui_tiene_los_dos_tipos():
     tipos = {c["tipo"] for c in cats}
     assert tipos == {"calidad", "operativo"}
     assert any(c["k"] == "visita_perdida" and c["tipo"] == "operativo" for c in cats)
+
+
+# ---------------------------------------------------------------- Fase 3: ajuste asistido (puro)
+def test_ajuste_muy_lejos_penaliza_sobre_umbral():
+    cargado = {"muy_lejos_region": {"Aysén": aprendizaje.UMBRAL}, "mal_pagador_org": {}, "visita_org": {}}
+    a = aprendizaje.ajuste_lic(cargado, "Aysén", "Comprador X")
+    assert a["delta"] == -aprendizaje.PENAL["muy_lejos"]
+    assert a["razones"] and "Aysén" in a["razones"][0]
+
+
+def test_ajuste_bajo_umbral_no_penaliza():
+    cargado = {"muy_lejos_region": {"Aysén": aprendizaje.UMBRAL - 1}, "mal_pagador_org": {}, "visita_org": {}}
+    a = aprendizaje.ajuste_lic(cargado, "Aysén", "Comprador X")
+    assert a["delta"] == 0
+    assert not a["razones"]
+
+
+def test_visita_perdida_no_penaliza_solo_alerta():
+    """Regla dura: un descarte operativo NUNCA baja el score; solo alerta."""
+    cargado = {"muy_lejos_region": {}, "mal_pagador_org": {}, "visita_org": {"Muni Y": 2}}
+    a = aprendizaje.ajuste_lic(cargado, "Región", "Muni Y")
+    assert a["delta"] == 0
+    assert a["alertas"] and "visita" in a["alertas"][0].lower()
+
+
+# ---------------------------------------------------------------- Fase 3: carga desde DB (integración)
+def test_cargar_y_ajuste_end_to_end(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    with db.conn() as c:
+        for i in range(aprendizaje.UMBRAL):
+            db.upsert_licitacion(c, {"codigo": f"L{i}", "nombre": "x",
+                                     "region": "Aysén", "organismo": "Muni Z"})
+    for i in range(aprendizaje.UMBRAL):
+        feedback.descartar(f"L{i}", "muy lejos", categoria="muy_lejos")
+
+    cargado = aprendizaje.cargar()
+    assert cargado["muy_lejos_region"].get("Aysén") == aprendizaje.UMBRAL
+    a = aprendizaje.ajuste_lic(cargado, "Aysén", "Muni Z")
+    assert a["delta"] < 0  # el patrón real movió el score
+
+    res = aprendizaje.resumen(cargado)
+    assert any(p["categoria"] == "muy_lejos" for p in res["por_categoria"])

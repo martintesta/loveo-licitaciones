@@ -12,3 +12,10 @@
   en JS). Verificado: `tests/test_aprendizaje.py` (4) verde. Reviewer: 1 fix aplicado (sacar
   migrate() del hot-path del descarte), 3 falsos positivos rechazados (AUTOINCREMENT/conexión
   cacheada los traduce/maneja el proyecto) + nota al prompt para no repetir el FP de AUTOINCREMENT.
+- 2026-06-25 — **Fase 3 (ajuste asistido + panel) cerrada → #2 COMPLETO.** Módulo `aprendizaje.py`
+  (carga DB separada de la lógica pura `ajuste_lic`): solo descartes de calidad atribuibles
+  (muy_lejos→región, mal_pagador→comprador) sobre umbral 3 ajustan el score, con razón explícita;
+  operativos nunca penalizan; visita_perdida solo alerta. Enganchado en `build_data` (1 carga,
+  display-only por lic) + panel "Aprendizaje" en el rail + tarjeta de ajuste en la ficha.
+  Verificado: `tests/test_aprendizaje.py` (8) verde. Reviewer: 1 fix (capear score ajustado en 0
+  para no mostrar negativos); el resto se auto-rechazó como no-bug.

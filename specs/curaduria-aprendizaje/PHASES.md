@@ -16,4 +16,4 @@
 - Entregable: módulo `aprendizaje.py` (patrones + delta explícito) + panel "Aprendizaje" +
   nota de ajuste en la ficha/score.
 - Listo cuando: una lic parecida a descartes previos muestra el ajuste con su razón; reversible.
-- Estado: [ ] pendiente
+- Estado: [x] hecho
