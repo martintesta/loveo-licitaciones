@@ -23,8 +23,8 @@ python -m playwright install chromium          # navegador para Capa B
 #   Windows: instalar "Tesseract-OCR" (UB Mannheim) + paquete de idioma español
 
 # credenciales locales (NO se suben: config_local.py está en .gitignore)
-cp config_local.example.py config_local.py
-#   editá config_local.py y poné:  TICKET = "tu-ticket-de-chilecompra"
+cp config_local_example.py config_local.py
+#   el ticket de ChileCompra va en .env:  LOVEO_CHILECOMPRA_TICKET=tu-ticket
 
 # migración de esquema (crea adjudicaciones, items, competidores, participaciones, relicitaciones)
 python schema_v2.py
@@ -70,9 +70,9 @@ python capa_c.py --codigo 2450-56-LE26 --pregunta "¿Qué garantía exige y a qu
 
 ### Tablero — ver y decidir
 ```bash
-streamlit run tablero.py
+streamlit run tablero3.py
 ```
-- Pestañas: Pipeline · Tablero (Kanban) · Inteligencia competitiva · Desiertas · Seguimiento de Competencia · Asistente IA.
+- Secciones: Inicio · Señales · Listado · Radar · Mapa · Competitiva · Desiertas · Competencia · Asistente IA · Métricas · Keywords · Aprendizaje.
 - El **feedback** (aprobar / descartar / excluir término) se hace con los botones del tablero;
   descartar con un término lo agrega a las exclusiones aprendidas y el filtro lo evita en adelante.
 

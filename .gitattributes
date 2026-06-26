@@ -1,0 +1,13 @@
+# Normaliza fin de línea: LF en el repo y en el working tree (corta los avisos LF->CRLF).
+* text=auto eol=lf
+
+# Binarios: nunca tocar el contenido.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pdf  binary
+*.pptx binary
+*.xlsx binary
+*.xls  binary
+*.db   binary

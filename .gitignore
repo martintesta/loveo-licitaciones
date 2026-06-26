@@ -18,6 +18,7 @@ loveo.db-shm
 storage/
 calibration/
 outputs/
+logs/
 dia.json
 detalle.json
 

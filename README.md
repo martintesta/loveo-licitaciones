@@ -10,7 +10,7 @@ Producto interno (H1) y semilla del SaaS (H2). Local-first, "online y offline".
 3. ADMISIBILIDAD→ filtro eliminatorio Loveo (regla dura)     ✅ LISTO     rules.py
 4. DESCARGAR    → adjuntos vía navegador headless            ◻ CALIBRANDO download.py (corre local)
 5. PUNTUAR      → provisional (API) ✅  ·  final (LLM+bases) ◻  scoring.py / Capa C
-6. PRESENTAR    → tablero + acceso a documentos              ✅ LISTO     tablero.py (Streamlit)
+6. PRESENTAR    → consola (login, ficha, listado, aprendizaje) ✅ LISTO   tablero3.py (Streamlit)
 7. FEEDBACK     → aprobar/descartar/aprender/corregir        ✅ LISTO     feedback.py
 8. ESTADO       → trazabilidad doble eje + eventos + runs    ✅ LISTO     db.py
 ```
@@ -57,7 +57,7 @@ python run_daily.py --backfill 5   # últimos 5 días hábiles no procesados
 python calibrate_ficha.py 2263-53-LE26   # 1) calibrar navegación a la ficha
 python download.py                       # 2) bajar adjuntos de las admisibles
 
-streamlit run tablero.py           # revisar, descargar docs, dar feedback
+streamlit run tablero3.py          # consola: login, listado, ficha, aprendizaje
 ```
 
 ## Archivos
@@ -69,9 +69,9 @@ streamlit run tablero.py           # revisar, descargar docs, dar feedback
 - `feedback.py` — loop de feedback (paso 7): aprobar/descartar/aprender exclusión/corregir score.
 - `run_daily.py` — orquestador con bookkeeping (`runs`) y manejo de errores.
 - `download.py` — Capa B (paso 4), corre local; navegación a la ficha pendiente de calibración.
-- `tablero.py` — tablero Streamlit (paso 6): pipeline + acceso a documentos + feedback.
+- `tablero3.py` — consola Streamlit (paso 6): login, listado, ficha, descartes con categoría, aprendizaje.
 - `calibrate_ficha.py` — sonda local para fijar selectores de la ficha.
-- `config_local.example.py` — plantilla: TICKET propio + keywords/umbrales (gitignored).
+- `config_local_example.py` — plantilla pública de calibración (keywords/umbrales). El ticket va en `.env` (`LOVEO_CHILECOMPRA_TICKET`).
 - `exclusiones_aprendidas.txt` — generado por feedback; lo lee discover en cada corrida.
 - `docs/build_deck.js` + `docs/package.json` — generador del Documento de Producto PO/BA (versionado).
 
