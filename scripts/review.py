@@ -29,12 +29,15 @@ Proyecto: pipeline Python/Streamlit de licitaciones publicas (ChileCompra), back
 Invariantes del proyecto (violarlos ES un bug, reportalo):
 - IDs nuevos -> "INSERT ... RETURNING id", nunca cur.lastrowid (devuelve None en Postgres).
 - Conteo de booleanos -> SUM(CASE WHEN x THEN 1 ELSE 0 END), nunca SUM(x='y') (rompe en PG).
-- Todo SQL pasa por db.conn(); pensa SIEMPRE el caso Postgres ademas del SQLite.
-- NO reportes los placeholders '?' como bug de Postgres: db.conn() devuelve _PGConn, cuyo
-  .execute() traduce '?'->'%s' e 'INSERT OR IGNORE'->'ON CONFLICT' automaticamente (db._prep).
-  Los '?' en c.execute(...) son la convencion CORRECTA del proyecto.
-- Tampoco reportes 'INTEGER PRIMARY KEY AUTOINCREMENT' como bug de Postgres: db._prep lo
-  traduce a 'SERIAL PRIMARY KEY'. Es la convencion CORRECTA en los CREATE TABLE del proyecto.
+CONTEXTO del shim db.py (esto es la arquitectura del proyecto, NO lo reportes como bug):
+- Todo SQL pasa por db.conn(); en Postgres devuelve _PGConn, cuyo .execute() corre db._prep()
+  sobre cada query y traduce solo: '?'->'%s', 'INSERT OR IGNORE'->'ON CONFLICT DO NOTHING',
+  'INTEGER PRIMARY KEY AUTOINCREMENT'->'SERIAL PRIMARY KEY'. Por eso los '?' y el AUTOINCREMENT
+  del codigo son CORRECTOS en ambos motores; NO son bugs de Postgres.
+- En Postgres la conexion es autocommit=True POR DISENO: cada statement commitea solo. NO
+  reportes "falta de atomicidad" multi-statement como bug; es un trade-off asumido del proyecto.
+- db.conn() abre una conexion NUEVA cada vez (sin pool ni singleton); no asumas cache de conexiones.
+- SI reportalo: un .lastrowid nuevo (devuelve None en Postgres; el proyecto usa INSERT ... RETURNING id).
 - Secretos solo en .env / variables de entorno, jamas en codigo trackeado.
 - El score es PROVISIONAL; las vistas no inventan data que no exista en el codigo MP real.
 
