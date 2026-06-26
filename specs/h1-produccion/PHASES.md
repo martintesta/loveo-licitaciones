@@ -13,7 +13,7 @@
 ## Fase 3 — Deploy (Render + Neon)
 - Entregable: Dockerfile + render.yaml; URL pública con login; tema legible.
 - Listo cuando: estado "Live" en Render y login OK en `loveo-licitaciones.onrender.com`.
-- Estado: [~] en curso (login y tema arreglados; falta confirmar Live estable)
+- Estado: [x] hecho (Live + login verificado en prod con martin/loveo.2026)
 
 ## Fase 4 — Worker residencial (Capa B + Ficha Comprador)
 - Entregable: worker con IP chilena que descarga bases y lee Ficha Comprador (tras WAF).
