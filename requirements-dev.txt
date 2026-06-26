@@ -1,0 +1,5 @@
+# Herramientas de los sensores (loop engineering). No van a produccion.
+#   pip install -r requirements-dev.txt
+#   python scripts/preflight.py --install-hook   # re-instala el pre-push tras clonar
+pytest>=8.0
+ruff>=0.6

@@ -1,0 +1,14 @@
+# Lint de alta señal: errores que son bugs reales, no estilo.
+#   E9  → errores de sintaxis
+#   F   → pyflakes: nombres indefinidos (F821), redefiniciones (F811), imports/vars sin usar
+# Se ignoran F401/F841 (imports y variables sin usar) para no ahogar en ruido legacy.
+# Para endurecer más adelante: sumar "I" (orden de imports) y quitar los ignores.
+line-length = 120
+target-version = "py311"
+
+[lint]
+select = ["E9", "F"]
+ignore = ["F401", "F841"]
+
+[lint.per-file-ignores]
+"tests/*" = ["F811", "F401"]
