@@ -192,6 +192,7 @@ var CRUMBS={inicio:'INICIO',senales:'SEÑALES',listado:'LISTADO',radar:'RADAR',m
 var PHLABEL={mapa:'Mapa',competitiva:'Inteligencia competitiva',desiertas:'Desiertas',competencia:'Seguimiento de Competencia',asistente:'Asistente IA'};
 var MP='https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=';
 var REASONS=['Título','Título + monto','Monto','Nuevo nicho','Estudio de mercado','Otros'];
+var selCat=null;  // categoría de descarte seleccionada (Fase 2 curaduría-aprendizaje)
 
 function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':s);return d.innerHTML;}
 function escA(s){return esc(s).replace(/"/g,'&quot;');}
@@ -245,7 +246,15 @@ function renderRadar(){var arr=D.groups.siguiendo,h='<div class="eyebrow">TU SEG
 
 function notaForm(act,cod){
   var q=(act==='seguir')?'¿Por qué la seguís?':(act==='aprobar'?'¿Por qué la aprobás?':'¿Por qué la descartás?');
-  return '<div class="form"><div class="fq">'+q+'</div><div class="chips">'+REASONS.map(function(r){return '<button class="chip" data-reason="'+escA(r)+'">'+esc(r)+'</button>';}).join('')+'</div><div class="frow"><input id="nota" placeholder="Escribí el motivo (o tocá una sugerencia)…"><button class="b ok" data-confirm="'+act+'" data-cod="'+escA(cod)+'">Confirmar</button><button class="b gh" data-cancel="1">Cancelar</button></div></div>';
+  var chips,hint='';
+  if(act==='descartar'){
+    var cats=D.categorias||[];
+    chips=cats.map(function(c){var op=(c.tipo==='operativo');return '<button class="chip" data-cat="'+escA(c.k)+'" title="'+(op?'operativo · no afecta el score':'calidad · mejora el score de parecidas')+'">'+esc(c.l)+'</button>';}).join('');
+    hint='<div class="dochint" style="margin:2px 0 6px">Elegí una categoría: las de <b>calidad</b> mejoran el score futuro de licitaciones parecidas; las <b>operativas</b> (visita / capacidad) no tocan el score.</div>';
+  } else {
+    chips=REASONS.map(function(r){return '<button class="chip" data-reason="'+escA(r)+'">'+esc(r)+'</button>';}).join('');
+  }
+  return '<div class="form"><div class="fq">'+q+'</div>'+hint+'<div class="chips">'+chips+'</div><div class="frow"><input id="nota" placeholder="Detalle del motivo (opcional)…"><button class="b ok" data-confirm="'+act+'" data-cod="'+escA(cod)+'">Confirmar</button><button class="b gh" data-cancel="1">Cancelar</button></div></div>';
 }
 
 function renderSenales(){
@@ -364,10 +373,11 @@ document.addEventListener('click',function(e){
   var x;
   if((x=e.target.closest('[data-back]'))){back();return;}
   if((x=e.target.closest('[data-tab]'))){go(x.getAttribute('data-tab'));return;}
-  if((x=e.target.closest('[data-confirm]'))){var nota=(document.getElementById('nota')||{}).value||'';dispatch(x.getAttribute('data-confirm'),x.getAttribute('data-cod'),nota.trim());return;}
-  if((x=e.target.closest('[data-cancel]'))){openForm=null;paint();return;}
+  if((x=e.target.closest('[data-confirm]'))){var nota=(document.getElementById('nota')||{}).value||'';var o={act:x.getAttribute('data-confirm'),cod:x.getAttribute('data-cod'),nota:nota.trim()};if(selCat)o.categoria=selCat;sendVal(o);selCat=null;return;}
+  if((x=e.target.closest('[data-cancel]'))){openForm=null;selCat=null;paint();return;}
   if((x=e.target.closest('[data-reason]'))){var i=document.getElementById('nota');if(i){var r=x.getAttribute('data-reason');i.value=i.value?(i.value+', '+r):r;i.focus();}return;}
-  if((x=e.target.closest('[data-act]'))){openForm={cod:x.getAttribute('data-cod'),act:x.getAttribute('data-act')};paint();return;}
+  if((x=e.target.closest('[data-cat]'))){selCat=x.getAttribute('data-cat');var cs=document.querySelectorAll('[data-cat]');for(var ci=0;ci<cs.length;ci++){var on=cs[ci]===x;cs[ci].style.outline=on?'2px solid #0E7490':'';cs[ci].style.fontWeight=on?'700':'';}return;}
+  if((x=e.target.closest('[data-act]'))){selCat=null;openForm={cod:x.getAttribute('data-cod'),act:x.getAttribute('data-act')};paint();return;}
   if((x=e.target.closest('[data-result]'))){dispatch('resultado:'+x.getAttribute('data-result'),x.getAttribute('data-cod'),'');return;}
   if((x=e.target.closest('[data-docadd]'))){var u=(document.getElementById('doc-url')||{}).value||'';var nm=(document.getElementById('doc-nom')||{}).value||'';if(u.trim())sendVal({act:'doc_link',cod:x.getAttribute('data-docadd'),url:u.trim(),nombre:nm.trim()});return;}
   if((x=e.target.closest('[data-ask-ex]'))){var ai=document.getElementById('ask-input');if(ai){ai.value=x.getAttribute('data-ask-ex');ai.focus();}return;}

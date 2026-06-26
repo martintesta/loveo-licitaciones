@@ -31,6 +31,19 @@
 Modo **asistido**: muestra patrones + aplica ajuste suave y explícito (ej. -8 con nota
 "descartaste 4 similares por muy lejos"), siempre visible y deshacible.
 
+### Categorías de descarte (dos tipos)
+**Calidad** (alimentan el ajuste de score): `muy_lejos`, `margen_bajo`, `mal_pagador`,
+`fuera_de_core`, `requisito_excluyente`, `muy_complejo`.
+**Operativo** (NO tocan el score — son señal del proceso/capacidad, no de la licitación):
+- `visita_perdida` = "no fuimos a la visita obligatoria" → la lic ERA buena; se perdió por no llegar
+  a tiempo. NUNCA penaliza; al contrario, alimenta una **alerta** ("perdiste N buenas por no ir a
+  la visita") y puede **priorizar** las parecidas a futuro para no repetir.
+- `sin_capacidad` = "mucho trabajo actualmente" → restricción de banda, no de la licitación.
+- `otro` = texto libre, neutro.
+
+Regla dura: un descarte `operativo` jamás baja el score de licitaciones parecidas (si no, el sistema
+esconde buenas oportunidades por algo ajeno a la licitación).
+
 ## Riesgos / decisiones abiertas
 - Definir el umbral de "patrón" (¿desde cuántos descartes similares se dispara el ajuste?). Default: 3.
 - Evitar esconder oportunidades: el ajuste se muestra como nota, no borra la lic del listado.

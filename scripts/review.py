@@ -33,6 +33,8 @@ Invariantes del proyecto (violarlos ES un bug, reportalo):
 - NO reportes los placeholders '?' como bug de Postgres: db.conn() devuelve _PGConn, cuyo
   .execute() traduce '?'->'%s' e 'INSERT OR IGNORE'->'ON CONFLICT' automaticamente (db._prep).
   Los '?' en c.execute(...) son la convencion CORRECTA del proyecto.
+- Tampoco reportes 'INTEGER PRIMARY KEY AUTOINCREMENT' como bug de Postgres: db._prep lo
+  traduce a 'SERIAL PRIMARY KEY'. Es la convencion CORRECTA en los CREATE TABLE del proyecto.
 - Secretos solo en .env / variables de entorno, jamas en codigo trackeado.
 - El score es PROVISIONAL; las vistas no inventan data que no exista en el codigo MP real.
 

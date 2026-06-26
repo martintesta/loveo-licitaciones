@@ -10,7 +10,7 @@
 - Entregable: categoría de descarte en la UI (chips reales) + tabla `descartes` (schema_v3)
   + `feedback.descartar` guarda categoría/señales.
 - Listo cuando: `tests/test_aprendizaje.py` verde; un descarte deja fila en `descartes`.
-- Estado: [ ] pendiente
+- Estado: [x] hecho
 
 ## Fase 3 — Panel de patrones + ajuste asistido del score
 - Entregable: módulo `aprendizaje.py` (patrones + delta explícito) + panel "Aprendizaje" +

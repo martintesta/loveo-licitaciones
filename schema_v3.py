@@ -98,6 +98,15 @@ def migrate():
             PRIMARY KEY (codigo, termino)
         );
 
+        CREATE TABLE IF NOT EXISTS descartes (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo    TEXT NOT NULL,
+            categoria TEXT,                          -- clave en feedback.CATEGORIAS
+            tipo      TEXT,                          -- calidad | operativo
+            motivo    TEXT,
+            ts        TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS analisis_bases (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo          TEXT NOT NULL,
@@ -114,6 +123,7 @@ def migrate():
         CREATE INDEX IF NOT EXISTS idx_precios_norm   ON precios_referencia(descripcion_norm);
         CREATE INDEX IF NOT EXISTS idx_precios_fuente ON precios_referencia(fuente);
         CREATE INDEX IF NOT EXISTS idx_analisis_cod   ON analisis_bases(codigo);
+        CREATE INDEX IF NOT EXISTS idx_descartes_cat  ON descartes(categoria);
         """)
         # documentos: en SQLite viejo puede faltar fuente/url → ALTER (PRAGMA es SQLite-only).
         # En Postgres las columnas ya vienen del CREATE de db.py.
