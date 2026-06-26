@@ -138,6 +138,18 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
             pass
         st.session_state.user = None
         st.session_state.tok = None
+    elif act == "add_codigo":
+        codigo = (val.get("codigo") or "").strip()
+        if codigo:
+            import run_daily
+            r = run_daily.procesar_codigo(codigo)
+            if r.get("ok"):
+                est = "admisible" if r.get("admisible") else "no admisible"
+                sc = f" · score {r['score']}" if r.get("score") is not None else ""
+                ya = " (ya estaba, actualizada)" if r.get("ya_existia") else ""
+                st.session_state.flash = f"✓ Agregada {r['codigo']} — {est}{sc}.{ya}"
+            else:
+                st.session_state.flash = r.get("error", "No se pudo agregar.")
     elif cod and act:
         if act == "seguir":
             db.set_estado_revision(cod, "en_revision", "seguir. " + nota)

@@ -56,6 +56,52 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
             "admisibles": admisibles, "errores": errores, "relicitaciones": enlaces}
 
 
+def procesar_codigo(codigo, manual=True):
+    """Alta de UNA licitación por su código MP, salteando el filtro de keywords.
+    Reusa el mismo flujo diario: detalle -> upsert -> extract -> admisibilidad -> score.
+    Devuelve {ok, codigo, nombre, admisible, score, ya_existia} o {ok: False, error}.
+
+      python run_daily.py --codigo 1509-12-LR26
+    """
+    codigo = (codigo or "").strip()
+    if not codigo:
+        return {"ok": False, "error": "Código vacío."}
+    db.init_db()
+    try:
+        det = discover.traer_detalle(codigo)
+    except Exception as e:
+        return {"ok": False, "error": f"No se pudo consultar la API de Mercado Público: {e}"}
+    if not det:
+        return {"ok": False, "error": f"Mercado Público no devolvió datos para '{codigo}'. Revisá el código."}
+
+    row = discover._aplanar_detalle(det)
+    row.setdefault("codigo", codigo)
+    with db.conn() as c:
+        ya = c.execute("SELECT codigo FROM licitaciones WHERE codigo=?", (row["codigo"],)).fetchone() is not None
+        db.upsert_licitacion(c, row)
+        try:
+            extract.extraer(row["codigo"], det, c=c)
+        except Exception as e:
+            db.log_evento(c, row["codigo"], "error", f"extract (alta manual): {e}")
+        adm = rules.evaluar(row)
+        db.set_admisibilidad(c, row["codigo"], adm["admisible"], " | ".join(adm["motivos"]), adm["vigente"])
+        score = None
+        if adm["admisible"] and row.get("region"):
+            try:
+                sc = scoring.score_provisional(row)
+                db.set_score_provisional(c, row["codigo"], sc["score_provisional"],
+                                         json.dumps(sc, ensure_ascii=False),
+                                         sc["requiere_bases"] or adm["requiere_bases"])
+                score = sc["score_provisional"]
+            except Exception as e:
+                db.log_evento(c, row["codigo"], "error", f"scoring (alta manual): {e}")
+        if manual:
+            db.log_evento(c, row["codigo"], "agregada_manual",
+                          "alta manual por código" + (" (ya existía, actualizada)" if ya else ""))
+    return {"ok": True, "codigo": row["codigo"], "nombre": row.get("nombre"),
+            "admisible": bool(adm["admisible"]), "score": score, "ya_existia": ya}
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if "--cache" in args:
@@ -63,6 +109,9 @@ if __name__ == "__main__":
         listado = json.load(open(args[i + 1]))["Listado"]
         fecha = args[i + 2] if len(args) > i + 2 else time.strftime("%d%m%Y")
         print(json.dumps(procesar_dia(fecha, listado=listado, traer_detalles=False), indent=2, ensure_ascii=False))
+    elif "--codigo" in args:
+        codigo = args[args.index("--codigo") + 1]
+        print(json.dumps(procesar_codigo(codigo), indent=2, ensure_ascii=False))
     elif "--backfill" in args:
         n = int(args[args.index("--backfill") + 1])
         db.init_db()

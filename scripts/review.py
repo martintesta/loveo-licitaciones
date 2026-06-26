@@ -30,6 +30,9 @@ Invariantes del proyecto (violarlos ES un bug, reportalo):
 - IDs nuevos -> "INSERT ... RETURNING id", nunca cur.lastrowid (devuelve None en Postgres).
 - Conteo de booleanos -> SUM(CASE WHEN x THEN 1 ELSE 0 END), nunca SUM(x='y') (rompe en PG).
 - Todo SQL pasa por db.conn(); pensa SIEMPRE el caso Postgres ademas del SQLite.
+- NO reportes los placeholders '?' como bug de Postgres: db.conn() devuelve _PGConn, cuyo
+  .execute() traduce '?'->'%s' e 'INSERT OR IGNORE'->'ON CONFLICT' automaticamente (db._prep).
+  Los '?' en c.execute(...) son la convencion CORRECTA del proyecto.
 - Secretos solo en .env / variables de entorno, jamas en codigo trackeado.
 - El score es PROVISIONAL; las vistas no inventan data que no exista en el codigo MP real.
 
@@ -43,7 +46,9 @@ DIFF A REVISAR:
 
 
 def _run(cmd):
-    return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True).stdout
+    # encoding explicito: en Windows el default es cp1252 y revienta con UTF-8 del diff.
+    return subprocess.run(cmd, cwd=ROOT, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace").stdout
 
 
 def get_diff():

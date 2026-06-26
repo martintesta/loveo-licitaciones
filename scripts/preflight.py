@@ -35,7 +35,9 @@ _PLACEHOLDER = re.compile(r"(EJEMPLO|EXAMPLE|placeholder|TU-NUEVA|<tu|xxxx)", re
 
 
 def _run(cmd):
-    return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    # encoding explicito: en Windows el default es cp1252 y revienta con UTF-8 (git grep/diff).
+    return subprocess.run(cmd, cwd=ROOT, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace")
 
 
 def scan_secrets():
