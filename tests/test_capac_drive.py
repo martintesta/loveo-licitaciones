@@ -37,3 +37,19 @@ def test_estimar_codigo_inexistente_no_crashea(tmp_path, monkeypatch):
     r = capac_score.estimar("NO-EXISTE-123")
     assert isinstance(r, dict) and "ok" in r
     assert r["ok"] is False
+
+
+def test_disponible_false_sin_credenciales(tmp_path, monkeypatch):
+    monkeypatch.setattr(drive, "SA_FILE", tmp_path / "no_service_account.json")
+    monkeypatch.setattr(drive, "TOKEN", tmp_path / "no_token.json")
+    assert drive.disponible() is False
+
+
+def test_disponible_true_con_token(tmp_path, monkeypatch):
+    # disponible() solo chequea EXISTENCIA del archivo, no la validez del token (a propósito):
+    # es la puerta para mostrar "conectá Drive", no la autenticación real.
+    tok = tmp_path / "token.json"
+    tok.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(drive, "SA_FILE", tmp_path / "no_service_account.json")
+    monkeypatch.setattr(drive, "TOKEN", tok)
+    assert drive.disponible() is True
