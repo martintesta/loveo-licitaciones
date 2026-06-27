@@ -1,5 +1,20 @@
-"""Tests de filters: keywords (límite de palabra) y admisibilidad."""
+"""Tests de filters: keywords (límite de palabra) y admisibilidad.
+
+Herméticos: las keywords se FIJAN en un fixture (no dependen de config_local.py, que es
+privado y no existe en CI). Acá se prueba la LÓGICA de matching, no la calibración real.
+"""
+import pytest
+
+import filters
 from filters import pasa_keywords, admisibilidad
+
+
+@pytest.fixture(autouse=True)
+def _keywords_fijas(monkeypatch):
+    monkeypatch.setattr(filters, "KEYWORDS_INCLUIR",
+                        ["reas", "box dental", "prefabricad", "modulo", "container", "modular"])
+    monkeypatch.setattr(filters, "KEYWORDS_EXCLUIR", ["capacitacion", "areas verdes"])
+    monkeypatch.setattr(filters, "KEYWORDS_AMPLIO", [])
 
 
 def test_areas_no_matchea_reas():

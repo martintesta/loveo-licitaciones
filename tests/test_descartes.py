@@ -1,5 +1,18 @@
-"""Tests de M-1: clasificación de keywords para feedback de descartes."""
+"""Tests de M-1: clasificación de keywords para feedback de descartes.
+
+Herméticos: keywords fijadas en un fixture (no dependen de config_local.py / CI).
+"""
+import pytest
+
+import filters
 from filters import clasificar_keywords
+
+
+@pytest.fixture(autouse=True)
+def _keywords_fijas(monkeypatch):
+    monkeypatch.setattr(filters, "KEYWORDS_INCLUIR", ["box dental", "modulo", "container"])
+    monkeypatch.setattr(filters, "KEYWORDS_EXCLUIR", ["modulo de capacitacion", "capacitacion"])
+    monkeypatch.setattr(filters, "KEYWORDS_AMPLIO", [])
 
 
 def test_incluir_y_excluir_marca_kw_excluir():
