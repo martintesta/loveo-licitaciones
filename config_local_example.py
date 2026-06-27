@@ -22,3 +22,17 @@ LOGISTICA_TIER = {
 }
 
 CASHFLOW_TIER = {1: 1, 2: 2, 3: 3}
+
+
+# --- Calibración OPCIONAL (descomentá en tu config_local.py para sobreescribir los defaults) ---
+
+# Distancias reales por carretera (km) desde cada base, por región normalizada (sin acentos,
+# minúsculas). Reemplaza las APROXIMACIONES de scoring.py:BASES con tus números reales.
+# BASES_DISTANCIAS = {
+#     "Pirque":       {"metropolitana": 30, "maule": 250, "los lagos": 1000},
+#     "Puerto Montt": {"los lagos": 30, "araucania": 350, "metropolitana": 1000},
+# }
+
+# Aprendizaje de descartes (aprendizaje.py): cuándo y cuánto ajusta el score.
+# APRENDIZAJE_UMBRAL = 3   # descartes parecidos para disparar el ajuste
+# APRENDIZAJE_PENAL = {"muy_lejos": 6, "mal_pagador": 8, "requisito_excluyente": 8}  # baja sobre 120

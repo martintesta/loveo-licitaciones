@@ -362,6 +362,7 @@ function renderAprendizaje(){
   function plist(title,arr){var hh='<div class="panel" style="margin-top:13px"><div class="plabel">'+title+'</div>';if(!arr||!arr.length){hh+='<div class="mut" style="padding:6px 0">— sin patrón aún</div>';}else{for(var j=0;j<arr.length;j++)hh+='<div class="kwrow"><span class="kwt">'+esc(arr[j].k)+'</span><span class="kwo">'+arr[j].n+' descartes</span></div>';}return hh+'</div>';}
   h+=plist('MUY LEJOS · POR REGIÓN',a.muy_lejos_region);
   h+=plist('MAL PAGADOR · POR COMPRADOR',a.mal_pagador_org);
+  h+=plist('REQUISITO EXCLUYENTE · POR COMPRADOR',a.requisito_excluyente_org);
   return h;
 }
 function mkpi(l,n,c){return '<div class="kpi" style="cursor:default"><div class="l">'+l+'</div><div class="n" style="color:'+c+'">'+n+'</div></div>';}

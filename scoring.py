@@ -47,6 +47,14 @@ BASES = {
         "valparaíso": 1120, "valparaiso": 1120, "o'higgins": 950, "ohiggins": 950,
     },
 }
+# Calibración real opcional desde config_local.py (BASES_DISTANCIAS, misma estructura
+# {base: {region_norm: km}}). Si no está, quedan las aproximaciones de arriba.
+try:
+    from config import BASES_DISTANCIAS as _BASES_CFG
+    if _BASES_CFG:
+        BASES = _BASES_CFG
+except (ImportError, AttributeError):
+    pass
 
 PRODUCTOS_CORE = ["container", "conteiner", "contenedor", "box dental", "box veterinari",
                   "módulo", "modulo", "modular", "baño modular", "baños modulares",

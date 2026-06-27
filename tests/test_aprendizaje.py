@@ -80,6 +80,23 @@ def test_visita_perdida_no_penaliza_solo_alerta():
     assert a["alertas"] and "visita" in a["alertas"][0].lower()
 
 
+def test_requisito_excluyente_penaliza_por_comprador():
+    """#9: nueva señal atribuible — si un comprador siempre exige lo que no podés."""
+    cargado = {"requisito_excluyente_org": {"Muni W": aprendizaje.UMBRAL}}
+    a = aprendizaje.ajuste_lic(cargado, "Región", "Muni W")
+    assert a["delta"] == -aprendizaje.PENAL["requisito_excluyente"]
+    assert a["razones"] and "requisito" in a["razones"][0].lower()
+
+
+def test_penales_se_acumulan_mismo_comprador():
+    """Dos patrones de calidad sobre el mismo comprador suman su penalización."""
+    cargado = {"mal_pagador_org": {"Muni W": aprendizaje.UMBRAL},
+               "requisito_excluyente_org": {"Muni W": aprendizaje.UMBRAL}}
+    a = aprendizaje.ajuste_lic(cargado, "X", "Muni W")
+    assert a["delta"] == -(aprendizaje.PENAL["mal_pagador"] + aprendizaje.PENAL["requisito_excluyente"])
+    assert len(a["razones"]) == 2
+
+
 # ---------------------------------------------------------------- Fase 3: carga desde DB (integración)
 def test_cargar_y_ajuste_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DATABASE_URL", "")
