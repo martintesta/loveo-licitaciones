@@ -68,8 +68,29 @@ def _dims(sj):
     return out
 
 
+_INIT_DONE = set()
+
+
+def _ensure_init():
+    """migrate() + backfill() son setup/mantenimiento. Correrlos en CADA build_data (cada
+    carga de página y cada acción) contra Neon cross-continente es carísimo: el DDL de migrate
+    son decenas de statements × latencia EE.UU.↔SA. Se corren UNA vez por proceso y por base
+    (clave = DATABASE_URL o ruta sqlite). Un nuevo deploy reinicia el proceso y los re-corre.
+    Tests: cada base temporal es una clave distinta, así que igual migran."""
+    key = db.DATABASE_URL or str(db.DB_PATH)
+    if key in _INIT_DONE:
+        return
+    schema_v3.migrate()
+    try:
+        import kwstats
+        kwstats.backfill()
+    except Exception:
+        pass
+    _INIT_DONE.add(key)
+
+
 def build_data():
-    schema_v3.migrate()  # asegura tablas v3 + columnas documentos(fuente,url)
+    _ensure_init()  # migrate + backfill: una vez por proceso/base, NO en cada carga
     now = datetime.datetime.now()
     year = now.year
     with db.conn() as c:
@@ -217,8 +238,7 @@ def build_data():
 
     try:
         import kwstats
-        kwstats.backfill()
-        kw_perf = kwstats.stats()
+        kw_perf = kwstats.stats()  # backfill ya corrió en _ensure_init (1 vez por proceso)
         kws = kwmod.listar()
         for k in kws:
             s = kw_perf.get(k["termino"])

@@ -11,11 +11,33 @@ adjudicaciones reales (items) y búsqueda web.
 
   python schema_v3.py
 """
+import threading
+
 import db
 
 
+_MIGRATED = set()
+_LOCK = threading.Lock()
+
+
 def migrate():
-    """Idempotente: crea las tablas v3 y agrega columnas faltantes a `documentos`. Sin print."""
+    """Idempotente: crea las tablas v3 y agrega columnas faltantes a `documentos`. Sin print.
+
+    Cacheado por proceso y por base (clave = DATABASE_URL o ruta sqlite): el DDL son decenas de
+    statements y migrate() se llama desde muchos lados; correrlo en CADA request contra Neon
+    cross-continente es carísimo. Un nuevo deploy reinicia el proceso y lo vuelve a correr.
+    Tests: cada base temporal es una clave distinta, así que igual migran."""
+    key = db.DATABASE_URL or str(db.DB_PATH)
+    if key in _MIGRATED:                       # fast-path sin lock
+        return
+    with _LOCK:
+        if key in _MIGRATED:                   # double-check (sesiones concurrentes de Streamlit)
+            return
+        _crear_tablas()
+        _MIGRATED.add(key)
+
+
+def _crear_tablas():
     db.init_db()
     with db.conn() as c:
         c.executescript("""

@@ -37,3 +37,23 @@ def test_incompleto_marca_lics_sin_detalle(tmp_path, monkeypatch):
     assert data["lics"]["SINDET"]["incompleto"] is True   # extracción incompleta -> badge "SIN DETALLE"
     assert data["lics"]["CONDET"]["incompleto"] is False
     assert data["actualizado"]  # hay fecha de actualización
+
+
+def test_build_data_no_repite_el_trabajo_pesado(tmp_path, monkeypatch):
+    """Perf: migrate() está cacheado por base, así que el DDL (db.init_db) corre UNA sola vez
+    pese a múltiples build_data y a que muchos módulos llaman migrate()."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    import schema_v3
+    import tablero_data
+    key = str(tmp_path / "t.db")
+    schema_v3._MIGRATED.discard(key)
+    tablero_data._INIT_DONE.discard(key)
+
+    n = {"c": 0}
+    orig = db.init_db
+    monkeypatch.setattr(db, "init_db", lambda: (n.__setitem__("c", n["c"] + 1), orig())[1])
+
+    tablero_data.build_data()
+    tablero_data.build_data()
+    assert n["c"] == 1   # el trabajo pesado del schema corre una sola vez por proceso/base
