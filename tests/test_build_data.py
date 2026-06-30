@@ -22,3 +22,18 @@ def test_build_data_devuelve_estructura(tmp_path, monkeypatch):
     assert isinstance(data["groups"], dict)
     # el panel de aprendizaje siempre trae su umbral (aunque no haya descartes)
     assert "umbral" in data["aprendizaje"]
+    assert "actualizado" in data  # freshness de los datos
+
+
+def test_incompleto_marca_lics_sin_detalle(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "SINDET", "nombre": "solo codigo y nombre"})   # sin json_detalle
+        db.upsert_licitacion(c, {"codigo": "CONDET", "nombre": "con detalle", "json_detalle": "{}"})
+    import tablero_data
+    data = tablero_data.build_data()
+    assert data["lics"]["SINDET"]["incompleto"] is True   # extracción incompleta -> badge "SIN DETALLE"
+    assert data["lics"]["CONDET"]["incompleto"] is False
+    assert data["actualizado"]  # hay fecha de actualización

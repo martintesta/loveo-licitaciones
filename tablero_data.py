@@ -125,6 +125,7 @@ def build_data():
             "tri": sj.get("triage"), "reqBases": bool(sj.get("requiere_bases")), "dims": _dims(sj),
             "descr": (r["descripcion"] or "")[:1200], "eventos": eventos.get(cod, []),
             "docs": docs.get(cod, []), "analisis": analisis.get(cod),
+            "incompleto": r["json_detalle"] is None,  # no se bajó el detalle (solo código+nombre)
         }
 
         if rev != "descartada":
@@ -226,9 +227,12 @@ def build_data():
     except Exception:
         kws = []
 
+    _acts = [a for a in (_parse(r["fecha_actualizada"]) for r in raw) if a]
+    actualizado = max(_acts).strftime("%d-%m-%Y %H:%M") if _acts else ""
     return {
         "lics": lics, "order": order, "groups": groups, "intel": intel, "metricas": metricas,
         "keywords": kws,
+        "actualizado": actualizado,
         "aprendizaje": aprendizaje.resumen(_ap),
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
