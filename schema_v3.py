@@ -129,6 +129,16 @@ def _crear_tablas():
             ts        TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS resultados (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo    TEXT NOT NULL,
+            resultado TEXT,                          -- ganada | perdida | desierta
+            categoria TEXT,                          -- clave en feedback.RESULTADO_CATEGORIAS
+            impacto   TEXT,                          -- positivo | malfit | competida | neutro
+            motivo    TEXT,
+            ts        TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS analisis_bases (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo          TEXT NOT NULL,
@@ -146,6 +156,7 @@ def _crear_tablas():
         CREATE INDEX IF NOT EXISTS idx_precios_fuente ON precios_referencia(fuente);
         CREATE INDEX IF NOT EXISTS idx_analisis_cod   ON analisis_bases(codigo);
         CREATE INDEX IF NOT EXISTS idx_descartes_cat  ON descartes(categoria);
+        CREATE INDEX IF NOT EXISTS idx_resultados_cat ON resultados(categoria);
         """)
         # documentos: en SQLite viejo puede faltar fuente/url → ALTER (PRAGMA es SQLite-only).
         # En Postgres las columnas ya vienen del CREATE de db.py.

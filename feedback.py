@@ -35,6 +35,42 @@ def categorias_para_ui():
     return [{"k": k, "l": v["label"], "tipo": v["tipo"]} for k, v in CATEGORIAS.items()]
 
 
+# Categorías de RESULTADO (ganada/perdida) con su impacto en el aprendizaje (Fase B).
+#   positivo  -> victoria: sube el score de parecidas
+#   malfit    -> pérdida estructural (no era para nosotros): baja el score de parecidas
+#   competida -> pérdida competitiva (precio/competencia): NO toca el score (era buena)
+#   neutro    -> no aprende
+RESULTADO_CATEGORIAS = {
+    "precio_competitivo": {"label": "Ganada · precio competitivo", "resultado": "ganada", "impacto": "positivo"},
+    "unico_oferente":     {"label": "Ganada · únicos oferentes", "resultado": "ganada", "impacto": "positivo"},
+    "buena_relacion":     {"label": "Ganada · buena relación con el comprador", "resultado": "ganada", "impacto": "positivo"},
+    "gana_otro":          {"label": "Ganada · otro", "resultado": "ganada", "impacto": "positivo"},
+    "precio":             {"label": "Perdida · por precio", "resultado": "perdida", "impacto": "competida"},
+    "competencia_fuerte": {"label": "Perdida · competencia fuerte", "resultado": "perdida", "impacto": "competida"},
+    "requisito":          {"label": "Perdida · no cumplíamos un requisito", "resultado": "perdida", "impacto": "malfit"},
+    "plazo":              {"label": "Perdida · plazo imposible", "resultado": "perdida", "impacto": "malfit"},
+    "mal_fit":            {"label": "Perdida · no era para nosotros", "resultado": "perdida", "impacto": "malfit"},
+    "perd_otro":          {"label": "Perdida · otro", "resultado": "perdida", "impacto": "neutro"},
+}
+
+
+def categorias_resultado_para_ui():
+    """[{k, l, resultado, impacto}] para el form de marcar resultado en la ficha."""
+    return [{"k": k, "l": v["label"], "resultado": v["resultado"], "impacto": v["impacto"]}
+            for k, v in RESULTADO_CATEGORIAS.items()]
+
+
+def marcar_resultado(codigo, resultado, categoria=None, motivo=""):
+    """Marca el resultado (ganada/perdida/desierta) y guarda el motivo estructurado en `resultados`.
+    La tabla la crea schema_v3.migrate() (la app migra en cada carga; no en el hot-path)."""
+    db.set_estado_resultado(codigo, resultado, motivo)
+    cat = (categoria or "").strip().lower() or None
+    impacto = RESULTADO_CATEGORIAS.get(cat, {}).get("impacto") if cat else None
+    with db.conn() as c:
+        c.execute("INSERT INTO resultados(codigo, resultado, categoria, impacto, motivo, ts) "
+                  "VALUES (?,?,?,?,?,?)", (codigo, resultado, cat, impacto, motivo, db._now()))
+
+
 def aprender_exclusion(termino: str):
     termino = termino.strip().lower()
     if not termino:
