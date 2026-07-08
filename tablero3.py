@@ -98,6 +98,7 @@ data["chat"] = st.session_state.get("chat", [])
 data["pending_capac"] = st.session_state.get("pending_capac", {})
 data["user"] = st.session_state.user
 data["categorias"] = feedback.categorias_para_ui()
+data["categorias_resultado"] = feedback.categorias_resultado_para_ui()
 val = _console(data=data, key="console", default=None)
 
 if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_state.last_nonce:
@@ -159,7 +160,7 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
         elif act == "descartar":
             feedback.descartar(cod, nota or "descartada", categoria=val.get("categoria"))
         elif act.startswith("resultado:"):
-            db.set_estado_resultado(cod, act.split(":", 1)[1], nota)
+            feedback.marcar_resultado(cod, act.split(":", 1)[1], categoria=val.get("categoria"), motivo=nota)
         elif act == "capac":
             est = capac_score.estimar(cod)
             if not est["ok"]:

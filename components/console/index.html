@@ -246,13 +246,19 @@ function filterListado(){var cod=naLC(document.getElementById('f-cod').value),kw
 function renderRadar(){var arr=D.groups.siguiendo,h='<div class="eyebrow">TU SEGUIMIENTO</div><div class="h1">Radar</div><div class="dsub">'+arr.length+(arr.length===1?' licitación en seguimiento':' licitaciones en seguimiento')+'</div>';if(!arr.length)return h+'<div class="empty">Todavía no seguís ninguna licitación.<br>Pasá una a revisión o aprobala desde Señales / la ficha y aparece acá.<br><span style="color:#9AA2AC">El alta manual por código MP y el toggle tabla/kanban llegan en el próximo paso.</span></div>';return h+'<div class="tbl">'+thead()+listRowsHTML(arr)+'</div>';}
 
 function notaForm(act,cod){
-  var q=(act==='seguir')?'¿Por qué la seguís?':(act==='aprobar'?'¿Por qué la aprobás?':'¿Por qué la descartás?');
-  var chips,hint='';
-  if(act==='descartar'){
+  var q,chips,hint='';
+  if(act.indexOf('resultado:')===0){
+    var res=act.split(':')[1];
+    q=(res==='ganada')?'¿Por qué la ganaste?':'¿Por qué la perdiste?';
+    chips=(D.categorias_resultado||[]).filter(function(c){return c.resultado===res;}).map(function(c){return '<button class="chip" data-cat="'+escA(c.k)+'">'+esc(c.l)+'</button>';}).join('');
+    hint='<div class="dochint" style="margin:2px 0 6px">Elegí el motivo: el sistema <b>aprende de tus resultados</b>. Las victorias suben licitaciones parecidas; las pérdidas por competencia/precio NO bajan el score (era buena, competiste).</div>';
+  } else if(act==='descartar'){
+    q='¿Por qué la descartás?';
     var cats=D.categorias||[];
     chips=cats.map(function(c){var op=(c.tipo==='operativo');return '<button class="chip" data-cat="'+escA(c.k)+'" title="'+(op?'operativo · no afecta el score':'calidad · mejora el score de parecidas')+'">'+esc(c.l)+'</button>';}).join('');
     hint='<div class="dochint" style="margin:2px 0 6px">Elegí una categoría: las de <b>calidad</b> mejoran el score futuro de licitaciones parecidas; las <b>operativas</b> (visita / capacidad) no tocan el score.</div>';
   } else {
+    q=(act==='seguir')?'¿Por qué la seguís?':'¿Por qué la aprobás?';
     chips=REASONS.map(function(r){return '<button class="chip" data-reason="'+escA(r)+'">'+esc(r)+'</button>';}).join('');
   }
   return '<div class="form"><div class="fq">'+q+'</div>'+hint+'<div class="chips">'+chips+'</div><div class="frow"><input id="nota" placeholder="Detalle del motivo (opcional)…"><button class="b ok" data-confirm="'+act+'" data-cod="'+escA(cod)+'">Confirmar</button><button class="b gh" data-cancel="1">Cancelar</button></div></div>';
@@ -402,7 +408,7 @@ document.addEventListener('click',function(e){
   if((x=e.target.closest('[data-reason]'))){var i=document.getElementById('nota');if(i){var r=x.getAttribute('data-reason');i.value=i.value?(i.value+', '+r):r;i.focus();}return;}
   if((x=e.target.closest('[data-cat]'))){selCat=x.getAttribute('data-cat');var cs=document.querySelectorAll('[data-cat]');for(var ci=0;ci<cs.length;ci++){var on=cs[ci]===x;cs[ci].style.outline=on?'2px solid #0E7490':'';cs[ci].style.fontWeight=on?'700':'';}return;}
   if((x=e.target.closest('[data-act]'))){selCat=null;openForm={cod:x.getAttribute('data-cod'),act:x.getAttribute('data-act')};paint();return;}
-  if((x=e.target.closest('[data-result]'))){dispatch('resultado:'+x.getAttribute('data-result'),x.getAttribute('data-cod'),'');return;}
+  if((x=e.target.closest('[data-result]'))){var rr=x.getAttribute('data-result');if(rr==='desierta'){dispatch('resultado:desierta',x.getAttribute('data-cod'),'');}else{selCat=null;openForm={cod:x.getAttribute('data-cod'),act:'resultado:'+rr};paint();}return;}
   if((x=e.target.closest('[data-docadd]'))){var u=(document.getElementById('doc-url')||{}).value||'';var nm=(document.getElementById('doc-nom')||{}).value||'';if(u.trim())sendVal({act:'doc_link',cod:x.getAttribute('data-docadd'),url:u.trim(),nombre:nm.trim()});return;}
   if((x=e.target.closest('[data-ask-ex]'))){var ai=document.getElementById('ask-input');if(ai){ai.value=x.getAttribute('data-ask-ex');ai.focus();}return;}
   if((x=e.target.closest('[data-ask]'))){var ai2=document.getElementById('ask-input');var q=(ai2&&ai2.value||'').trim();if(q){x.textContent='Pensando…';if(ai2)ai2.value='';sendVal({act:'ask',question:q});}return;}

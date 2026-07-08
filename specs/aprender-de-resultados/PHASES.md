@@ -7,7 +7,7 @@
     - Perdida: `precio`, `competencia_fuerte`, `requisito`, `plazo`, `mal_fit`, `otro`
 - UI: el form de "marcar resultado" en la ficha pide la categoría (chips, como descartes).
 - Listo cuando: `tests/test_resultados.py` verde; marcar resultado deja fila con categoría.
-- Estado: [ ] pendiente
+- Estado: [x] hecho (backend + UI: form de motivo en la ficha al marcar ganada/perdida)
 
 ## Fase B — Aprendizaje de resultados (#2)
 - Entregable: `aprendizaje.py` suma señal de VICTORIAS (por región/organismo → sube el score de
