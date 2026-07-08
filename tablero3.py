@@ -36,6 +36,7 @@ import asistente
 import capac_score
 import keywords
 import usuarios
+import recall
 
 st.set_page_config(page_title="Loveo Construcciones", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
@@ -152,6 +153,13 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
                 st.session_state.flash = f"✓ Agregada {r['codigo']} — {est}{sc}.{ya}"
             else:
                 st.session_state.flash = r.get("error", "No se pudo agregar.")
+    elif act == "recall":
+        rcod = (val.get("cod") or "").strip()
+        acc = val.get("accion")
+        if rcod and len(rcod) <= 20 and acc in ("promovida", "descartada"):
+            recall.resolver(rcod, acc)
+            st.session_state.flash = (f"✓ {rcod} marcada relevante — copiala al alta manual del Listado."
+                                      if acc == "promovida" else f"Descartada del recall: {rcod}.")
     elif cod and act:
         if act == "seguir":
             db.set_estado_revision(cod, "en_revision", "seguir. " + nota)

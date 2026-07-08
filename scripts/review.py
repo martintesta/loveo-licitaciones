@@ -64,6 +64,14 @@ def get_diff():
 
 
 def main():
+    # La respuesta del modelo trae flechas/emojis; la consola Windows es cp1252 y el print crashea.
+    # Salida tolerante para que la revisión se lea en vez de reventar.
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     diff = (get_diff() or "").strip()
     if not diff:
         print("[review] No hay diff para revisar.")

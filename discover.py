@@ -145,12 +145,18 @@ def _aplanar_detalle(d: dict) -> dict:
 
 def correr_dia(fecha_ddmmaaaa: str, traer_detalles=True, pausa_detalle=1.0) -> dict:
     """Descubre el día, filtra por keywords, (opcional) trae detalle y persiste en SQLite."""
+    import schema_v3
+    import recall
     db.init_db()
+    schema_v3.migrate()  # asegura recall_log (auditoría de recall). Cacheado por base: barato.
     listado = listar_dia(fecha_ddmmaaaa)
     candidatos = [x for x in listado if matchea(x.get("Nombre", ""))]
     nuevas = actualizadas = 0
 
     with db.conn() as c:
+        # Auditoría de recall: clasifica TODO el día y registra lo accionable (recall + excluido)
+        # que el filtro estricto no trajo, para poder cazar falsos negativos y sobre-exclusiones.
+        buckets = recall.registrar_descartes(c, listado, fecha_ddmmaaaa)
         for item in candidatos:
             codigo = item["CodigoExterno"]
             if traer_detalles:
@@ -173,7 +179,8 @@ def correr_dia(fecha_ddmmaaaa: str, traer_detalles=True, pausa_detalle=1.0) -> d
             actualizadas += res == "actualizada"
 
     return {"fecha": fecha_ddmmaaaa, "total_dia": len(listado),
-            "candidatos": len(candidatos), "nuevas": nuevas, "actualizadas": actualizadas}
+            "candidatos": len(candidatos), "nuevas": nuevas, "actualizadas": actualizadas,
+            "recall": buckets.get("recall", 0), "excluido": buckets.get("excluido", 0)}
 
 
 if __name__ == "__main__":

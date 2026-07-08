@@ -73,6 +73,15 @@ def main():
     if "--install-hook" in sys.argv:
         return install_hook()
 
+    # La consola de Windows es cp1252: imprimir salida de tests con caracteres UTF-8 (o el �
+    # que deja errors="replace") crashea y bloquea el push por la razón equivocada. Forzamos salida
+    # tolerante para que un fallo real se VEA en vez de reventar el hook.
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     failed = False
 
     secrets = scan_secrets()

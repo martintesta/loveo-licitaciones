@@ -13,6 +13,7 @@ import schema_v3
 import competencia
 import keywords as kwmod
 import aprendizaje
+import recall
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
          "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -257,6 +258,7 @@ def build_data():
         "keywords": kws,
         "actualizado": actualizado,
         "aprendizaje": aprendizaje.resumen(_ap),
+        "recall": recall.auditar(),
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
             "mesAb": MESES_AB, "meses": MESES,

@@ -29,7 +29,7 @@ TABLES = [
     "eventos", "documentos", "adjudicaciones", "items",
     "competidores", "participaciones", "relicitaciones",
     "descartes", "resultados", "licitacion_keywords", "analisis_bases",
-    "cubicaciones", "cubicacion_items", "precios_referencia",
+    "cubicaciones", "cubicacion_items", "precios_referencia", "recall_log",
 ]
 
 

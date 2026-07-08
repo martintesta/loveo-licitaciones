@@ -152,11 +152,24 @@ def _crear_tablas():
             score_despues   INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS recall_log (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo    TEXT,
+            nombre    TEXT,
+            fecha_run TEXT,                          -- ddmmaaaa del run de discovery
+            bucket    TEXT,                          -- recall | excluido (ver recall.py)
+            kw        TEXT,                          -- término(s) que explican el bucket
+            estado    TEXT DEFAULT 'pendiente',      -- pendiente | promovida | descartada
+            ts        TEXT
+        );
+
         CREATE INDEX IF NOT EXISTS idx_precios_norm   ON precios_referencia(descripcion_norm);
         CREATE INDEX IF NOT EXISTS idx_precios_fuente ON precios_referencia(fuente);
         CREATE INDEX IF NOT EXISTS idx_analisis_cod   ON analisis_bases(codigo);
         CREATE INDEX IF NOT EXISTS idx_descartes_cat  ON descartes(categoria);
         CREATE INDEX IF NOT EXISTS idx_resultados_cat ON resultados(categoria);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_recall_cod_run ON recall_log(codigo, fecha_run);
+        CREATE INDEX IF NOT EXISTS idx_recall_estado ON recall_log(estado);
         """)
         # documentos: en SQLite viejo puede faltar fuente/url → ALTER (PRAGMA es SQLite-only).
         # En Postgres las columnas ya vienen del CREATE de db.py.

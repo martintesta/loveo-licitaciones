@@ -236,6 +236,7 @@ function renderInicio(){
   for(var f=0;f<m.embOrder.length;f++){var ph=m.embOrder[f],ev=getGroup('emb:'+ph).length,ew=Math.round(100*ev/maxE);h+='<div class="fstage" data-list="emb:'+escA(ph)+'" data-title="'+escA(ph)+'"><span class="fl">'+ph.toUpperCase()+'</span><div class="fbar"><div style="height:100%;width:'+ew+'%;background:'+m.embColors[ph]+'"></div></div><span class="fc">'+ev+'</span></div>';}
   h+='</div>';
   h+=renderIntel();
+  h+=renderRecall();
   h+=renderChat();
   return h;
 }
@@ -330,6 +331,22 @@ function renderIntel(){
   var adj=(t.adjudicaciones||[]).map(function(a){return '<div class="it">'+esc(a.producto)+'<div class="mut">'+esc(a.ganador)+' · '+esc(a.monto)+' · '+a.oferentes+' of.</div></div>';});
   return '<div class="intel3">'+col('DESIERTAS FIT (OPORTUNIDAD)',des,'sin desiertas detectadas')+col('COMPETIDORES A VIGILAR',comp)+col('ÚLTIMAS ADJUDICACIONES',adj)+'</div>';
 }
+function renderRecall(){
+  var r=D.recall||{},items=r.items||[];
+  if(!r.pendientes)return '';
+  var h='<div class="panel" style="margin-top:13px"><div class="plabel">RECALL · LO QUE EL FILTRO NO TRAJO ('+r.pendientes+')</div>';
+  h+='<div class="dochint" style="margin:0 0 8px"><b>'+(r.recall||0)+'</b> por la red amplia (posible falso negativo) y <b>'+(r.excluido||0)+'</b> frenadas por una exclusión (posible sobre-exclusión). Si alguna sirve, copiá el código al alta manual del Listado o sumá la keyword en Palabras clave.</div>';
+  for(var i=0;i<items.length;i++){var it=items[i],amber=(it.bucket==='recall');
+    h+='<div class="it" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +'<span class="pill" style="color:'+(amber?'#B45309':'#B91C1C')+';background:'+(amber?'#FEF3C7':'#FEE2E2')+'">'+(amber?'RECALL':'EXCLUIDO')+'</span>'
+      +'<span class="code" style="cursor:text;user-select:all" title="Copiá este código al alta manual del Listado">'+esc(it.codigo||'—')+'</span>'
+      +'<span style="flex:1;min-width:140px">'+esc(it.nombre||'—')+'<div class="mut">por: '+esc(it.kw||'—')+'</div></span>'
+      +'<button class="b ok sm" data-recall-cod="'+escA(it.codigo)+'" data-recall-acc="promovida" title="Es relevante: sacar de la cola">Relevante</button>'
+      +'<button class="b gh sm" data-recall-cod="'+escA(it.codigo)+'" data-recall-acc="descartada" title="No es para Loveo: sacar de la cola">Descartar</button>'
+      +'</div>';
+  }
+  return h+'</div>';
+}
 function renderChat(){
   var chat=D.chat||[];
   var ej=['¿Cuántas REAS hay?','¿Cuál tiene el score más alto?','Las que cierran esta semana','/kw eval panel solar','/kw help'];
@@ -421,6 +438,7 @@ document.addEventListener('click',function(e){
   if((x=e.target.closest('[data-ask]'))){var ai2=document.getElementById('ask-input');var q=(ai2&&ai2.value||'').trim();if(q){x.textContent='Pensando…';if(ai2)ai2.value='';sendVal({act:'ask',question:q});}return;}
   if((x=e.target.closest('[data-logout]'))){sendVal({act:'logout'});return;}
   if((x=e.target.closest('[data-addcode]'))){var ci=document.getElementById('add-code');var cc=(ci&&ci.value||'').trim();if(cc){x.textContent='Agregando…';if(ci)ci.value='';sendVal({act:'add_codigo',codigo:cc});}return;}
+  if((x=e.target.closest('[data-recall-cod]'))){sendVal({act:'recall',cod:x.getAttribute('data-recall-cod'),accion:x.getAttribute('data-recall-acc')});return;}
   if((x=e.target.closest('[data-kw-add]'))){var ki=document.getElementById('kw-input');var term=(ki&&ki.value||'').trim();if(term){if(ki)ki.value='';sendVal({act:'kw_add',termino:term,tipo:x.getAttribute('data-kw-add')});}return;}
   if((x=e.target.closest('[data-kw-toggle]'))){sendVal({act:'kw_toggle',kid:x.getAttribute('data-kw-toggle'),on:x.getAttribute('data-on')});return;}
   if((x=e.target.closest('[data-capac-run]'))){sendVal({act:'capac_run',cod:x.getAttribute('data-capac-run')});return;}
