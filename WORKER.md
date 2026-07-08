@@ -1,14 +1,29 @@
-# Worker residencial (Capa B) — deploy
+# Worker residencial (Capa B + Capa C) — deploy
 
-El worker baja las **bases** de las licitaciones admisibles (Capa B). Tiene que correr en una
-máquina con **IP chilena residencial** (tu notebook), porque el endpoint de adjuntos de Mercado
-Público bloquea accesos de datacenter (403 / captcha). La app en Render **no** hace esto; comparte
-la misma base (Neon) y el worker la procesa aparte.
+El worker baja las **bases** de las licitaciones admisibles (Capa B) y, en la misma pasada, **las
+analiza con Claude** (Capa C) para volver el score real. Tiene que correr en una máquina con **IP
+chilena residencial** (tu notebook), porque el endpoint de adjuntos de Mercado Público bloquea
+accesos de datacenter (403 / captcha). La app en Render **no** hace esto; comparte la misma base
+(Neon) y el worker la procesa aparte.
 
 ## Qué corre dónde
-- **App (Render)** → UI, scoring, aprendizaje. NO baja bases.
-- **Worker (tu notebook, IP CL)** → polling de la base + descarga de bases (Playwright).
+- **App (Render)** → UI, scoring provisional, aprendizaje. NO baja bases ni analiza.
+- **Worker (tu notebook, IP CL)** → polling de la base → descarga de bases (Playwright) →
+  análisis Capa C (Claude).
 - **Base (Neon)** → única, compartida por los dos vía `DATABASE_URL`.
+
+## Las dos etapas de cada pasada (desacopladas)
+1. **Capa B — descarga.** Toma `admisible=1 AND docs_estado='pendiente'`, baja las bases con
+   `download.descargar_codigo` y deja `docs_estado='descargado'`.
+2. **Capa C — análisis.** Toma las bases `descargado` **sin fila en `analisis_bases`** todavía y
+   corre `capac_score.analizar`: recalibra **COMPLEJIDAD** (de neutro 5 a valor real) y suma el
+   techo de presupuesto. El score pasa de 4/6 a **5/6 dimensiones evaluadas** sin intervención.
+   (MARGEN sigue pendiente de la cubicación de Valentina — eso es correcto, no lo inventa.)
+
+Están desacopladas a propósito: si el análisis falla no deja fila, así que **se reintenta en la
+próxima pasada**; y una base bajada a mano desde la UI también termina analizada sola.
+
+Para apagar la Capa C (worker solo-descarga): `LOVEO_WORKER_CAPAC=0`.
 
 ## Setup (una vez, en la máquina residencial)
 ```bash
@@ -32,8 +47,10 @@ El loop nunca muere por un error puntual: marca `docs_estado='error'` + deja tra
 y sigue con la próxima.
 
 ## Estado / criterio
-- Toma las licitaciones con `admisible=1 AND docs_estado='pendiente'`.
-- `download.descargar_codigo` maneja `descargando → descargado`; el worker solo cubre el error.
+- Descarga: toma `admisible=1 AND docs_estado='pendiente'`. `download.descargar_codigo` maneja
+  `descargando → descargado`; el worker solo cubre el error.
+- Análisis: toma `docs_estado='descargado'` sin fila en `analisis_bases`. Un fallo se loguea en
+  `eventos` y se reintenta (no deja fila). Requiere `ANTHROPIC_API_KEY` en el entorno.
 - Los archivos quedan en `storage/<codigo>/` y se registran en `documentos`.
 
 ## Restricción
@@ -43,7 +60,8 @@ y sigue con la próxima.
 
 ## Pendiente (lo que falta de tu lado / próximo paso)
 - **Calibración de la ficha**: `download.py` necesita que `calibrate_ficha.py` fije el último
-  selector de la grilla de adjuntos (correr local una vez).
+  selector de la grilla de adjuntos (correr local una vez). Es el único blocker para que la Capa B
+  baje sola; una vez calibrado, el worker hace B+C de punta a punta.
 - **Ficha Comprador** (`worker.ficha_comprador`, hoy `NotImplementedError`): leer el comportamiento
   de pago del comprador (quejas de no-pago a tiempo), también detrás del WAF. Alimentaría la señal
   `mal_pagador` del aprendizaje y el cash flow del score. Es el siguiente trabajo del worker.
