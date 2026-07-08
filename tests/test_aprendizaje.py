@@ -117,3 +117,75 @@ def test_cargar_y_ajuste_end_to_end(tmp_path, monkeypatch):
 
     res = aprendizaje.resumen(cargado)
     assert any(p["categoria"] == "muy_lejos" for p in res["por_categoria"])
+
+
+# ---------------------------------------------------------------- Fase B: aprender de resultados (puro)
+def test_victorias_suben_el_score_sobre_umbral_res():
+    """Una racha de ganadas por comprador SUBE el score de parecidas (delta +)."""
+    cargado = {"gana_org": {"Muni Z": aprendizaje.UMBRAL_RES}}
+    a = aprendizaje.ajuste_lic(cargado, "Región", "Muni Z")
+    assert a["delta"] == aprendizaje.BONUS["gana_org"]
+    assert a["razones"] and a["razones"][0].startswith("+")
+
+
+def test_victorias_por_region_suben():
+    cargado = {"gana_region": {"Maule": aprendizaje.UMBRAL_RES}}
+    a = aprendizaje.ajuste_lic(cargado, "Maule", "Cualquiera")
+    assert a["delta"] == aprendizaje.BONUS["gana_region"]
+
+
+def test_perdida_malfit_baja_el_score():
+    """Pérdida estructural (mal fit) por comprador BAJA el score de parecidas."""
+    cargado = {"malfit_org": {"Muni W": aprendizaje.UMBRAL_RES}}
+    a = aprendizaje.ajuste_lic(cargado, "Región", "Muni W")
+    assert a["delta"] == -aprendizaje.PENAL["malfit"]
+    assert a["razones"] and "mal fit" in a["razones"][0].lower()
+
+
+def test_perdida_competida_no_toca_el_score():
+    """Regla de producto: perder por precio/competencia NO baja el fit (era buena)."""
+    # 'competida' nunca entra a cargar() (se filtra por impacto), así que no hay clave que la represente.
+    cargado = {"gana_org": {}, "malfit_org": {}, "gana_region": {}}
+    a = aprendizaje.ajuste_lic(cargado, "Región", "Muni Competida")
+    assert a["delta"] == 0
+    assert not a["razones"]
+
+
+def test_victoria_y_malfit_se_netean():
+    """Ganás y perdés por mal fit al mismo comprador: los deltas se compensan (transparente)."""
+    cargado = {"gana_org": {"Muni M": aprendizaje.UMBRAL_RES},
+               "malfit_org": {"Muni M": aprendizaje.UMBRAL_RES}}
+    a = aprendizaje.ajuste_lic(cargado, "Región", "Muni M")
+    assert a["delta"] == aprendizaje.BONUS["gana_org"] - aprendizaje.PENAL["malfit"]
+    assert len(a["razones"]) == 2
+
+
+def test_cargar_lee_resultados_end_to_end(tmp_path, monkeypatch):
+    """De marcar_resultado hasta el ajuste: victorias y malfit se agregan por eje."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    with db.conn() as c:
+        for i in range(aprendizaje.UMBRAL_RES):
+            db.upsert_licitacion(c, {"codigo": f"W{i}", "nombre": "x",
+                                     "region": "Maule", "organismo": "Muni Gana"})
+        for i in range(aprendizaje.UMBRAL_RES):
+            db.upsert_licitacion(c, {"codigo": f"F{i}", "nombre": "x",
+                                     "region": "Maule", "organismo": "Muni Malfit"})
+        # una competida: no debe pesar en el score
+        db.upsert_licitacion(c, {"codigo": "C0", "nombre": "x",
+                                 "region": "Maule", "organismo": "Muni Comp"})
+    for i in range(aprendizaje.UMBRAL_RES):
+        feedback.marcar_resultado(f"W{i}", "ganada", categoria="precio_competitivo")
+        feedback.marcar_resultado(f"F{i}", "perdida", categoria="requisito")
+    feedback.marcar_resultado("C0", "perdida", categoria="competencia_fuerte")
+
+    cargado = aprendizaje.cargar()
+    assert cargado["gana_org"].get("Muni Gana") == aprendizaje.UMBRAL_RES
+    assert cargado["malfit_org"].get("Muni Malfit") == aprendizaje.UMBRAL_RES
+    assert "Muni Comp" not in cargado["malfit_org"]  # la competida no se agregó
+
+    assert aprendizaje.ajuste_lic(cargado, "Maule", "Muni Gana")["delta"] > 0
+    assert aprendizaje.ajuste_lic(cargado, "X", "Muni Malfit")["delta"] < 0
+    assert aprendizaje.ajuste_lic(cargado, "X", "Muni Comp")["delta"] == 0

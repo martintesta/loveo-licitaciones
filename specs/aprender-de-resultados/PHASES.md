@@ -14,7 +14,11 @@
   parecidas) y trata las PÉRDIDAS según la decisión de producto. Peso por confianza (cantidad).
 - Regla: display-only, explícito, reversible. Operativo/competencia no castigan el fit.
 - Listo cuando: test de que una racha de ganadas sube y las pérdidas ajustan según motivo.
-- Estado: [ ] pendiente (bloqueada por la decisión de producto)
+- Estado: [x] hecho. Decisión: "según el motivo". `cargar()` lee `resultados`; `ajuste_lic` da
+  delta + por victorias (BONUS gana_region 5 / gana_org 6, umbral 2) y − por pérdidas 'malfit'
+  (PENAL malfit 6); las 'competida' (precio/competencia) NO tocan el score. UI: ficha muestra
+  ajuste verde con "+" y el panel suma VICTORIAS · región/comprador + PÉRDIDAS POR MAL FIT.
+  UMBRAL_RES / PENAL / BONUS sobreescribibles desde config_local.py. Tests en test_aprendizaje.py.
 
 ## Fase C — Confianza del score visible (#1)
 - Entregable: build_data expone dims evaluadas y `evaluable_pts`; la ficha y la lista muestran

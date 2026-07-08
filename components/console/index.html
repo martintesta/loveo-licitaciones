@@ -280,11 +280,12 @@ function renderFicha(cod){
   var h='<div>'+backBtn();
   h+='<div class="fhead"><div style="flex:1;min-width:240px"><div class="code" style="font-size:12px">'+esc(l.cod)+'</div><div class="h1" style="margin-top:4px">'+esc(l.nom)+'</div><div class="badges">'+pill(l.tri)+'<span class="badge">'+esc(l.estadoLbl)+'</span>'+(l.adm?'<span class="badge adm">Admisible</span>':'')+'</div></div><div class="verdict"><div class="vk">SCORE PROV.</div><div class="vv">'+(l.score==null?'—':l.score)+'<span>/120</span></div>'+(l.reqBases?'<div class="vx">falta cubicación</div>':'')+'</div></div>';
   var aj=l.ajuste;
-  if(aj&&(aj.delta<0||(aj.alertas&&aj.alertas.length))){
-    h+='<div class="card" style="border-left:3px solid '+(aj.delta<0?'#B45309':'#0E7490')+'"><div class="ct">APRENDIZAJE · AJUSTE ASISTIDO</div>';
-    if(aj.delta<0){h+='<div style="font-size:13px;margin-bottom:2px"><b>Score ajustado: '+(l.score==null?'—':Math.max(0,l.score+aj.delta))+'</b> <span class="mut">(provisional '+(l.score==null?'—':l.score)+', '+aj.delta+')</span></div>';for(var ri=0;ri<aj.razones.length;ri++)h+='<div class="ptxt">• '+esc(aj.razones[ri])+'</div>';}
+  if(aj&&(aj.delta!==0||(aj.alertas&&aj.alertas.length))){
+    var up=aj.delta>0;
+    h+='<div class="card" style="border-left:3px solid '+(aj.delta<0?'#B45309':(up?'#047857':'#0E7490'))+'"><div class="ct">APRENDIZAJE · AJUSTE ASISTIDO</div>';
+    if(aj.delta!==0){var adj=(l.score==null?null:Math.max(0,Math.min(120,l.score+aj.delta)));h+='<div style="font-size:13px;margin-bottom:2px"><b>Score ajustado: '+(adj==null?'—':adj)+'</b> <span class="mut">(provisional '+(l.score==null?'—':l.score)+', '+(aj.delta>0?'+':'')+aj.delta+')</span></div>';for(var ri=0;ri<aj.razones.length;ri++)h+='<div class="ptxt">• '+esc(aj.razones[ri])+'</div>';}
     for(var qi=0;qi<(aj.alertas||[]).length;qi++)h+='<div class="ptxt" style="color:#0E7490">⚠ '+esc(aj.alertas[qi])+'</div>';
-    h+='<div class="dochint" style="margin-top:6px">Sugerido por tus descartes; no reemplaza el score y es reversible (sale de la tabla de descartes).</div></div>';
+    h+='<div class="dochint" style="margin-top:6px">Sugerido por tus descartes y resultados; no reemplaza el score y es reversible.</div></div>';
   }
   h+='<div class="card"><div class="ct">DATOS</div><div class="meta"><div><div class="mk">Organismo</div><div class="mv lnk" data-org="'+escA(cod)+'">'+esc(l.org||'—')+'</div></div><div><div class="mk">Región</div><div class="mv lnk" data-reg="'+escA(cod)+'">'+esc(l.regc||'—')+'</div></div><div><div class="mk">Monto estimado</div><div class="mv">'+esc(l.monto)+' '+esc(l.moneda)+'</div></div><div><div class="mk">Cierre</div><div class="mv">'+esc(l.cierreFmt||'—')+(l.dias!=null?' · '+diasTxt(l.dias):'')+'</div></div><div><div class="mk">Visita a terreno</div><div class="mv">'+esc(l.visita||'—')+'</div></div><div><div class="mk">Estado MP</div><div class="mv">'+(l.estMp!=null?('código '+l.estMp):'—')+'</div></div></div></div>';
   if(l.dims&&l.dims.length){h+='<div class="card"><div class="ct">SCORE · 6 DIMENSIONES</div>';for(var i=0;i<l.dims.length;i++){var d=l.dims[i],w=(d.score!=null?d.score*10:0);h+='<div class="dim" title="'+escA(d.nota)+'"><div class="dl">'+esc(d.n)+(d.ev?'':'<span class="pend">pend.</span>')+'</div><div class="track"><div class="fill'+(d.ev?'':' pend')+'" style="width:'+w+'%"></div></div><div class="ds">'+(d.ev&&d.score!=null?d.score:'—')+'</div></div>';}h+='</div>';}
@@ -358,7 +359,7 @@ function renderKeywords(){
 function renderAprendizaje(){
   var a=D.aprendizaje||{};
   var h='<div class="eyebrow">APRENDE DE TUS DESCARTES</div><div class="h1">Aprendizaje</div>';
-  h+='<div class="dochint" style="margin-top:6px">Patrones de por qué descartás. Los de <b>calidad</b> ajustan el score de licitaciones parecidas (umbral: '+(a.umbral||3)+' descartes); los <b>operativos</b> (visita / capacidad) no tocan el score.</div>';
+  h+='<div class="dochint" style="margin-top:6px">Patrones de tus <b>descartes y resultados</b>. Los descartes de calidad y las pérdidas por <b>mal fit bajan</b> el score de parecidas; las <b>victorias suben</b>; lo operativo (visita/capacidad) y las pérdidas por competencia/precio no tocan el score.</div>';
   if(a.buenas_perdidas){h+='<div class="panel" style="margin-top:13px;border-left:3px solid #0E7490"><div class="plabel">⚠ BUENAS PERDIDAS POR NO IR A LA VISITA</div><div class="ptxt" style="padding:4px 0">Perdiste <b>'+a.buenas_perdidas+'</b> licitación(es) buena(s) por no llegar a la visita obligatoria. No bajan el score; te las marca para que no se repita.</div></div>';}
   var pc=a.por_categoria||[];
   h+='<div class="panel" style="margin-top:13px"><div class="plabel">DESCARTES POR CATEGORÍA</div>';
@@ -369,6 +370,9 @@ function renderAprendizaje(){
   h+=plist('MUY LEJOS · POR REGIÓN',a.muy_lejos_region);
   h+=plist('MAL PAGADOR · POR COMPRADOR',a.mal_pagador_org);
   h+=plist('REQUISITO EXCLUYENTE · POR COMPRADOR',a.requisito_excluyente_org);
+  h+=plist('✓ VICTORIAS · POR REGIÓN',a.gana_region);
+  h+=plist('✓ VICTORIAS · POR COMPRADOR',a.gana_org);
+  h+=plist('PÉRDIDAS POR MAL FIT · POR COMPRADOR',a.malfit_org);
   return h;
 }
 function mkpi(l,n,c){return '<div class="kpi" style="cursor:default"><div class="l">'+l+'</div><div class="n" style="color:'+c+'">'+n+'</div></div>';}
