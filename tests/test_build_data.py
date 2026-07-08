@@ -39,6 +39,27 @@ def test_incompleto_marca_lics_sin_detalle(tmp_path, monkeypatch):
     assert data["actualizado"]  # hay fecha de actualización
 
 
+def test_build_data_expone_confianza_del_score(tmp_path, monkeypatch):
+    """Fase C: cada lic scoreada trae cuántas de las 6 dimensiones tienen dato real
+    (evDims/nDims) y los puntos evaluables (evalPts), para leer el score con su confianza."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    import json
+    import scoring
+    sj = scoring.score_provisional({"nombre": "container modular", "region": "Región Metropolitana",
+                                    "modalidad": 3})
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "SC1", "nombre": "container modular",
+                                 "region": "Región Metropolitana"})
+        db.set_score_provisional(c, "SC1", sj["score_provisional"], json.dumps(sj), sj["requiere_bases"])
+    import tablero_data
+    l = tablero_data.build_data()["lics"]["SC1"]
+    assert l["nDims"] == 6
+    assert l["evDims"] == 4                       # margen y complejidad quedan pendientes de bases
+    assert l["evalPts"] == sj["evaluable_pts"]    # puntos con dato real, no placeholder
+
+
 def test_build_data_no_repite_el_trabajo_pesado(tmp_path, monkeypatch):
     """Perf: migrate() está cacheado por base, así que el DDL (db.init_db) corre UNA sola vez
     pese a múltiples build_data y a que muchos módulos llaman migrate()."""

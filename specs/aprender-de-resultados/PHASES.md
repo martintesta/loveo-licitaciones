@@ -24,4 +24,7 @@
 - Entregable: build_data expone dims evaluadas y `evaluable_pts`; la ficha y la lista muestran
   "N/6 dimensiones · M/120 evaluable" y el número se lee según su confianza.
 - Listo cuando: build_data trae la confianza + se ve en la UI; tests.
-- Estado: [ ] pendiente
+- Estado: [x] hecho. build_data expone por lic `evDims`/`nDims` (dimensiones con dato real de 6) y
+  `evalPts` (puntos evaluables /120). UI: badge N/6 junto al score en la lista, línea de confianza
+  en el veredicto de la ficha, y conteo en el título de la card de dimensiones (tooltip explica que
+  las pendientes usan neutro 5 hasta bases/cubicación). Test en test_build_data.py.

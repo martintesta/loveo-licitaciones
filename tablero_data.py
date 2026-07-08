@@ -133,6 +133,7 @@ def build_data():
                 sj = {}
         dias = (cierre - now).days if cierre else None
         estado_lbl = ESTADO_LBL.get(res) if res and res != "pendiente" else ESTADO_LBL.get(rev, rev)
+        _dd = _dims(sj)  # confianza: cuántas de las 6 dimensiones están realmente evaluadas
 
         lics[cod] = {
             "cod": cod, "nom": r["nombre"] or "—", "org": r["organismo"] or "",
@@ -143,7 +144,9 @@ def build_data():
             "estMp": r["estado_mp"], "estRev": rev, "estRes": res, "estadoLbl": estado_lbl,
             "adm": bool(r["admisible"]), "admMot": r["admisible_motivo"] or "", "vig": bool(r["vigente_oferta"]),
             "desc": (desc.strftime("%d-%m-%Y") if desc else ""), "score": r["score_provisional"],
-            "tri": sj.get("triage"), "reqBases": bool(sj.get("requiere_bases")), "dims": _dims(sj),
+            "tri": sj.get("triage"), "reqBases": bool(sj.get("requiere_bases")), "dims": _dd,
+            "evDims": sum(1 for d in _dd if d["ev"]), "nDims": len(_dd) or 6,
+            "evalPts": sj.get("evaluable_pts"),
             "descr": (r["descripcion"] or "")[:1200], "eventos": eventos.get(cod, []),
             "docs": docs.get(cod, []), "analisis": analisis.get(cod),
             "incompleto": r["json_detalle"] is None,  # no se bajó el detalle (solo código+nombre)
