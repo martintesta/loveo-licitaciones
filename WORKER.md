@@ -38,11 +38,28 @@ python -m playwright install chromium      # navegador para la Capa B
 python calibrate_ficha.py 2450-56-LE26
 ```
 
+## Chequeo previo (doctor)
+```bash
+python scripts/worker_doctor.py     # valida DATABASE_URL(Neon)/ticket/API key/Playwright/cola
+```
+Te dice EXACTAMENTE qué falta (sin exponer secretos) y cuántas licitaciones esperan Capa B/C.
+Corré esto ANTES de dejar el worker andando.
+
 ## Correr
 ```bash
 python worker.py --once     # una pasada (probar)
 python worker.py            # loop infinito (intervalo LOVEO_WORKER_INTERVAL seg; default 120)
 ```
+
+## Dejarlo corriendo solo (Windows)
+En vez de una consola abierta, registralo como Tarea Programada (corre `worker.py --once` cada N
+horas mientras la máquina esté prendida):
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_worker_task.ps1                  # cada 2 h
+powershell -ExecutionPolicy Bypass -File scripts\install_worker_task.ps1 -IntervaloHoras 3
+powershell -ExecutionPolicy Bypass -File scripts\install_worker_task.ps1 -Remove          # desinstalar
+```
+No necesita admin (corre en tu usuario) y fija el working dir al proyecto para que cargue `.env`.
 El loop nunca muere por un error puntual: marca `docs_estado='error'` + deja traza en `eventos`
 y sigue con la próxima.
 

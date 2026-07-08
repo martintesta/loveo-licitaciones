@@ -6,8 +6,24 @@ función de descarga se inyecta (mock). Contra SQLite temporal (no toca Neon).
 
   python -m pytest tests/test_worker.py -q
 """
+import ast
+import pathlib
+
 import db
 import worker
+
+
+def test_worker_importa_config_antes_que_db():
+    """Regresión operativa: worker debe importar `config` (que carga .env) ANTES que `db`, porque
+    db lee DATABASE_URL en su import. Sin este orden, `python worker.py` en la máquina residencial
+    caería a SQLite local en vez de Neon y poliría una base vacía en silencio."""
+    ruta = pathlib.Path(__file__).resolve().parent.parent / "worker.py"
+    orden = []
+    for node in ast.parse(ruta.read_text(encoding="utf-8")).body:   # solo imports top-level, en orden
+        if isinstance(node, ast.Import):
+            orden.extend(a.name for a in node.names)
+    assert "config" in orden, "worker.py debe importar config (carga .env)"
+    assert orden.index("config") < orden.index("db"), "config debe importarse antes que db"
 
 
 def _setup(tmp_path, monkeypatch):
