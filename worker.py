@@ -96,11 +96,15 @@ def _analizar_real(codigo):
 
 
 def ficha_comprador(organismo):
-    """TODO (worker residencial): leer la Ficha Comprador — comportamiento de pago del
-    comprador (quejas de no-pago a tiempo), detrás del WAF de www.mercadopublico.cl
-    (403/captcha desde datacenter). Alimentaría la señal 'mal_pagador' del aprendizaje y el
-    cash flow del score. Pendiente de calibración local (ver WORKER.md)."""
-    raise NotImplementedError("Ficha Comprador: pendiente del worker residencial. Ver WORKER.md.")
+    """TODO (worker residencial): leer la Ficha Comprador — comportamiento de pago del comprador,
+    detrás del WAF + CAPTCHA de www.mercadopublico.cl (no automatizable de forma confiable ni
+    desde IP residencial). El día que se pueda, esto debe llamar
+    comprador.set_reputacion(organismo, nivel, nota, fuente='ficha_comprador') para escribir en la
+    MISMA tabla que hoy se llena a mano desde la ficha. Mientras tanto, la reputación se carga
+    manualmente (ver comprador.py y WORKER.md)."""
+    raise NotImplementedError(
+        "Ficha Comprador: bloqueada por CAPTCHA. Cargá la reputación a mano desde la ficha "
+        "(alimenta comprador.set_reputacion). Ver WORKER.md.")
 
 
 def una_pasada(descargar=_descargar_real, analizar=_analizar_real, con_capac=None):

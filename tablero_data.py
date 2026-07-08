@@ -14,6 +14,7 @@ import competencia
 import keywords as kwmod
 import aprendizaje
 import recall
+import comprador
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
          "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -186,10 +187,16 @@ def build_data():
     groups["cierran"].sort(key=lambda x: lics[x]["dias"])
     groups["nuevas"].sort(key=lambda x: lics[x]["desc"], reverse=True)
 
-    # Ajuste asistido por descartes (Fase 3): se carga 1 vez y se aplica por lic (display-only).
+    # Ajuste asistido por descartes/resultados (Fases 3/B): 1 lectura, se aplica por lic (display-only).
     _ap = aprendizaje.cargar()
+    _rep = comprador.reputaciones()  # reputación de pago por comprador (Ficha Comprador manual)
     for _l in lics.values():
         _l["ajuste"] = aprendizaje.ajuste_lic(_ap, _l["reg"], _l["org"])
+        rp = _rep.get(_l["org"])
+        _l["repPago"] = ({"nivel": rp["nivel"], "nota": rp["nota"] or ""} if rp else None)
+        _al = comprador.alerta_para(rp)
+        if _al:  # heads-up proactivo; el penalty numérico lo pone el descarte, no se duplica acá
+            _l["ajuste"]["alertas"].append(_al)
 
     # --- Inteligencia / oportunidades (panel del Inicio) ---
     desiertas = [{"cod": l["cod"], "nom": l["nom"], "regc": l["regc"]}

@@ -292,6 +292,14 @@ function renderFicha(cod){
     h+='<div class="dochint" style="margin-top:6px">Sugerido por tus descartes y resultados; no reemplaza el score y es reversible.</div></div>';
   }
   h+='<div class="card"><div class="ct">DATOS</div><div class="meta"><div><div class="mk">Organismo</div><div class="mv lnk" data-org="'+escA(cod)+'">'+esc(l.org||'—')+'</div></div><div><div class="mk">Región</div><div class="mv lnk" data-reg="'+escA(cod)+'">'+esc(l.regc||'—')+'</div></div><div><div class="mk">Monto estimado</div><div class="mv">'+esc(l.monto)+' '+esc(l.moneda)+'</div></div><div><div class="mk">Cierre</div><div class="mv">'+esc(l.cierreFmt||'—')+(l.dias!=null?' · '+diasTxt(l.dias):'')+'</div></div><div><div class="mk">Visita a terreno</div><div class="mv">'+esc(l.visita||'—')+'</div></div><div><div class="mk">Estado MP</div><div class="mv">'+(l.estMp!=null?('código '+l.estMp):'—')+'</div></div></div></div>';
+  h+='<div class="card"><div class="ct">REPUTACIÓN DE PAGO · COMPRADOR</div>';
+  var rp=l.repPago;
+  if(rp){var rc=(rp.nivel==='mala')?'#B91C1C':(rp.nivel==='regular')?'#B45309':'#047857',rl=(rp.nivel==='mala')?'Mal pagador':(rp.nivel==='regular')?'Pago irregular':'Paga bien';
+    h+='<div style="font-size:13px;margin-bottom:4px"><b style="color:'+rc+'">'+rl+'</b>'+(rp.nota?' <span class="mut">— '+esc(rp.nota)+'</span>':'')+'</div>';
+  }else h+='<div class="mut" style="margin-bottom:4px">Sin marcar. Marcala una vez y aplica a TODAS las licitaciones de este comprador.</div>';
+  h+='<div class="chips"><button class="chip" data-reppago="buena" data-cod="'+escA(cod)+'">Paga bien</button><button class="chip" data-reppago="regular" data-cod="'+escA(cod)+'">Pago irregular</button><button class="chip" data-reppago="mala" data-cod="'+escA(cod)+'">Mal pagador</button></div>';
+  h+='<input id="rep-nota" placeholder="Nota (opcional): ej. paga a 90+ días, tuvo atrasos…" style="margin-top:6px;width:100%;box-sizing:border-box">';
+  h+='<div class="dochint" style="margin-top:6px">Es la señal de la <b>Ficha Comprador</b> (protegida por CAPTCHA), cargada a mano. No cambia el número del score: suma una alerta de cash flow. El descarte “mal pagador” sigue siendo el que ajusta el score.</div></div>';
   if(l.dims&&l.dims.length){h+='<div class="card"><div class="ct">SCORE · 6 DIMENSIONES'+(l.evDims!=null?' · '+l.evDims+'/'+l.nDims+' CON DATO':'')+'</div>';for(var i=0;i<l.dims.length;i++){var d=l.dims[i],w=(d.score!=null?d.score*10:0);h+='<div class="dim" title="'+escA(d.nota)+'"><div class="dl">'+esc(d.n)+(d.ev?'':'<span class="pend">pend.</span>')+'</div><div class="track"><div class="fill'+(d.ev?'':' pend')+'" style="width:'+w+'%"></div></div><div class="ds">'+(d.ev&&d.score!=null?d.score:'—')+'</div></div>';}h+='</div>';}
   if(l.admMot)h+='<div class="card"><div class="ct">ADMISIBILIDAD</div><div class="ptxt">'+esc(l.admMot)+'</div></div>';
   if(l.descr)h+='<div class="card"><div class="ct">DESCRIPCIÓN</div><div class="ptxt">'+esc(l.descr)+'</div></div>';
@@ -439,6 +447,7 @@ document.addEventListener('click',function(e){
   if((x=e.target.closest('[data-logout]'))){sendVal({act:'logout'});return;}
   if((x=e.target.closest('[data-addcode]'))){var ci=document.getElementById('add-code');var cc=(ci&&ci.value||'').trim();if(cc){x.textContent='Agregando…';if(ci)ci.value='';sendVal({act:'add_codigo',codigo:cc});}return;}
   if((x=e.target.closest('[data-recall-cod]'))){sendVal({act:'recall',cod:x.getAttribute('data-recall-cod'),accion:x.getAttribute('data-recall-acc')});return;}
+  if((x=e.target.closest('[data-reppago]'))){var rn=(document.getElementById('rep-nota')||{}).value||'';sendVal({act:'rep_pago',cod:x.getAttribute('data-cod'),nivel:x.getAttribute('data-reppago'),nota:rn.trim()});return;}
   if((x=e.target.closest('[data-kw-add]'))){var ki=document.getElementById('kw-input');var term=(ki&&ki.value||'').trim();if(term){if(ki)ki.value='';sendVal({act:'kw_add',termino:term,tipo:x.getAttribute('data-kw-add')});}return;}
   if((x=e.target.closest('[data-kw-toggle]'))){sendVal({act:'kw_toggle',kid:x.getAttribute('data-kw-toggle'),on:x.getAttribute('data-on')});return;}
   if((x=e.target.closest('[data-capac-run]'))){sendVal({act:'capac_run',cod:x.getAttribute('data-capac-run')});return;}

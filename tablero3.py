@@ -37,6 +37,7 @@ import capac_score
 import keywords
 import usuarios
 import recall
+import comprador
 
 st.set_page_config(page_title="Loveo Construcciones", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
@@ -153,6 +154,16 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
                 st.session_state.flash = f"✓ Agregada {r['codigo']} — {est}{sc}.{ya}"
             else:
                 st.session_state.flash = r.get("error", "No se pudo agregar.")
+    elif act == "rep_pago":
+        nivel = val.get("nivel")
+        org = (val.get("org") or "").strip()
+        if not org and cod:  # resolver el organismo desde la licitación
+            with db.conn() as c:
+                r = c.execute("SELECT organismo FROM licitaciones WHERE codigo=?", (cod,)).fetchone()
+                org = (r["organismo"] or "").strip() if r else ""
+        if org and nivel in comprador.NIVELES:
+            comprador.set_reputacion(org, nivel, nota)
+            st.session_state.flash = f"✓ Reputación de '{org}': {comprador.NIVEL_LABEL[nivel]}."
     elif act == "recall":
         rcod = (val.get("cod") or "").strip()
         acc = val.get("accion")

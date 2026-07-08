@@ -152,6 +152,14 @@ def _crear_tablas():
             score_despues   INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS reputacion_comprador (
+            organismo TEXT PRIMARY KEY,               -- comprador (NombreOrganismo)
+            nivel     TEXT NOT NULL CHECK (nivel IN ('buena','regular','mala')),
+            nota      TEXT,
+            fuente    TEXT DEFAULT 'manual',           -- manual | ficha_comprador (futuro worker)
+            ts        TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS recall_log (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo    TEXT,
