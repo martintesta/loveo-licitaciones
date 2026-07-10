@@ -1,5 +1,10 @@
 """
-schema_v2.py — Migración de datos (idempotente) que habilita las vistas del tablero
+schema_v2.py — [LEGACY] Migración histórica. El esquema vivo lo mantiene schema_v3 (migrate() corre
+solo en cada arranque). schema_v2 ya NO se importa desde el runtime: solo lo tocan los scripts de
+migración one-shot (migrate_region.py, migrate_to_postgres.py), ya ejecutados. Se conserva como
+referencia del origen de las tablas competitivas; no borrar sin revisar esos scripts.
+
+Migración de datos (idempotente) que habilita las vistas del tablero
 con DATA REAL: Inteligencia competitiva, Desiertas/re-licitación, Seguimiento de Competencia.
 
 Tablas nuevas (FK a licitaciones.codigo):

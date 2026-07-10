@@ -8,6 +8,7 @@ import json
 import datetime
 from collections import Counter
 import db
+import textnorm
 from textnorm import na as _na  # normalización compartida (una sola fuente de verdad)
 import schema_v3
 import competencia
@@ -51,10 +52,7 @@ def _clp(v):
 
 
 def _region_corta(region):
-    for p in ("Región de la ", "Región del ", "Región de ", "Región "):
-        if region and region.startswith(p):
-            return region[len(p):]
-    return region or "—"
+    return textnorm.region_corta(region) or "—"   # misma lógica compartida + fallback de UI
 
 
 def _dims(sj):

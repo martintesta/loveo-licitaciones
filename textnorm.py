@@ -22,6 +22,24 @@ def na(s):
     return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
 
 
+# Ordenados por longitud DESC para que el prefijo más específico gane ('Región de la ' antes que
+# 'Región de '). Se ordena en runtime → agregar prefijos nuevos no rompe el orden.
+_PREFIJOS_REGION = tuple(sorted(
+    ("Región de la ", "Región del ", "Región de ", "Región "), key=len, reverse=True))
+
+
+def region_corta(region):
+    """Nombre de región sin el prefijo 'Región de/del/de la'. '' si es vacío. Ej.: 'Región del
+    Maule' → 'Maule'. (tablero_data la envuelve con su propio fallback '—' para la UI.)"""
+    if not region:
+        return ""
+    r = region.strip()
+    for p in _PREFIJOS_REGION:
+        if r.startswith(p):
+            return r[len(p):]
+    return r
+
+
 @functools.lru_cache(maxsize=512)
 def pat(term):
     """Regex de keyword: límite de palabra a la izquierda + plural s/es opcional + \b al final.

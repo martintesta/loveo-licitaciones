@@ -33,6 +33,24 @@ def test_pat_respeta_limite_de_palabra():
     assert not textnorm.pat("box").search(textnorm.na("boxeo profesional"))
 
 
+def test_region_corta_saca_el_prefijo():
+    assert textnorm.region_corta("Región del Maule") == "Maule"
+    assert textnorm.region_corta("Región de la Araucanía") == "Araucanía"
+    assert textnorm.region_corta("Región Metropolitana") == "Metropolitana"
+    assert textnorm.region_corta("  Región de Ñuble  ") == "Ñuble"   # también strippea
+    assert textnorm.region_corta("Maule") == "Maule"                 # sin prefijo, intacto
+    assert textnorm.region_corta(None) == "" and textnorm.region_corta("") == ""
+
+
+def test_scoring_y_tablero_comparten_region_corta():
+    """Regresión: scoring y tablero_data deben apoyarse en textnorm.region_corta (una sola lógica)."""
+    import scoring
+    assert scoring._region_corta is textnorm.region_corta
+    import tablero_data
+    assert tablero_data._region_corta("Región del Biobío") == "Biobío"   # delega + fallback UI
+    assert tablero_data._region_corta(None) == "—"                       # fallback propio de la UI
+
+
 def test_discover_y_recall_comparten_la_misma_fuente():
     """Regresión del bug de paridad: discover._pat y recall._pat deben SER textnorm.pat."""
     import discover

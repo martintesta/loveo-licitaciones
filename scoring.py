@@ -14,6 +14,8 @@ Umbrales de triage (sobre 120): >=85 Priorizar | >=60 Revisar | <60 Descartar ca
 """
 import json
 
+from textnorm import region_corta as _region_corta  # normalización compartida (una sola fuente)
+
 PESOS = {"margen": 3, "cashflow": 3, "complejidad": 2, "logistico": 2, "alineacion": 1, "repetibilidad": 1}
 
 # Modalidad de pago — catálogo oficial ChileCompra (campo `Modalidad`, no `TipoPago`).
@@ -62,16 +64,6 @@ PRODUCTOS_CORE = ["container", "conteiner", "contenedor", "box dental", "box vet
 PERIFERICOS = ["paradero", "garita", "panel solar", "paneles solares", "carpa"]
 ONE_OFF = ["mejoramiento", "remodelación", "remodelacion", "mantención", "mantencion",
            "habilitación", "habilitacion", "reparación", "reparacion", "ampliación", "ampliacion"]
-
-
-def _region_corta(region):
-    if not region:
-        return ""
-    r = region.strip()
-    for p in ("Región de la ", "Región del ", "Región de ", "Región "):
-        if r.startswith(p):
-            return r[len(p):]
-    return r
 
 
 def _dist_min(region):
