@@ -11,9 +11,10 @@ y no se choca con el tope de 100 páginas / 32 MB del modo PDF nativo.
 OCR es opcional: si pytesseract/pdf2image no están, se omite y se avisa (no rompe).
 """
 import re
-import unicodedata
 from pathlib import Path
 import pdfplumber
+
+from textnorm import na as _na  # normalización compartida (una sola fuente de verdad)
 
 MIN_CHARS_PAGINA = 40   # bajo esto, la página se considera "sin texto" → candidata a OCR
 
@@ -30,8 +31,6 @@ SECCIONES = {
 }
 
 
-def _na(s):
-    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
 
 
 def _ocr_pagina(page):

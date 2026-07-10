@@ -6,9 +6,9 @@ read-only (tablero2) como el tablero con acciones (tablero3 / componente bidirec
 """
 import json
 import datetime
-import unicodedata
 from collections import Counter
 import db
+from textnorm import na as _na  # normalización compartida (una sola fuente de verdad)
 import schema_v3
 import competencia
 import keywords as kwmod
@@ -32,10 +32,6 @@ DIM_ORDER = [("margen", "Margen"), ("complejidad", "Complejidad"), ("logistico",
 ESTADO_LBL = {"nueva": "Nueva", "en_revision": "En revisión", "aprobada": "Aprobada",
               "descartada": "Descartada", "pendiente": "Pendiente", "presentada": "Presentada",
               "ganada": "Ganada", "perdida": "Perdida", "desierta": "Desierta"}
-
-
-def _na(s):
-    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
 
 
 def _parse(dt):

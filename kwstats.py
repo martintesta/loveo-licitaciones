@@ -8,18 +8,9 @@ kwstats.py — Atribución keyword→licitación + rendimiento por keyword (paso
 Mismo criterio de match que discover (límite de palabra, sin acentos, plural tolerante).
 Sirve para que la inteligencia (paso 3/4) juzgue el valor de cada keyword.
 """
-import re
-import unicodedata
 import db
 import keywords as kwmod
-
-
-def _na(s):
-    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
-
-
-def _pat(term):
-    return re.compile(r"\b" + re.escape(_na(term)) + r"(?:e?s)?\b")
+from textnorm import na as _na, pat as _pat  # normalización compartida (una sola fuente de verdad)
 
 
 def backfill():

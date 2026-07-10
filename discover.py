@@ -14,13 +14,12 @@ Uso:
     correr_dia("11062026")            # descubre, filtra, trae detalle de los que matchean, persiste
 """
 
-import re
 import time
 import json
-import unicodedata
 import requests
 
 import db
+from textnorm import na as _na, pat as _pat  # normalización compartida (una sola fuente de verdad)
 
 # ---- Configuración: en producción, mové TICKET y las keywords a config_local.py (gitignored) ----
 try:
@@ -42,16 +41,8 @@ except ImportError:
 
 BASE = "https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json"
 
-# Match por LÍMITE DE PALABRA, INSENSIBLE A ACENTOS y tolerante a PLURAL (s/es):
+# Match por LÍMITE DE PALABRA, INSENSIBLE A ACENTOS y tolerante a PLURAL (s/es), vía textnorm.pat:
 #   'modulo' matchea 'modulo', 'modulos', 'módulo', 'módulos'; 'container' -> 'containers'.
-#   El sufijo (?:e?s)? agrega s/es opcional; el \b final evita matchear 'boxeo' con 'box'.
-def _na(s: str) -> str:
-    """Normaliza: sin acentos, minúsculas."""
-    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
-
-def _pat(term: str):
-    return re.compile(r"\b" + re.escape(_na(term)) + r"(?:e?s)?\b")
-
 _KW_RE = [_pat(k) for k in KEYWORDS]
 _EX_RE = [_pat(e) for e in EXCLUSIONES]
 

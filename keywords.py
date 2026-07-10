@@ -11,15 +11,10 @@ tabla `keywords` (tipo incluir/excluir/amplio, activo). Se siembra una vez desde
   get_active_lists()    — (incluir, excluir, amplio) ACTIVAS, para discover/filters.
 """
 import os
-import re
 import json
-import unicodedata
 import db
 import schema_v3
-
-
-def _na(s):
-    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+from textnorm import na as _na, pat as _pat  # normalización compartida (una sola fuente de verdad)
 
 
 def seed_if_empty():
@@ -129,7 +124,7 @@ def _juzgar(termino, n, ejemplos):
 
 def evaluar(termino):
     termino = (termino or "").strip()
-    pat = re.compile(r"\b" + re.escape(_na(termino)) + r"(?:e?s)?\b")
+    pat = _pat(termino)
     with db.conn() as c:
         nombres = [r["nombre"] for r in c.execute("SELECT nombre FROM licitaciones").fetchall()]
     matches = [nm for nm in nombres if pat.search(_na(nm))]

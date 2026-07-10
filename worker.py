@@ -25,12 +25,7 @@ se testea sin Playwright, sin IP chilena y sin gastar tokens.
 import os
 import time
 
-# IMPORTANTE: importar config ANTES que db. config._cargar_dotenv() puebla el entorno desde .env
-# al importarse; db lee DATABASE_URL en su propio import. Sin este orden, `python worker.py` en la
-# máquina residencial NO vería DATABASE_URL del .env → caería a SQLite local y poliría una base
-# vacía en silencio (el ticket de la Capa B queda en el mismo .env).
-import config  # noqa: F401  (side-effect: carga .env)
-import db
+import db  # db._load_dotenv() corre en su import y puebla .env (self-contained; ver db.py)
 import schema_v3
 
 

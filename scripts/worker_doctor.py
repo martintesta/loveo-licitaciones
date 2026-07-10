@@ -30,7 +30,7 @@ for _s in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
-import config  # noqa: F401,E402  (side-effect: carga .env antes de que db lea DATABASE_URL)
+import config  # noqa: E402  (para TICKET / USANDO_TICKET_PRUEBA; db carga el .env por su cuenta)
 import db      # noqa: E402
 
 

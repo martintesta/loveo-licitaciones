@@ -16,22 +16,11 @@ Buckets (misma lógica de matcheo que discover: límite de palabra, sin acentos,
   auditar(limit)                             -> resumen de la cola pendiente para la UI
   resolver(codigo, accion)                   -> marca una fila como 'promovida' | 'descartada'
 """
-import re
-import unicodedata
-
 import db
 import schema_v3
+from textnorm import na as _na, pat as _pat  # normalización compartida (una sola fuente de verdad)
 
 ACCIONABLES = ("recall", "excluido")
-
-
-def _na(s):
-    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
-
-
-def _pat(term):
-    # Igual que discover._pat: límite de palabra + plural s/es opcional.
-    return re.compile(r"\b" + re.escape(_na(term)) + r"(?:e?s)?\b")
 
 
 def _listas():
