@@ -48,9 +48,11 @@ proyecto — hasta cerrar el margen del score sin depender de un tercero.
 
 ## Decisiones
 
-- **[ABIERTA — resolver antes de Fase 2] Cómo traer los precios web.** Recomendado: **catálogo
-  interno primero + búsqueda web para los huecos**, guardando `source_url` clickeable. Alternativas:
-  API de búsqueda (SerpAPI) o scraping directo de ecommerces chilenos (más preciso, más frágil/legal).
+- **[RESUELTA] Cómo traer los precios web.** Se optó por **catálogo interno primero + búsqueda web
+  para los huecos**, guardando `source_url` clickeable. El mecanismo de búsqueda vive detrás de un
+  punto pluggable (`cubicacion_ia._buscar_web_real`, hoy Claude web search) e inyectable — se puede
+  cambiar por una API de búsqueda o scraping sin tocar el orquestador. Apagable con
+  `LOVEO_PRECIOS_WEB=0`. No importa el más barato: importa la referencia trazable.
 - **Calidad = borrador asistido, NO cotización.** Explícito en la UI. El valor está en el arranque +
   el aprendizaje, no en exactitud al peso.
 - **El ajuste al score es display-only y reversible** (como el resto): el margen real actualiza la

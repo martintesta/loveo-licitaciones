@@ -67,6 +67,8 @@ def _crear_tablas():
             unidad          TEXT,
             precio_unitario REAL,
             total           REAL,
+            precio_fuente   TEXT,                 -- interno | web | manual (de dónde salió el precio)
+            precio_url      TEXT,                 -- referencia clickeable (ecommerce) si fuente=web
             devengado       REAL,
             estado_pago     TEXT
         );
@@ -78,6 +80,7 @@ def _crear_tablas():
             unidad           TEXT,
             precio_unitario  REAL,
             fuente           TEXT,                -- valentina | adjudicacion | web
+            source_url       TEXT,                -- referencia clickeable (ecommerce) si fuente=web
             proyecto         TEXT,
             region           TEXT,
             fecha            TEXT
@@ -208,6 +211,20 @@ def _crear_tablas():
                 c.execute("ALTER TABLE documentos ADD COLUMN fuente TEXT")
             if "url" not in cols:
                 c.execute("ALTER TABLE documentos ADD COLUMN url TEXT")
+        # Precios/cubicación (Fase 3): columnas nuevas sobre tablas ya creadas en prod → ALTER idempotente.
+        _asegurar_columna(c, "cubicacion_items", "precio_fuente", "TEXT")
+        _asegurar_columna(c, "cubicacion_items", "precio_url", "TEXT")
+        _asegurar_columna(c, "precios_referencia", "source_url", "TEXT")
+
+
+def _asegurar_columna(c, tabla, columna, tipo):
+    """Agrega una columna si falta, en SQLite (PRAGMA) y Postgres (ADD COLUMN IF NOT EXISTS)."""
+    if db.backend() == "sqlite":
+        cols = [r[1] for r in c.execute(f"PRAGMA table_info({tabla})")]
+        if columna not in cols:
+            c.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {tipo}")
+    else:
+        c.execute(f"ALTER TABLE {tabla} ADD COLUMN IF NOT EXISTS {columna} {tipo}")
 
 
 def main():

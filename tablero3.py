@@ -175,6 +175,12 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
             r = cubicacion_ia.guardar_borrador(cod, val.get("items") or [])
             st.session_state.flash = (f"✓ Cubicación curada: {len(r['items'])} partidas."
                                       if r.get("ok") else r.get("error", "No se pudo guardar."))
+    elif act == "cubic_preciar":
+        if cod:
+            r = cubicacion_ia.preciar(cod)
+            st.session_state.flash = (
+                f"✓ Preciado: {r['preciados']} partidas ({r['web']} por web). Costo ≈ ${r['costo']:,.0f}."
+                .replace(",", ".") if r.get("ok") else r.get("error", "No se pudo preciar."))
     elif act == "recall":
         rcod = (val.get("cod") or "").strip()
         acc = val.get("accion")

@@ -142,12 +142,15 @@ def build_data():
         # Cubicación asistida (borrador IA, Fase 1): BOM por licitación, en una sola query.
         cubic_ia = {}
         for ci in c.execute(
-                "SELECT cu.codigo AS codigo, ci.partida, ci.grupo, ci.descripcion, ci.cantidad, ci.unidad "
+                "SELECT cu.codigo AS codigo, ci.partida, ci.grupo, ci.descripcion, ci.cantidad, "
+                "ci.unidad, ci.precio_unitario, ci.total, ci.precio_fuente, ci.precio_url "
                 "FROM cubicaciones cu JOIN cubicacion_items ci ON ci.cubicacion_id = cu.id "
                 "WHERE cu.origen='ia' ORDER BY cu.codigo, ci.id").fetchall():
             cubic_ia.setdefault(ci["codigo"], []).append(
                 {"partida": ci["partida"], "grupo": ci["grupo"], "descripcion": ci["descripcion"],
-                 "cantidad": ci["cantidad"], "unidad": ci["unidad"]})
+                 "cantidad": ci["cantidad"], "unidad": ci["unidad"],
+                 "precio": ci["precio_unitario"], "total": ci["total"],
+                 "fuente": ci["precio_fuente"], "url": ci["precio_url"]})
 
     lics, order = {}, []
     groups = {"cierran": [], "nuevas": [], "fitAnio": [], "siguiendo": [], "cierran5": [], "nuevas7d": []}

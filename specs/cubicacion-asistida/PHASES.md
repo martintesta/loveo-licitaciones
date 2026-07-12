@@ -25,7 +25,12 @@
   para los huecos, guardando `precio + source_url` (columna nueva). La ficha muestra cada precio con
   su fuente clickeable.
 - Listo cuando: un BOM queda preciado con al menos la fuente por item; tests con búsqueda mockeada.
-- Estado: [ ] pendiente. **Bloqueada por la decisión de precios web (ver SPEC).**
+- Estado: [x] hecho. `cubicacion_ia.preciar(codigo, buscar=None)` — catálogo interno primero
+  (match por descripcion_norm) y búsqueda web para los huecos (source_url clickeable), cacheando el
+  precio web en precios_referencia. Columnas nuevas: cubicacion_items(precio_fuente, precio_url),
+  precios_referencia(source_url), con ALTER idempotente. `_precio_num` tolera formato CLP. UI:
+  precio + 🔗 fuente por partida + subtotal + botón "Preciar". Web pluggable/inyectable, apagable
+  con LOVEO_PRECIOS_WEB=0. 8 tests.
 
 ## Fase 4 — Margen real → score
 - Entregable: costo = suma del BOM preciado; margen = techo de presupuesto − costo; actualiza la
