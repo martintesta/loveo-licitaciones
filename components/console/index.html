@@ -292,6 +292,15 @@ function renderSenales(){
   return h+'</div>';
 }
 
+function renderRequisitos(l){
+  var a=l.analisis||{},gar=a.garantias||[],reqs=a.requisitos||[];
+  if(!gar.length&&!reqs.length)return '';
+  var h='<div class="card"><div class="ct">REQUISITOS PARA NO QUEDAR INADMISIBLE · SEGÚN LAS BASES</div>';
+  h+='<div class="dochint" style="margin:0 0 6px">Extraído de las bases por la Capa C. Verificá cada punto ANTES de ofertar: un requisito o papel faltante te elimina, sin importar el precio.</div>';
+  for(var gi=0;gi<gar.length;gi++)h+='<div class="ptxt">☐ <b>Garantía</b> — '+esc(gar[gi])+'</div>';
+  for(var ri=0;ri<reqs.length;ri++)h+='<div class="ptxt">☐ '+esc(reqs[ri])+'</div>';
+  return h+'</div>';
+}
 function renderFicha(cod){
   var l=D.lics[cod];if(!l)return backBtn()+'<div class="empty">No encontrada.</div>';
   var h='<div>'+backBtn();
@@ -331,6 +340,7 @@ function renderFicha(cod){
       +(l.analisis.resumen?'<div class="ptxt">'+esc(l.analisis.resumen)+'</div>':'')
       +'<div style="display:flex;gap:20px;margin-top:8px;font-size:12px"><span><span class="mk">Presupuesto:</span> '+esc(l.analisis.presupuesto||'—')+'</span><span><span class="mk">Plazo:</span> '+(l.analisis.plazo!=null?esc(l.analisis.plazo)+' días':'—')+'</span></div>'
       +'<div class="actbar" style="margin-top:10px"><button class="b gh sm" data-capac="'+escA(cod)+'">↻ Re-analizar (gasta tokens)</button></div></div>';
+    h+=renderRequisitos(l);
   }else if(pend){
     h+='<div class="card"><div class="ct">ANÁLISIS DE BASES · CAPA C</div><div class="ptxt">Estimado: <b>≈'+pend.tokens+' tokens</b> de entrada (modelo Haiku, costo bajo). ¿Confirmás el análisis?</div>'
       +'<div class="actbar" style="margin-top:10px"><button class="b ok" data-capac-run="'+escA(cod)+'">✓ Confirmar análisis</button><button class="b gh" data-capac-cancel="'+escA(cod)+'">Cancelar</button></div></div>';

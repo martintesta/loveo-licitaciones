@@ -56,6 +56,29 @@ def _region_corta(region):
     return textnorm.region_corta(region) or "—"   # misma lógica compartida + fallback de UI
 
 
+def _lista(v):
+    """Fuerza a lista: el LLM a veces devuelve un string donde esperamos una lista → iterar ese
+    string daría CARACTERES sueltos. list→tal cual, string no vacío→[string], resto→[]."""
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str) and v.strip():
+        return [v.strip()]
+    return []
+
+
+def _garantias(gar):
+    """Normaliza la lista de garantías de la extracción (dicts {tipo, monto_o_pct} o strings) a texto."""
+    out = []
+    for g in _lista(gar)[:8]:
+        if isinstance(g, dict):
+            tipo = str(g.get("tipo") or "garantía").strip()
+            val = g.get("monto_o_pct") or g.get("monto") or g.get("pct")
+            out.append(f"{tipo}: {val}" if val else tipo)
+        elif g:
+            out.append(str(g))
+    return out
+
+
 def _dims(sj):
     out = []
     for k, lbl in DIM_ORDER:
@@ -102,10 +125,20 @@ def build_data():
                 "fuente": d["fuente"] or d["tipo"] or "doc",
             })
         analisis = {}
-        for a in c.execute("SELECT codigo, ts, resumen, presupuesto_clp, plazo_dias FROM analisis_bases "
+        for a in c.execute("SELECT codigo, ts, resumen, presupuesto_clp, plazo_dias, json_extraccion "
+                           "FROM analisis_bases "
                            "WHERE id IN (SELECT MAX(id) FROM analisis_bases GROUP BY codigo)").fetchall():
+            ex = {}
+            if a["json_extraccion"]:
+                try:
+                    ex = json.loads(a["json_extraccion"])
+                except (ValueError, TypeError):
+                    ex = {}
+            # requisitos SIN truncar: perder uno en silencio es justo lo que esto busca evitar.
             analisis[a["codigo"]] = {"ts": a["ts"], "resumen": a["resumen"],
-                                     "presupuesto": _clp(a["presupuesto_clp"]), "plazo": a["plazo_dias"]}
+                                     "presupuesto": _clp(a["presupuesto_clp"]), "plazo": a["plazo_dias"],
+                                     "garantias": _garantias(ex.get("garantias")),
+                                     "requisitos": [str(x) for x in _lista(ex.get("requisitos_clave"))]}
 
     lics, order = {}, []
     groups = {"cierran": [], "nuevas": [], "fitAnio": [], "siguiendo": [], "cierran5": [], "nuevas7d": []}

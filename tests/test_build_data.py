@@ -60,6 +60,49 @@ def test_build_data_expone_confianza_del_score(tmp_path, monkeypatch):
     assert l["evalPts"] == sj["evaluable_pts"]    # puntos con dato real, no placeholder
 
 
+def test_build_data_expone_requisitos_de_admisibilidad(tmp_path, monkeypatch):
+    """#3: build_data surfacea garantías + requisitos_clave de la Capa C (json_extraccion) como
+    checklist, para no quedar inadmisible por un papel faltante."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    import json
+    import schema_v3
+    schema_v3.migrate()
+    ex = {"garantias": [{"tipo": "Seriedad de la oferta", "monto_o_pct": "3%"}, "Fiel cumplimiento"],
+          "requisitos_clave": ["Visita a terreno obligatoria", "Experiencia mínima 3 obras",
+                               "Inscripción en ChileProveedores"]}
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "R1", "nombre": "x"})
+        c.execute("INSERT INTO analisis_bases (codigo, ts, json_extraccion) VALUES (?,?,?)",
+                  ("R1", "2026-07-10", json.dumps(ex)))
+    import tablero_data
+    a = tablero_data.build_data()["lics"]["R1"]["analisis"]
+    assert "Seriedad de la oferta: 3%" in a["garantias"]
+    assert "Fiel cumplimiento" in a["garantias"]
+    assert "Visita a terreno obligatoria" in a["requisitos"]
+    assert "Inscripción en ChileProveedores" in a["requisitos"]
+
+
+def test_build_data_requisitos_string_no_se_rompe_en_caracteres(tmp_path, monkeypatch):
+    """Regresión #4: si el LLM devuelve un STRING donde esperamos lista, NO debe iterar caracteres."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    import json
+    import schema_v3
+    schema_v3.migrate()
+    ex = {"requisitos_clave": "Visita obligatoria", "garantias": "Boleta 5%"}   # strings, no listas
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "S1", "nombre": "x"})
+        c.execute("INSERT INTO analisis_bases (codigo, ts, json_extraccion) VALUES (?,?,?)",
+                  ("S1", "2026-07-10", json.dumps(ex)))
+    import tablero_data
+    a = tablero_data.build_data()["lics"]["S1"]["analisis"]
+    assert a["requisitos"] == ["Visita obligatoria"]      # un item, NO ['V','i','s',...]
+    assert a["garantias"] == ["Boleta 5%"]
+
+
 def test_build_data_no_repite_el_trabajo_pesado(tmp_path, monkeypatch):
     """Perf: migrate() está cacheado por base, así que el DDL (db.init_db) corre UNA sola vez
     pese a múltiples build_data y a que muchos módulos llaman migrate()."""
