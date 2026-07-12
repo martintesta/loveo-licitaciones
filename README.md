@@ -186,9 +186,11 @@ plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
 1. **Robustez del worker** ✅ — heartbeat + alerta de silencio (banner + email).
 2. **Avisos de deadline** ✅ — email digest, deduplicado, enganchado a `run_daily`.
 3. **Admisibilidad como checklist** ✅ — requisitos/garantías de las bases visibles en la ficha.
-4. **Cubicación asistida → margen real** ◻ — la IA arma el listado de materiales desde las bases,
+4. **Cubicación asistida → margen real** ◧ — la IA arma el listado de materiales desde las bases,
    precia con referencia clickeable (ecommerce), y aprende "recetas" por tipo de producto para dejar
-   de depender de la cubicación de un tercero. Cierra el margen del score. (En diseño; `specs/`.)
+   de depender de la cubicación de un tercero. Cierra el margen del score.
+   Spec en `specs/cubicacion-asistida/`. **Fase 1 (BOM borrador desde las bases) ✅**; faltan
+   curación, precios clickeables, margen real y recetas.
 5. **Endurecer operación** ◻ — Sentry, backups de Neon, roles, warm-up de Render.
 
 ## Docs relacionados

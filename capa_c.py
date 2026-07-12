@@ -25,6 +25,11 @@ SYSTEM_EXTRACT = (
     "requisitos_clave (lista de strings: profesional residente, visita obligatoria, certificados, experiencia mínima, etc.), "
     "subcontratacion_prohibida (true/false/null), anticipo (true/false/null), "
     "señales_complejidad (lista de strings: especialidades que exigen subcontrato, obra en sitio, etc.), "
+    "materiales (lista de {partida, grupo, descripcion, cantidad, unidad}: un BORRADOR de cubicación "
+    "con los materiales/partidas que el proyecto requiere según las especificaciones técnicas — "
+    "grupo ∈ {material, mano_obra, transporte, otros}; cantidad es un número estimado o null; "
+    "unidad ej. m2, ml, unidad, kg, gl. Estimá desde las especificaciones; si no hay datos para una "
+    "cantidad, dejala en null. Es un borrador para curar, no una cotización), "
     "resumen (1-2 frases). Si un dato no está en el texto, poné null. No inventes."
 )
 

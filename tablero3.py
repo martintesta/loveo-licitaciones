@@ -38,6 +38,7 @@ import keywords
 import usuarios
 import recall
 import comprador
+import cubicacion_ia
 
 st.set_page_config(page_title="Loveo Construcciones", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
@@ -164,6 +165,11 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
         if org and nivel in comprador.NIVELES:
             comprador.set_reputacion(org, nivel, nota)
             st.session_state.flash = f"✓ Reputación de '{org}': {comprador.NIVEL_LABEL[nivel]}."
+    elif act == "cubic_ia":
+        if cod:
+            r = cubicacion_ia.generar(cod)
+            st.session_state.flash = (f"✓ Borrador de cubicación: {len(r['items'])} partidas."
+                                      if r.get("ok") else r.get("error", "No se pudo generar."))
     elif act == "recall":
         rcod = (val.get("cod") or "").strip()
         acc = val.get("accion")

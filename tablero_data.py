@@ -139,6 +139,15 @@ def build_data():
                                      "presupuesto": _clp(a["presupuesto_clp"]), "plazo": a["plazo_dias"],
                                      "garantias": _garantias(ex.get("garantias")),
                                      "requisitos": [str(x) for x in _lista(ex.get("requisitos_clave"))]}
+        # Cubicación asistida (borrador IA, Fase 1): BOM por licitación, en una sola query.
+        cubic_ia = {}
+        for ci in c.execute(
+                "SELECT cu.codigo AS codigo, ci.partida, ci.grupo, ci.descripcion, ci.cantidad, ci.unidad "
+                "FROM cubicaciones cu JOIN cubicacion_items ci ON ci.cubicacion_id = cu.id "
+                "WHERE cu.origen='ia' ORDER BY cu.codigo, ci.id").fetchall():
+            cubic_ia.setdefault(ci["codigo"], []).append(
+                {"partida": ci["partida"], "grupo": ci["grupo"], "descripcion": ci["descripcion"],
+                 "cantidad": ci["cantidad"], "unidad": ci["unidad"]})
 
     lics, order = {}, []
     groups = {"cierran": [], "nuevas": [], "fitAnio": [], "siguiendo": [], "cierran5": [], "nuevas7d": []}
@@ -179,6 +188,7 @@ def build_data():
             "evalPts": sj.get("evaluable_pts"),
             "descr": (r["descripcion"] or "")[:1200], "eventos": eventos.get(cod, []),
             "docs": docs.get(cod, []), "analisis": analisis.get(cod),
+            "cubicIA": cubic_ia.get(cod, []),  # borrador de cubicación asistida (Fase 1)
             "incompleto": r["json_detalle"] is None,  # no se bajó el detalle (solo código+nombre)
         }
 
