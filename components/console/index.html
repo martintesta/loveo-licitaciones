@@ -301,17 +301,25 @@ function renderRequisitos(l){
   for(var ri=0;ri<reqs.length;ri++)h+='<div class="ptxt">☐ '+esc(reqs[ri])+'</div>';
   return h+'</div>';
 }
+function cubRow(it){it=it||{};
+  return '<div class="cub-row" style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
+    +'<input class="ci-desc" placeholder="descripción" value="'+escA(it.descripcion||'')+'" style="flex:2;min-width:0;font-size:12px;padding:3px 5px">'
+    +'<input class="ci-cant" placeholder="cant" value="'+(it.cantidad!=null?escA(it.cantidad):'')+'" style="width:56px;font-size:12px;padding:3px 5px">'
+    +'<input class="ci-uni" placeholder="un" value="'+escA(it.unidad||'')+'" style="width:52px;font-size:12px;padding:3px 5px">'
+    +'<input class="ci-grupo" placeholder="grupo" value="'+escA(it.grupo||'material')+'" style="width:88px;font-size:12px;padding:3px 5px" list="cub-grupos">'
+    +'<button class="b gh sm" data-cub-del="1" title="Quitar partida">✕</button></div>';
+}
 function renderCubicIA(l,cod){
   var items=l.cubicIA||[];
   var h='<div class="card"><div class="ct">CUBICACIÓN ASISTIDA · BORRADOR (IA)</div>';
-  h+='<div class="dochint" style="margin:0 0 6px">Materiales que la IA infiere de las bases técnicas. Es un <b>borrador para curar</b>, no una cotización. El margen real se calcula al preciarlo (próxima fase).</div>';
+  h+='<div class="dochint" style="margin:0 0 6px">Materiales que la IA infiere de las bases técnicas. Es un <b>borrador para curar</b>, no una cotización — editá cantidades, agregá o quitá partidas y <b>Guardá</b>. El margen real se calcula al preciarlo (próxima fase).</div>';
+  h+='<datalist id="cub-grupos"><option value="material"><option value="mano_obra"><option value="transporte"><option value="otros"></datalist>';
   if(items.length){
-    for(var i=0;i<items.length;i++){var it=items[i];
-      h+='<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid #EEF0F3;font-size:12.5px">'
-        +'<span>'+esc(it.descripcion||'—')+' <span class="mut" style="font-family:var(--mono);font-size:10px">'+esc(it.grupo||'')+'</span></span>'
-        +'<span class="mut">'+(it.cantidad!=null?esc(it.cantidad):'—')+(it.unidad?' '+esc(it.unidad):'')+'</span></div>';
-    }
-    h+='<div class="actbar" style="margin-top:10px"><button class="b gh sm" data-cubicia="'+escA(cod)+'">↻ Regenerar borrador (gasta tokens)</button></div>';
+    h+='<div id="cub-rows">';
+    for(var i=0;i<items.length;i++)h+=cubRow(items[i]);
+    h+='</div>';
+    h+='<button class="b gh sm" data-cub-add="1" style="margin-top:2px">+ Agregar partida</button>';
+    h+='<div class="actbar" style="margin-top:10px"><button class="b ok sm" data-cub-save="'+escA(cod)+'">Guardar curación</button><button class="b gh sm" data-cubicia="'+escA(cod)+'">↻ Regenerar con IA (gasta tokens)</button></div>';
   }else{
     h+='<div class="actbar" style="margin-top:6px"><button class="b ok sm" data-cubicia="'+escA(cod)+'">Generar cubicación borrador (IA)</button></div>';
   }
@@ -489,6 +497,12 @@ document.addEventListener('click',function(e){
   if((x=e.target.closest('[data-recall-cod]'))){sendVal({act:'recall',cod:x.getAttribute('data-recall-cod'),accion:x.getAttribute('data-recall-acc')});return;}
   if((x=e.target.closest('[data-reppago]'))){var rn=(document.getElementById('rep-nota')||{}).value||'';sendVal({act:'rep_pago',cod:x.getAttribute('data-cod'),nivel:x.getAttribute('data-reppago'),nota:rn.trim()});return;}
   if((x=e.target.closest('[data-cubicia]'))){x.textContent='Generando…';sendVal({act:'cubic_ia',cod:x.getAttribute('data-cubicia')});return;}
+  if((x=e.target.closest('[data-cub-add]'))){var cr=document.getElementById('cub-rows');if(cr)cr.insertAdjacentHTML('beforeend',cubRow({}));return;}
+  if((x=e.target.closest('[data-cub-del]'))){var row=e.target.closest('.cub-row');if(row)row.remove();return;}
+  if((x=e.target.closest('[data-cub-save]'))){var rows=document.querySelectorAll('#cub-rows .cub-row'),cits=[];
+    for(var ci=0;ci<rows.length;ci++){var rw=rows[ci],d=rw.querySelector('.ci-desc').value.trim();if(!d)continue;
+      cits.push({descripcion:d,cantidad:rw.querySelector('.ci-cant').value.trim(),unidad:rw.querySelector('.ci-uni').value.trim(),grupo:rw.querySelector('.ci-grupo').value.trim()});}
+    x.textContent='Guardando…';sendVal({act:'cubic_guardar',cod:x.getAttribute('data-cub-save'),items:cits});return;}
   if((x=e.target.closest('[data-kw-add]'))){var ki=document.getElementById('kw-input');var term=(ki&&ki.value||'').trim();if(term){if(ki)ki.value='';sendVal({act:'kw_add',termino:term,tipo:x.getAttribute('data-kw-add')});}return;}
   if((x=e.target.closest('[data-kw-toggle]'))){sendVal({act:'kw_toggle',kid:x.getAttribute('data-kw-toggle'),on:x.getAttribute('data-on')});return;}
   if((x=e.target.closest('[data-capac-run]'))){sendVal({act:'capac_run',cod:x.getAttribute('data-capac-run')});return;}

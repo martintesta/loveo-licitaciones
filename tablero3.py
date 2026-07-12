@@ -170,6 +170,11 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
             r = cubicacion_ia.generar(cod)
             st.session_state.flash = (f"✓ Borrador de cubicación: {len(r['items'])} partidas."
                                       if r.get("ok") else r.get("error", "No se pudo generar."))
+    elif act == "cubic_guardar":
+        if cod:
+            r = cubicacion_ia.guardar_borrador(cod, val.get("items") or [])
+            st.session_state.flash = (f"✓ Cubicación curada: {len(r['items'])} partidas."
+                                      if r.get("ok") else r.get("error", "No se pudo guardar."))
     elif act == "recall":
         rcod = (val.get("cod") or "").strip()
         acc = val.get("accion")

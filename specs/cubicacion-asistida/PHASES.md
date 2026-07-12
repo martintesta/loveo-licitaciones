@@ -15,7 +15,10 @@
 - Entregable: UI en la ficha para editar cantidades, agregar/quitar partidas y aprobar. La curación
   es lo que después alimenta las recetas (Fase 4).
 - Listo cuando: el usuario edita un item y el cambio persiste (round-trip); tests.
-- Estado: [ ] pendiente.
+- Estado: [x] hecho. `cubicacion_ia.guardar_borrador(codigo, items)` reemplaza el borrador con la
+  lista curada (normaliza, descarta filas vacías, crea si no existía, respeta 'valentina'). UI:
+  filas con inputs editables + agregar/quitar (client-side) + "Guardar curación" (bulk-save).
+  Persistido refactorizado a `_reemplazar_items` (compartido con generar). +4 tests.
 
 ## Fase 3 — Precios con referencia clickeable
 - Entregable: `cubicacion_ia.preciar` — match contra `precios_referencia` (interno) + búsqueda web

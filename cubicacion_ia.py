@@ -8,8 +8,9 @@ cubicacion_items, para que el usuario lo cure. Es un borrador, NO una cotizació
 Respeta la cubicación de Valentina: si existe una origen='valentina' para el código, esa MANDA y no
 se genera la IA. Idempotente por (codigo, origen='ia'): regenerar reemplaza el borrador anterior.
 
-  generar(codigo, extraer=None) -> {ok, items, error?}; `extraer` inyectable (real llama a Claude)
-  borrador(codigo)              -> items del BOM IA guardado (para la UI); [] si no hay
+  generar(codigo, extraer=None)     -> {ok, items, error?}; `extraer` inyectable (real llama a Claude)
+  guardar_borrador(codigo, items)   -> reemplaza el borrador con la lista curada por el usuario
+  borrador(codigo)                  -> items del BOM IA guardado (para la UI); [] si no hay
 """
 import db
 import schema_v3
@@ -22,6 +23,22 @@ def _extraer_real(codigo):
     return capa_c.analizar_bases(codigo=codigo)
 
 
+def _cantidad(v):
+    """Cantidad a float, tolerando el formato chileno (coma decimal). None si no se puede.
+    '1,5'→1.5 · '1.000,5'→1000.5 (coma=decimal, punto=miles) · '120'→120 · '1.5'→1.5 (sin coma)."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    if "," in s:                       # formato chileno: el punto es separador de miles
+        s = s.replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
+
+
 def _norm_item(m):
     """Normaliza un material de la extracción a las columnas de cubicacion_items (o None si no sirve)."""
     if not isinstance(m, dict):
@@ -32,23 +49,41 @@ def _norm_item(m):
     grupo = str(m.get("grupo") or "material").strip().lower()
     if grupo not in GRUPOS:
         grupo = "material"
-    cant = m.get("cantidad")
-    try:
-        cant = float(cant) if cant is not None and str(cant).strip() != "" else None
-    except (ValueError, TypeError):
-        cant = None
+    cant = _cantidad(m.get("cantidad"))
     return {"partida": (str(m.get("partida") or "").strip() or None), "grupo": grupo,
             "descripcion": desc, "cantidad": cant, "unidad": (str(m.get("unidad") or "").strip() or None)}
+
+
+def _tiene_valentina(codigo):
+    with db.conn() as c:
+        return c.execute("SELECT 1 FROM cubicaciones WHERE codigo=? AND origen='valentina'",
+                         (codigo,)).fetchone() is not None
+
+
+def _reemplazar_items(c, codigo, items):
+    """Dentro de una conn abierta: reusa (o crea) la cubicación IA de `codigo` y reemplaza sus
+    items por `items` (ya normalizados). No usa lastrowid: re-SELECT por (codigo, origen='ia')."""
+    cur = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'", (codigo,)).fetchone()
+    if cur:
+        cub_id = cur[0]
+        c.execute("DELETE FROM cubicacion_items WHERE cubicacion_id=?", (cub_id,))
+    else:
+        c.execute("INSERT INTO cubicaciones (proyecto, codigo, origen, fecha) VALUES (?,?,?,?)",
+                  (codigo, codigo, "ia", db._now()))
+        cub_id = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'",
+                           (codigo,)).fetchone()[0]
+    for it in items:
+        c.execute("INSERT INTO cubicacion_items "
+                  "(cubicacion_id, partida, grupo, descripcion, cantidad, unidad) VALUES (?,?,?,?,?,?)",
+                  (cub_id, it["partida"], it["grupo"], it["descripcion"], it["cantidad"], it["unidad"]))
+    return cub_id
 
 
 def generar(codigo, extraer=None):
     """Arma el BOM borrador (origen='ia') desde la extracción de las bases. Idempotente.
     Devuelve {ok, items} o {ok: False, error}. `extraer` inyectable (real llama a Claude)."""
     schema_v3.migrate()
-    with db.conn() as c:
-        val = c.execute("SELECT 1 FROM cubicaciones WHERE codigo=? AND origen='valentina'",
-                        (codigo,)).fetchone()
-    if val:
+    if _tiene_valentina(codigo):
         return {"ok": False, "error": "Ya hay cubicación de Valentina (tiene prioridad); no se pisa."}
 
     extraer = extraer or _extraer_real
@@ -63,22 +98,23 @@ def generar(codigo, extraer=None):
     if not items:
         return {"ok": False, "error": "La IA no extrajo materiales de las bases."}
 
-    now = db._now()
     with db.conn() as c:
-        cur = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'", (codigo,)).fetchone()
-        if cur:   # idempotente: reemplazar el borrador anterior
-            c.execute("DELETE FROM cubicacion_items WHERE cubicacion_id=?", (cur[0],))
-            c.execute("DELETE FROM cubicaciones WHERE id=?", (cur[0],))
-        c.execute("INSERT INTO cubicaciones (proyecto, codigo, origen, fecha) VALUES (?,?,?,?)",
-                  (codigo, codigo, "ia", now))
-        cub_id = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'",
-                           (codigo,)).fetchone()[0]
-        for it in items:
-            c.execute("INSERT INTO cubicacion_items "
-                      "(cubicacion_id, partida, grupo, descripcion, cantidad, unidad) VALUES (?,?,?,?,?,?)",
-                      (cub_id, it["partida"], it["grupo"], it["descripcion"], it["cantidad"], it["unidad"]))
+        _reemplazar_items(c, codigo, items)
         db.log_evento(c, codigo, "cubicacion_ia", f"Borrador de cubicación IA: {len(items)} partidas.")
     return {"ok": True, "items": items}
+
+
+def guardar_borrador(codigo, items):
+    """Reemplaza el borrador IA con la lista CURADA por el usuario (Fase 2). Normaliza y descarta
+    las filas sin descripción. Crea la cubicación IA si no existía. Respeta la de Valentina."""
+    schema_v3.migrate()
+    if _tiene_valentina(codigo):
+        return {"ok": False, "error": "Hay cubicación de Valentina; no se edita el borrador IA."}
+    norm = [x for x in (_norm_item(m) for m in (items or [])) if x]
+    with db.conn() as c:
+        _reemplazar_items(c, codigo, norm)
+        db.log_evento(c, codigo, "cubicacion_ia", f"Cubicación curada: {len(norm)} partidas.")
+    return {"ok": True, "items": norm}
 
 
 def borrador(codigo):
