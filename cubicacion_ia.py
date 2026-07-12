@@ -240,3 +240,79 @@ def preciar(codigo, buscar=None, web=None):
                       f"Cubicación preciada: {preciados}/{len(rows)} partidas (web {web_n}). Costo ≈ {costo:.0f}.")
     return {"ok": True, "preciados": preciados, "web": web_n,
             "sin_precio": len(rows) - preciados, "costo": costo}
+
+
+# ---------------------------------------------------------------- Fase 4: margen real → score
+try:
+    from config import MARGEN_TIERS
+except (ImportError, AttributeError):
+    MARGEN_TIERS = [(30, 9), (20, 7), (10, 5), (0, 3)]   # (margen % mínimo, score 0-10); < 0 → 1
+
+
+def _score_margen(pct):
+    if pct is None:
+        return 5
+    for minimo, s in MARGEN_TIERS:
+        if pct >= minimo:
+            return s
+    return 1
+
+
+def margen(codigo):
+    """Costo (BOM preciado) vs techo de presupuesto (Capa C) → margen real. Si TODAS las partidas
+    están preciadas, actualiza la dimensión 'margen' del score (evaluada, display, reversible) y
+    guarda costo/margen en la cubicación. Si faltan precios, devuelve el estimado SIN tocar el score.
+    Devuelve {ok, aplicado, costo, techo, margen, margen_pct, sin_precio, score_antes?, score_despues?}."""
+    import json
+    import scoring
+    schema_v3.migrate()
+    with db.conn() as c:
+        cur = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'", (codigo,)).fetchone()
+        if not cur:
+            return {"ok": False, "error": "No hay cubicación para calcular margen."}
+        cub_id = cur[0]
+        rows = [dict(r) for r in c.execute(
+            "SELECT total, precio_unitario FROM cubicacion_items WHERE cubicacion_id=?", (cub_id,)).fetchall()]
+        a = c.execute("SELECT presupuesto_clp FROM analisis_bases WHERE codigo=? AND presupuesto_clp IS NOT NULL "
+                      "ORDER BY id DESC", (codigo,)).fetchone()
+        lic = c.execute("SELECT score_provisional, score_json FROM licitaciones WHERE codigo=?",
+                        (codigo,)).fetchone()
+        techo = a["presupuesto_clp"] if a else None            # extraído dentro del with (row-safe en PG)
+        score_antes = lic["score_provisional"] if lic else None
+        score_json_str = lic["score_json"] if lic else None
+    if not rows:
+        return {"ok": False, "error": "La cubicación no tiene partidas."}
+    sin_precio = sum(1 for r in rows if r["precio_unitario"] is None)
+    costo = sum(r["total"] or 0 for r in rows)
+    if not techo:
+        return {"ok": False, "error": "Falta el techo de presupuesto (analizá las bases con Capa C)."}
+    m = techo - costo
+    m_pct = round(100 * m / techo, 1) if techo else None
+    base = {"ok": True, "costo": costo, "techo": techo, "margen": m, "margen_pct": m_pct,
+            "sin_precio": sin_precio}
+
+    if sin_precio > 0:   # honestidad: el margen al score solo si TODO está preciado
+        base["aplicado"] = False
+        return base
+
+    with db.conn() as c:
+        c.execute("UPDATE cubicaciones SET costo_total=?, margen=?, margen_pct=? WHERE id=?",
+                  (costo, m, m_pct, cub_id))
+        sj = json.loads(score_json_str) if score_json_str else {"dimensiones": {}}
+        dims = sj.get("dimensiones", {})
+        sc = _score_margen(m_pct)
+        dims["margen"] = {"score": sc, "evaluado": True,
+                          "nota": f"Margen {m_pct}% (costo ${costo:,.0f} vs techo ${techo:,.0f}) "
+                                  f"por cubicación asistida.".replace(",", ".")}
+        sj["dimensiones"] = dims
+        total = sum(dims[d]["score"] * scoring.PESOS[d] for d in scoring.PESOS if d in dims)
+        sj["score_provisional"] = total
+        sj["triage"] = scoring.triage(total)
+        requiere = any(not dims[d].get("evaluado") for d in dims)
+        sj["requiere_bases"] = requiere
+        db.set_score_provisional(c, codigo, total, json.dumps(sj, ensure_ascii=False), requiere)
+        db.log_evento(c, codigo, "cubicacion_ia",
+                      f"Margen aplicado al score: {m_pct}% → dimensión margen {sc}/10. "
+                      f"Score {score_antes}→{total}.")
+    base.update({"aplicado": True, "score_antes": score_antes, "score_despues": total})
+    return base

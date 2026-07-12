@@ -331,7 +331,7 @@ function renderCubicIA(l,cod){
     var costo=0,np=0;for(var ci=0;ci<items.length;ci++){if(items[ci].total!=null)costo+=items[ci].total;if(items[ci].precio==null)np++;}
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12.5px;border-top:1px solid #E7EAEF;padding-top:6px"><span class="mut">Costo estimado (partidas preciadas)</span><b>'+(costo>0?clp(costo):'—')+'</b></div>';
     if(np)h+='<div class="dochint" style="margin-top:2px">'+np+' sin precio — se completan del catálogo o por búsqueda web (referencia clickeable 🔗).</div>';
-    h+='<div class="actbar" style="margin-top:10px"><button class="b ok sm" data-cub-save="'+escA(cod)+'">Guardar curación</button><button class="b gh sm" data-cub-preciar="'+escA(cod)+'">$ Preciar (catálogo + web)</button><button class="b gh sm" data-cubicia="'+escA(cod)+'">↻ Regenerar con IA</button></div>';
+    h+='<div class="actbar" style="margin-top:10px"><button class="b ok sm" data-cub-save="'+escA(cod)+'">Guardar curación</button><button class="b gh sm" data-cub-preciar="'+escA(cod)+'">$ Preciar (catálogo + web)</button>'+((costo>0&&!np)?'<button class="b gh sm" data-cub-margen="'+escA(cod)+'">Calcular margen → score</button>':'')+'<button class="b gh sm" data-cubicia="'+escA(cod)+'">↻ Regenerar con IA</button></div>';
   }else{
     h+='<div class="actbar" style="margin-top:6px"><button class="b ok sm" data-cubicia="'+escA(cod)+'">Generar cubicación borrador (IA)</button></div>';
   }
@@ -516,6 +516,7 @@ document.addEventListener('click',function(e){
       cits.push({descripcion:d,cantidad:rw.querySelector('.ci-cant').value.trim(),unidad:rw.querySelector('.ci-uni').value.trim(),grupo:rw.querySelector('.ci-grupo').value.trim()});}
     x.textContent='Guardando…';sendVal({act:'cubic_guardar',cod:x.getAttribute('data-cub-save'),items:cits});return;}
   if((x=e.target.closest('[data-cub-preciar]'))){x.textContent='Preciando…';sendVal({act:'cubic_preciar',cod:x.getAttribute('data-cub-preciar')});return;}
+  if((x=e.target.closest('[data-cub-margen]'))){x.textContent='Calculando…';sendVal({act:'cubic_margen',cod:x.getAttribute('data-cub-margen')});return;}
   if((x=e.target.closest('[data-kw-add]'))){var ki=document.getElementById('kw-input');var term=(ki&&ki.value||'').trim();if(term){if(ki)ki.value='';sendVal({act:'kw_add',termino:term,tipo:x.getAttribute('data-kw-add')});}return;}
   if((x=e.target.closest('[data-kw-toggle]'))){sendVal({act:'kw_toggle',kid:x.getAttribute('data-kw-toggle'),on:x.getAttribute('data-on')});return;}
   if((x=e.target.closest('[data-capac-run]'))){sendVal({act:'capac_run',cod:x.getAttribute('data-capac-run')});return;}

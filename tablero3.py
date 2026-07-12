@@ -181,6 +181,19 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
             st.session_state.flash = (
                 f"✓ Preciado: {r['preciados']} partidas ({r['web']} por web). Costo ≈ ${r['costo']:,.0f}."
                 .replace(",", ".") if r.get("ok") else r.get("error", "No se pudo preciar."))
+    elif act == "cubic_margen":
+        if cod:
+            r = cubicacion_ia.margen(cod)
+            if not r.get("ok"):
+                st.session_state.flash = r.get("error", "No se pudo calcular el margen.")
+            elif r.get("aplicado"):
+                st.session_state.flash = (
+                    f"✓ Margen {r['margen_pct']}% (costo ${r['costo']:,.0f} vs techo ${r['techo']:,.0f}). "
+                    f"Score {r['score_antes']}→{r['score_despues']}.".replace(",", "."))
+            else:
+                st.session_state.flash = (
+                    f"Margen estimado {r['margen_pct']}% (parcial). Faltan {r['sin_precio']} precios "
+                    "para aplicarlo al score.")
     elif act == "recall":
         rcod = (val.get("cod") or "").strip()
         acc = val.get("accion")

@@ -6,6 +6,8 @@ cubicaciones(origen='ia') + cubicacion_items. Extractor INYECTADO → no gasta t
 
   python -m pytest tests/test_cubicacion_ia.py -q
 """
+import json
+
 import db
 import cubicacion_ia
 import schema_v3
@@ -196,3 +198,65 @@ def test_preciar_sin_borrador(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
     r = cubicacion_ia.preciar("A", buscar=lambda d, u: None)
     assert r["ok"] is False
+
+
+# ---------------------------------------------------------------- Fase 4: margen real → score
+def _techo(codigo, presupuesto):
+    with db.conn() as c:
+        c.execute("INSERT INTO analisis_bases (codigo, ts, presupuesto_clp) VALUES (?,?,?)",
+                  (codigo, "2026-07-10", presupuesto))
+
+
+def _preciar_todo(codigo, precio):
+    cubicacion_ia.preciar(codigo, buscar=lambda d, u: {"precio": precio, "url": "https://x.cl/p"})
+
+
+def test_score_margen_por_tramos():
+    assert cubicacion_ia._score_margen(35) == 9
+    assert cubicacion_ia._score_margen(22) == 7
+    assert cubicacion_ia._score_margen(12) == 5
+    assert cubicacion_ia._score_margen(3) == 3
+    assert cubicacion_ia._score_margen(-10) == 1
+
+
+def test_margen_aplica_al_score_si_todo_preciado(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Panel", "cantidad": 10, "unidad": "m2"}])
+    _preciar_todo("A", 30000)          # costo = 10 × 30.000 = 300.000
+    _techo("A", 500000)                # techo 500.000 → margen 40% → score 9
+    r = cubicacion_ia.margen("A")
+    assert r["ok"] and r["aplicado"] is True
+    assert r["costo"] == 300000 and r["techo"] == 500000
+    assert r["margen"] == 200000 and r["margen_pct"] == 40.0
+    # la dimensión margen del score quedó evaluada (9/10)
+    with db.conn() as c:
+        sj = json.loads(c.execute("SELECT score_json FROM licitaciones WHERE codigo='A'").fetchone()["score_json"])
+    assert sj["dimensiones"]["margen"]["evaluado"] is True
+    assert sj["dimensiones"]["margen"]["score"] == 9
+
+
+def test_margen_parcial_no_toca_el_score(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "A", "cantidad": 1, "unidad": "u"},
+                    {"descripcion": "B", "cantidad": 1, "unidad": "u"}])
+    # preciar solo uno: web devuelve precio para 'A' y None para 'B'
+    cubicacion_ia.preciar("A", buscar=lambda d, u: {"precio": 1000, "url": "https://x.cl"} if d == "A" else None)
+    _techo("A", 100000)
+    r = cubicacion_ia.margen("A")
+    assert r["ok"] and r["aplicado"] is False and r["sin_precio"] == 1
+    with db.conn() as c:   # el score NO se tocó (no hay score_json de margen evaluado)
+        row = c.execute("SELECT score_json FROM licitaciones WHERE codigo='A'").fetchone()
+    assert row["score_json"] is None or "margen" not in (json.loads(row["score_json"]).get("dimensiones", {}))
+
+
+def test_margen_sin_techo_falla(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "X", "cantidad": 1, "unidad": "u"}])
+    _preciar_todo("A", 1000)           # preciado, pero sin techo de presupuesto
+    r = cubicacion_ia.margen("A")
+    assert r["ok"] is False and "presupuesto" in r["error"].lower()
+
+
+def test_margen_sin_cubicacion_falla(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    assert cubicacion_ia.margen("A")["ok"] is False

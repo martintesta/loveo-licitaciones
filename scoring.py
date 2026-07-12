@@ -18,6 +18,12 @@ from textnorm import region_corta as _region_corta  # normalización compartida 
 
 PESOS = {"margen": 3, "cashflow": 3, "complejidad": 2, "logistico": 2, "alineacion": 1, "repetibilidad": 1}
 
+
+def triage(total):
+    """Umbral de triage sobre 120: >=85 Priorizar · >=60 Revisar · <60 Descartar candidato.
+    Fuente única (la usan scoring, capac_score y cubicacion_ia)."""
+    return "Priorizar" if total >= 85 else "Revisar" if total >= 60 else "Descartar candidato"
+
 # Modalidad de pago — catálogo oficial ChileCompra (campo `Modalidad`, no `TipoPago`).
 MODALIDAD_LABEL = {
     1: "Pago a 30 días", 2: "Pago a 30/60/90 días", 3: "Pago al día", 4: "Pago anual",
@@ -150,15 +156,11 @@ def score_provisional(lic: dict) -> dict:
     evaluado_pts = sum(PESOS[d] for d in PESOS if dims[d]["evaluado"]) * 10
     requiere_bases = any(not dims[d]["evaluado"] for d in dims)
 
-    if total >= 85:   triage = "Priorizar"
-    elif total >= 60: triage = "Revisar"
-    else:             triage = "Descartar candidato"
-
     return {
         "score_provisional": total,
         "max": 120,
         "evaluable_pts": evaluado_pts,
-        "triage": triage,
+        "triage": triage(total),
         "logistico_x3": trig,
         "requiere_bases": requiere_bases,
         "dimensiones": dims,

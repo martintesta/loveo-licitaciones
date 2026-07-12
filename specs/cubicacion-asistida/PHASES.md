@@ -37,7 +37,10 @@
   dimensión `margen` del `score_json` (display, reversible), con la confianza correspondiente
   (la dimensión pasa a evaluada).
 - Listo cuando: una lic con cubicación preciada muestra margen y sube su confianza a 6/6; tests.
-- Estado: [ ] pendiente.
+- Estado: [x] hecho. `cubicacion_ia.margen(codigo)` = costo (BOM preciado) vs techo (Capa C) →
+  margen + %. Aplica a la dimensión `margen` del score (evaluada, tramos `_score_margen`
+  configurables) SOLO si todo está preciado (si faltan, muestra el estimado sin tocar el score →
+  honesto). Guarda costo/margen en la cubicación. UI: botón "Calcular margen → score". +6 tests.
 
 ## Fase 5 — Recetas por tipo de producto (la inteligencia que acelera)
 - Entregable: cada cubicación curada se guarda como receta por tipo de producto; una lic nueva

@@ -167,8 +167,8 @@ la plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
 3. **Admisibilidad como checklist** ✅ — requisitos de las bases visibles antes de ofertar.
 4. **Cubicación asistida → margen** ◧ — estimación de costos desde las bases que el usuario cura y
    que la plataforma aprende, para cerrar el margen del score sin depender de un tercero. Spec en
-   `specs/cubicacion-asistida/` (borrador, curación y precios con referencia clickeable hechos;
-   siguen el margen al score y el aprendizaje de patrones).
+   `specs/cubicacion-asistida/` (borrador, curación, precios con referencia clickeable y margen al
+   score — hechos; sigue el aprendizaje de recetas por tipo de producto).
 5. **Más mercados de Latinoamérica** ◻ — nuevos adaptadores (fuente + reglas + parámetros) sobre el
    mismo núcleo.
 6. **Endurecer operación** ◻ — observabilidad, backups, roles.

@@ -68,7 +68,7 @@ def analizar(codigo):
     sj["dimensiones"] = dims
     total = sum(dims[d]["score"] * scoring.PESOS[d] for d in scoring.PESOS if d in dims)
     sj["score_provisional"] = total
-    sj["triage"] = "Priorizar" if total >= 85 else "Revisar" if total >= 60 else "Descartar candidato"
+    sj["triage"] = scoring.triage(total)
     requiere = any(not dims[d].get("evaluado") for d in dims)
     sj["requiere_bases"] = requiere
 
