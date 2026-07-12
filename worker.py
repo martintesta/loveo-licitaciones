@@ -24,6 +24,7 @@ se testea sin Playwright, sin IP chilena y sin gastar tokens.
 """
 import os
 import time
+import datetime
 
 import db  # db._load_dotenv() corre en su import y puebla .env (self-contained; ver db.py)
 import schema_v3
@@ -40,19 +41,22 @@ def pendientes(limit=20):
 def procesar(codigo, descargar):
     """Procesa UNA licitación con la función de descarga inyectada (real o mock).
 
-    La descarga real (download.descargar_codigo) maneja su propio docs_estado (descargando→
-    descargado). Acá solo cubrimos el caso de EXCEPCIÓN: marcar 'error' + dejar traza.
-    Devuelve True si la descarga no lanzó excepción.
+    La descarga real (download.descargar_codigo) maneja su propio docs_estado y devuelve un dict
+    {ok, nota, ...}. Acá normalizamos a {ok, muro} para el conteo y el heartbeat, y cubrimos el
+    caso de EXCEPCIÓN (marcar 'error' + traza). `muro` = chocó con el muro anti-bot.
     """
     try:
-        return bool(descargar(codigo))
+        r = descargar(codigo)
+        if isinstance(r, dict):   # descarga real
+            return {"ok": bool(r.get("ok")), "muro": "anti-bot" in (r.get("nota") or "").lower()}
+        return {"ok": bool(r), "muro": False}   # compat con mocks que devuelven bool
     except Exception as e:
         with db.conn() as c:
             # no pisar un 'descargado' exitoso si la excepción llegó tarde
             c.execute("UPDATE licitaciones SET docs_estado='error' "
                       "WHERE codigo=? AND docs_estado!='descargado'", (codigo,))
             db.log_evento(c, codigo, "error", f"worker: descarga falló: {e}")
-        return False
+        return {"ok": False, "muro": False}
 
 
 def pendientes_capac(limit=20):
@@ -107,19 +111,72 @@ def ficha_comprador(organismo):
         "(alimenta comprador.set_reputacion). Ver WORKER.md.")
 
 
+def registrar_salud(pendientes, bajadas, capac, muro):
+    """Heartbeat: deja en worker_estado (fila única) qué pasó en esta pasada. `ultimo_ok` solo
+    avanza si la pasada fue SANA — bajó algo o no había backlog. Si hay backlog y no bajó nada
+    (muro / notebook con problemas), ultimo_ok NO avanza → salud() lo detecta como silencio."""
+    now = db._now()
+    sana = bajadas > 0 or pendientes == 0
+    with db.conn() as c:
+        existe = c.execute("SELECT 1 FROM worker_estado WHERE id=1").fetchone()
+        if existe:
+            c.execute("UPDATE worker_estado SET ultimo_intento=?, pendientes=?, bajadas=?, capac=?, "
+                      "muro=?, ultimo_ok=CASE WHEN ? THEN ? ELSE ultimo_ok END WHERE id=1",
+                      (now, pendientes, bajadas, capac, 1 if muro else 0, sana, now))
+        else:
+            c.execute("INSERT INTO worker_estado (id, ultimo_ok, ultimo_intento, pendientes, bajadas, "
+                      "capac, muro) VALUES (1,?,?,?,?,?,?)",
+                      (now if sana else None, now, pendientes, bajadas, capac, 1 if muro else 0))
+
+
+def salud(umbral_horas=None, hoy=None):
+    """Estado del worker para alertas/UI. stale = hay backlog Y hace > umbral horas que no procesa.
+    umbral_horas None lee LOVEO_WORKER_STALE_H (default 24)."""
+    umbral = int(os.environ.get("LOVEO_WORKER_STALE_H", "24")) if umbral_horas is None else umbral_horas
+    schema_v3.migrate()
+    with db.conn() as c:
+        r = c.execute("SELECT ultimo_ok, ultimo_intento, pendientes, muro FROM worker_estado "
+                      "WHERE id=1").fetchone()
+    if not r:
+        return {"conocido": False, "stale": False, "pendientes": 0, "muro": False,
+                "horas": None, "ultimo_ok": None, "ultimo_intento": None}
+    hoy = hoy or datetime.datetime.now()
+    ok = _parse_ts(r["ultimo_ok"])
+    horas = (hoy - ok).total_seconds() / 3600 if ok else None
+    pend = r["pendientes"] or 0
+    stale = pend > 0 and (horas is None or horas > umbral)
+    return {"conocido": True, "stale": stale, "pendientes": pend, "muro": bool(r["muro"]),
+            "horas": round(horas, 1) if horas is not None else None,
+            "ultimo_ok": r["ultimo_ok"], "ultimo_intento": r["ultimo_intento"]}
+
+
+def _parse_ts(s):
+    if not s:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(str(s)[:19])
+    except ValueError:
+        return None
+
+
 def una_pasada(descargar=_descargar_real, analizar=_analizar_real, con_capac=None):
-    """Una pasada completa: descarga (Capa B) y, si con_capac, análisis (Capa C).
+    """Una pasada completa: descarga (Capa B) y, si con_capac, análisis (Capa C). Deja heartbeat.
     con_capac=None lee LOVEO_WORKER_CAPAC (default ON; '0' lo apaga)."""
     schema_v3.migrate()  # cacheado por base: barato. Garantiza analisis_bases para pendientes_capac.
     if con_capac is None:
         con_capac = os.environ.get("LOVEO_WORKER_CAPAC", "1") != "0"
     cods = pendientes()
-    bajadas = sum(1 for cod in cods if procesar(cod, descargar))
+    bajadas, muro = 0, False
+    for cod in cods:
+        r = procesar(cod, descargar)
+        bajadas += 1 if r["ok"] else 0
+        muro = muro or r["muro"]
     analizadas = 0
     if con_capac:
         for cod in pendientes_capac():
             if procesar_capac(cod, analizar):
                 analizadas += 1
+    registrar_salud(len(cods), bajadas, analizadas, muro)
     return {"pendientes": len(cods), "procesadas": bajadas, "capac": analizadas}
 
 

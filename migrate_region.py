@@ -30,7 +30,7 @@ TABLES = [
     "competidores", "participaciones", "relicitaciones",
     "descartes", "resultados", "licitacion_keywords", "analisis_bases",
     "cubicaciones", "cubicacion_items", "precios_referencia", "recall_log",
-    "reputacion_comprador", "notificaciones",
+    "reputacion_comprador", "notificaciones", "worker_estado",
 ]
 
 

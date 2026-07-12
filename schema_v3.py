@@ -152,6 +152,16 @@ def _crear_tablas():
             score_despues   INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS worker_estado (
+            id             INTEGER PRIMARY KEY,       -- siempre 1 (fila única)
+            ultimo_ok      TEXT,                      -- última pasada SANA (bajó algo o backlog=0)
+            ultimo_intento TEXT,                      -- última pasada (haya funcionado o no)
+            pendientes     INTEGER,                   -- backlog de Capa B al inicio de la pasada
+            bajadas        INTEGER,
+            capac          INTEGER,
+            muro           INTEGER DEFAULT 0          -- 1 si chocó con el muro anti-bot
+        );
+
         CREATE TABLE IF NOT EXISTS notificaciones (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo       TEXT,

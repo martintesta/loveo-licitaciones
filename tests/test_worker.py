@@ -33,7 +33,24 @@ def test_procesar_exito(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
     with db.conn() as c:
         db.upsert_licitacion(c, {"codigo": "A", "nombre": "x"})
-    assert worker.procesar("A", lambda cod: True) is True
+    assert worker.procesar("A", lambda cod: True)["ok"] is True
+
+
+def test_procesar_dict_ok_false_no_cuenta(tmp_path, monkeypatch):
+    """Fix: descargar_codigo devuelve un dict; ok=False NO debe contar como bajada."""
+    _setup(tmp_path, monkeypatch)
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "A", "nombre": "x"})
+    r = worker.procesar("A", lambda cod: {"ok": False, "nota": "grilla sin descargas"})
+    assert r["ok"] is False and r["muro"] is False
+
+
+def test_procesar_detecta_muro(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "A", "nombre": "x"})
+    r = worker.procesar("A", lambda cod: {"ok": False, "nota": "BLOQUEO anti-bot (IP residencial)"})
+    assert r["muro"] is True
 
 
 def test_procesar_error_marca_estado_y_traza(tmp_path, monkeypatch):
@@ -44,7 +61,7 @@ def test_procesar_error_marca_estado_y_traza(tmp_path, monkeypatch):
     def _boom(cod):
         raise RuntimeError("playwright se cayó")
 
-    assert worker.procesar("A", _boom) is False
+    assert worker.procesar("A", _boom)["ok"] is False
     with db.conn() as c:
         estado = c.execute("SELECT docs_estado FROM licitaciones WHERE codigo=?", ("A",)).fetchone()
         ev = c.execute("SELECT 1 FROM eventos WHERE codigo='A' AND tipo='error'").fetchone()
@@ -141,3 +158,45 @@ def test_una_pasada_capac_apagado_no_analiza(tmp_path, monkeypatch):
     r = worker.una_pasada(descargar=lambda cod: True,
                           analizar=lambda cod: called.append(cod), con_capac=False)
     assert r["capac"] == 0 and called == []
+
+
+# ---------------------------------------------------------------- heartbeat + salud (robustez #2)
+import datetime as _dt  # noqa: E402
+
+
+def _mig(tmp_path, monkeypatch):
+    import schema_v3
+    _setup(tmp_path, monkeypatch)
+    schema_v3.migrate()
+
+
+def test_salud_sin_datos_no_es_stale(tmp_path, monkeypatch):
+    _mig(tmp_path, monkeypatch)
+    s = worker.salud()
+    assert s["conocido"] is False and s["stale"] is False
+
+
+def test_pasada_sana_no_es_stale(tmp_path, monkeypatch):
+    _mig(tmp_path, monkeypatch)
+    worker.registrar_salud(pendientes=3, bajadas=3, capac=1, muro=False)  # bajó todo
+    s = worker.salud(umbral_horas=24, hoy=_dt.datetime.now())
+    assert s["stale"] is False and s["pendientes"] == 3
+
+
+def test_backlog_sin_bajar_y_viejo_es_stale(tmp_path, monkeypatch):
+    _mig(tmp_path, monkeypatch)
+    # backlog de 5, no bajó nada (muro): ultimo_ok NO avanza
+    worker.registrar_salud(pendientes=5, bajadas=0, capac=0, muro=True)
+    s = worker.salud(umbral_horas=24, hoy=_dt.datetime.now())
+    assert s["stale"] is True and s["muro"] is True and s["pendientes"] == 5
+
+
+def test_stale_por_umbral_de_horas(tmp_path, monkeypatch):
+    _mig(tmp_path, monkeypatch)
+    worker.registrar_salud(pendientes=2, bajadas=2, capac=0, muro=False)   # sano ahora
+    ahora = _dt.datetime.now()
+    assert worker.salud(umbral_horas=24, hoy=ahora)["stale"] is False
+    # ...pero si pasan 30h y sigue habiendo backlog, se vuelve stale
+    worker.registrar_salud(pendientes=2, bajadas=0, capac=0, muro=False)   # backlog, no avanza
+    futuro = ahora + _dt.timedelta(hours=30)
+    assert worker.salud(umbral_horas=24, hoy=futuro)["stale"] is True

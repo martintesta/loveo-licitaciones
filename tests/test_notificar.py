@@ -64,13 +64,30 @@ def test_correr_envia_una_vez_y_deja_de_avisar(tmp_path, monkeypatch):
     cap = lambda asunto, cuerpo, dest: enviados.append((asunto, cuerpo, dest))
 
     r1 = notificar.correr(hoy=HOY, umbral=5, enviar=cap)
-    assert r1 == {"candidatas": 1, "nuevas": 1, "enviado": True}
+    assert r1 == {"candidatas": 1, "nuevas": 1, "enviado": True, "worker_stale": False}
     assert len(enviados) == 1
     assert "A" in enviados[0][1]                 # el código aparece en el cuerpo
 
     r2 = notificar.correr(hoy=HOY, umbral=5, enviar=cap)   # segunda pasada: ya avisada
     assert r2["nuevas"] == 0 and r2["enviado"] is False
     assert len(enviados) == 1                     # NO se reenvió
+
+
+def test_worker_mudo_dispara_aviso_una_vez_al_dia(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    import worker
+    worker.registrar_salud(pendientes=5, bajadas=0, capac=0, muro=True)   # backlog + muro = stale
+    # forzar staleness: sin ultimo_ok, salud() ya lo marca stale
+    enviados = []
+    cap = lambda a, cuerpo, d: enviados.append(cuerpo)
+
+    r1 = notificar.correr(hoy=HOY, umbral=5, enviar=cap)   # no hay deadlines, pero sí worker mudo
+    assert r1["enviado"] is True and r1["worker_stale"] is True
+    assert "WORKER MUDO" in enviados[0] and "muro anti-bot" in enviados[0]
+
+    r2 = notificar.correr(hoy=HOY, umbral=5, enviar=cap)   # mismo día: no re-avisa
+    assert r2["enviado"] is False
+    assert len(enviados) == 1
 
 
 def test_envio_fallido_no_registra_y_reintenta(tmp_path, monkeypatch):

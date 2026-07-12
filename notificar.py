@@ -83,16 +83,45 @@ def _dias_txt(d):
     return "HOY" if d == 0 else "mañana" if d == 1 else f"en {d} días"
 
 
-def render(items):
-    """(asunto, cuerpo) del digest. items = lista de candidatas nuevas."""
+def _alerta_worker():
+    """(texto, clave_dedup) si el worker está MUDO (stale); (None, None) si está sano.
+
+    Distingue muro anti-bot (WAF endurecido → acción técnica) de silencio (notebook apagado)."""
+    try:
+        import worker
+        s = worker.salud()
+    except Exception:
+        return None, None
+    if not s.get("stale"):
+        return None, None
+    causa = ("muro anti-bot (WAF endurecido — revisá IP residencial / calibrate_ficha.py)"
+             if s["muro"] else "no procesa (¿notebook apagado o dormido?)")
+    horas = f"hace {s['horas']}h sin procesar" if s["horas"] is not None else "nunca corrió bien"
+    txt = (f"⚠ WORKER MUDO — {causa}. {s['pendientes']} bases sin bajar, {horas}. "
+           f"Los scores quedan incompletos (provisionales) hasta reactivarlo.")
+    clave = ("__worker__", "worker", (s.get("ultimo_intento") or db._now())[:10])  # 1 aviso por día
+    return txt, clave
+
+
+def render(items, worker_alerta=None):
+    """(asunto, cuerpo) del digest. items = candidatas nuevas; worker_alerta = warning opcional."""
     n = len(items)
-    asunto = f"Loveo · {n} deadline{'s' if n != 1 else ''} de licitación por vencer"
-    lineas = ["Licitaciones que entran en la ventana de alerta:\n"]
-    for it in items:
-        que = "Cierre" if it["tipo"] == "cierre" else "Visita a terreno"
-        sc = f" · score {it['score']}" if it["score"] is not None else ""
-        lineas.append(f"• [{_dias_txt(it['dias']).upper()}] {que} — {it['nombre']} ({it['codigo']})")
-        lineas.append(f"    {it['organismo']} · {it['region']}{sc} · {it['fecha']}")
+    partes = []
+    if n:
+        partes.append(f"{n} deadline{'s' if n != 1 else ''}")
+    if worker_alerta:
+        partes.append("worker mudo")
+    asunto = "Loveo · " + " + ".join(partes or ["avisos"])
+    lineas = []
+    if worker_alerta:
+        lineas += [worker_alerta, ""]
+    if items:
+        lineas.append("Licitaciones que entran en la ventana de alerta:\n")
+        for it in items:
+            que = "Cierre" if it["tipo"] == "cierre" else "Visita a terreno"
+            sc = f" · score {it['score']}" if it["score"] is not None else ""
+            lineas.append(f"• [{_dias_txt(it['dias']).upper()}] {que} — {it['nombre']} ({it['codigo']})")
+            lineas.append(f"    {it['organismo']} · {it['region']}{sc} · {it['fecha']}")
     lineas.append("\n— Loveo Construcciones (aviso automático). No responder a este correo.")
     return asunto, "\n".join(lineas)
 
@@ -121,15 +150,25 @@ def correr(hoy=None, umbral=None, enviar=None):
     schema_v3.migrate()
     cands = candidatas(hoy, umbral)
     frescas = nuevas(cands)
-    if not frescas:
-        return {"candidatas": len(cands), "nuevas": 0, "enviado": False}
+
+    # Alerta de worker mudo (deduplicada por día): que el score no se degrade en silencio (#2).
+    w_txt, w_clave = _alerta_worker()
+    w_nuevo = False
+    if w_txt:
+        with db.conn() as c:
+            w_nuevo = c.execute(
+                "SELECT 1 FROM notificaciones WHERE codigo=? AND tipo=? AND fecha_evento=?",
+                w_clave).fetchone() is None
+
+    if not frescas and not w_nuevo:
+        return {"candidatas": len(cands), "nuevas": 0, "enviado": False, "worker_stale": bool(w_txt)}
 
     real = enviar is None
     if real and not disponible():
         return {"candidatas": len(cands), "nuevas": len(frescas), "enviado": False,
                 "error": "SMTP/LOVEO_ALERT_TO no configurado (ver notificar.py). No se envió."}
 
-    asunto, cuerpo = render(frescas)
+    asunto, cuerpo = render(frescas, worker_alerta=(w_txt if w_nuevo else None))
     enviar = enviar or (lambda a, c, d: _enviar_smtp(a, c, d))
     try:
         enviar(asunto, cuerpo, _destinatarios())
@@ -143,7 +182,12 @@ def correr(hoy=None, umbral=None, enviar=None):
             c.execute("INSERT OR IGNORE INTO notificaciones "
                       "(codigo, tipo, fecha_evento, canal, enviado_at) VALUES (?,?,?,?,?)",
                       (it["codigo"], it["tipo"], it["fecha"], CANAL, now))
-    return {"candidatas": len(cands), "nuevas": len(frescas), "enviado": True}
+        if w_nuevo:
+            c.execute("INSERT OR IGNORE INTO notificaciones "
+                      "(codigo, tipo, fecha_evento, canal, enviado_at) VALUES (?,?,?,?,?)",
+                      (w_clave[0], w_clave[1], w_clave[2], CANAL, now))
+    return {"candidatas": len(cands), "nuevas": len(frescas), "enviado": True,
+            "worker_stale": bool(w_txt)}
 
 
 if __name__ == "__main__":

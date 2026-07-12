@@ -215,8 +215,21 @@ function cierranRow(cod){var l=D.lics[cod];var b=(l.dias<=2)?'#B91C1C':'#F59E0B'
 
 function thead(){return '<div class="thead"><span>CÓDIGO</span><span>NOMBRE</span><span>REGIÓN</span><span>CIERRE</span><span style="text-align:right">SCORE</span><span>TRIAGE</span></div>';}
 
+function renderWorkerBanner(){
+  var w=D.worker;
+  if(!w||!w.stale)return '';
+  var causa=w.muro?'Muro anti-bot (WAF endurecido — revisá IP residencial / calibrate_ficha.py)'
+                   :'El worker no procesa (¿notebook apagado o dormido?)';
+  var horas=(w.horas!=null)?('hace '+w.horas+'h sin procesar'):'nunca corrió bien';
+  return '<div style="background:#FEE2E2;border:1px solid #FCA5A5;border-left:4px solid #B91C1C;'
+    +'border-radius:8px;padding:10px 12px;margin:0 0 12px;color:#7F1D1D;font-size:13px">'
+    +'<b>⚠ Worker mudo — descargas de bases detenidas.</b> '+esc(causa)+'. '
+    +'<b>'+w.pendientes+'</b> licitaciones sin bajar sus bases, '+esc(horas)+'. '
+    +'Los scores de esas quedan provisionales (incompletos) hasta reactivarlo.</div>';
+}
 function renderInicio(){
   var g=D.groups,m=D.meta,h='<div class="eyebrow">QUÉ HACER HOY</div><div class="h1">Hola, Martín</div>';
+  h+=renderWorkerBanner();
   h+='<div class="sec"><span class="ic">'+ICONS.clock+'</span><span class="t" data-list="cierran" data-title="Cierran esta semana">CIERRAN ESTA SEMANA</span></div><div class="col">';
   if(g.cierran.length){for(var i=0;i<Math.min(6,g.cierran.length);i++)h+=cierranRow(g.cierran[i]);}else h+='<div style="font-family:var(--mono);font-size:11px;color:#9AA2AC;padding:8px 2px">Nada cierra en los próximos 7 días.</div>';
   h+='</div>';

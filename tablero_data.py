@@ -16,6 +16,7 @@ import keywords as kwmod
 import aprendizaje
 import recall
 import comprador
+import worker
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
          "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -260,6 +261,7 @@ def build_data():
         "actualizado": actualizado,
         "aprendizaje": aprendizaje.resumen(_ap),
         "recall": recall.auditar(),
+        "worker": worker.salud(),
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
             "mesAb": MESES_AB, "meses": MESES,
