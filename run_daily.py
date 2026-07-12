@@ -10,7 +10,7 @@ Flujo:  descubrir -> filtrar -> [por cada candidato] detalle -> upsert -> admisi
   python run_daily.py --cache dia.json 11062026   # modo test: usa un listado cacheado
 """
 import sys, time, json
-import db, discover, rules, scoring, extract, relicitaciones
+import db, discover, rules, scoring, extract, relicitaciones, notificar
 
 
 def procesar_dia(fecha, listado=None, traer_detalles=True):
@@ -52,8 +52,14 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
 
     enlaces = relicitaciones.detectar()   # enlaza desiertas con su re-licitación (conn propia)
 
+    try:
+        avisos = notificar.correr()       # avisos de deadline; no-op si no hay SMTP configurado
+    except Exception as e:                # un fallo de notificación NUNCA frena el pipeline
+        avisos = {"error": str(e)}
+
     return {"fecha": fecha, "total": len(listado), "candidatos": len(candidatos),
-            "admisibles": admisibles, "errores": errores, "relicitaciones": enlaces}
+            "admisibles": admisibles, "errores": errores, "relicitaciones": enlaces,
+            "avisos": avisos}
 
 
 def procesar_codigo(codigo, manual=True):

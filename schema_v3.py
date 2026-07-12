@@ -152,6 +152,15 @@ def _crear_tablas():
             score_despues   INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS notificaciones (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo       TEXT,
+            tipo         TEXT,                        -- cierre | visita
+            fecha_evento TEXT,                        -- deadline notificado (si cambia -> re-notifica)
+            canal        TEXT,                        -- email | ...
+            enviado_at   TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS reputacion_comprador (
             organismo TEXT PRIMARY KEY,               -- comprador (NombreOrganismo)
             nivel     TEXT NOT NULL CHECK (nivel IN ('buena','regular','mala')),
@@ -178,6 +187,8 @@ def _crear_tablas():
         CREATE INDEX IF NOT EXISTS idx_resultados_cat ON resultados(categoria);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_recall_cod_run ON recall_log(codigo, fecha_run);
         CREATE INDEX IF NOT EXISTS idx_recall_estado ON recall_log(estado);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_notif_cod_tipo_fecha
+            ON notificaciones(codigo, tipo, fecha_evento);
         """)
         # documentos: en SQLite viejo puede faltar fuente/url → ALTER (PRAGMA es SQLite-only).
         # En Postgres las columnas ya vienen del CREATE de db.py.
