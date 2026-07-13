@@ -47,4 +47,12 @@
   parecida pre-llena el BOM desde la receta. Métrica: cuánto encoge la curación (ítems tocados)
   proyecto a proyecto.
 - Listo cuando: una segunda lic del mismo tipo arranca con el BOM pre-lleno de la receta; tests.
-- Estado: [ ] pendiente.
+- Estado: [x] hecho. `tipo_producto(nombre)` clasifica; `guardar_borrador` alimenta la receta del
+  tipo (cubicaciones origen='receta', proyecto=tipo) en cada curación; `prellenar_desde_receta`
+  arranca una lic parecida con el BOM de la receta (sin IA). build_data expone `recetaDisp`; UI
+  ofrece "Pre-llenar desde receta" cuando no hay borrador y hay receta. 8 tests.
+
+## Epic COMPLETO (fases 1–5). El objetivo central —cubicar desde las bases, curar, preciar con
+## referencia clickeable, cerrar el margen del score y aprender recetas— está cumplido, sin depender
+## de la cubicación de un tercero. Deuda futura: métrica de "cuánto encoge la curación" proyecto a
+## proyecto; recetas por sub-tipo/tamaño; sugerir precios de la receta al pre-llenar.

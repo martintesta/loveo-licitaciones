@@ -181,6 +181,12 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
             st.session_state.flash = (
                 f"✓ Preciado: {r['preciados']} partidas ({r['web']} por web). Costo ≈ ${r['costo']:,.0f}."
                 .replace(",", ".") if r.get("ok") else r.get("error", "No se pudo preciar."))
+    elif act == "cubic_receta":
+        if cod:
+            r = cubicacion_ia.prellenar_desde_receta(cod)
+            st.session_state.flash = (
+                f"✓ Pre-llenado desde receta '{r['tipo']}': {len(r['items'])} partidas. Ajustá y guardá."
+                if r.get("ok") else r.get("error", "No se pudo pre-llenar."))
     elif act == "cubic_margen":
         if cod:
             r = cubicacion_ia.margen(cod)

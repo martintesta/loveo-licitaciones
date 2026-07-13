@@ -18,8 +18,28 @@ import re
 
 import db
 import schema_v3
+import textnorm
 
 GRUPOS = {"material", "mano_obra", "transporte", "otros"}
+
+# Tipo de producto para las recetas (Fase 5): agrupa licitaciones parecidas para reusar el BOM.
+TIPOS_PRODUCTO = [
+    ("contenedor", ["container", "conteiner", "contenedor"]),
+    ("modular", ["modulo", "modular", "prefabricad", "sala", "oficina"]),
+    ("bano", ["bano"]),
+    ("reas", ["reas", "respel", "suspel"]),
+    ("box", ["box"]),
+    ("panel_solar", ["panel solar", "paneles solares"]),
+]
+
+
+def tipo_producto(nombre):
+    """Clasifica el nombre de la licitación en un tipo de producto (o None). Base de las recetas."""
+    n = textnorm.na(nombre)
+    for tipo, kws in TIPOS_PRODUCTO:
+        if any(k in n for k in kws):
+            return tipo
+    return None
 
 
 def _extraer_real(codigo):
@@ -108,17 +128,68 @@ def generar(codigo, extraer=None):
     return {"ok": True, "items": items}
 
 
+def _reemplazar_receta(c, tipo, items):
+    """Guarda (dentro de una conn abierta) la receta del tipo de producto: cubicaciones(origen=
+    'receta', proyecto=tipo) + items. Reemplaza la receta anterior de ese tipo."""
+    cur = c.execute("SELECT id FROM cubicaciones WHERE proyecto=? AND origen='receta'", (tipo,)).fetchone()
+    if cur:
+        cub_id = cur[0]
+        c.execute("DELETE FROM cubicacion_items WHERE cubicacion_id=?", (cub_id,))
+    else:
+        c.execute("INSERT INTO cubicaciones (proyecto, origen, fecha) VALUES (?,?,?)",
+                  (tipo, "receta", db._now()))
+        cub_id = c.execute("SELECT id FROM cubicaciones WHERE proyecto=? AND origen='receta'",
+                           (tipo,)).fetchone()[0]
+    for it in items:
+        c.execute("INSERT INTO cubicacion_items "
+                  "(cubicacion_id, partida, grupo, descripcion, cantidad, unidad) VALUES (?,?,?,?,?,?)",
+                  (cub_id, it["partida"], it["grupo"], it["descripcion"], it["cantidad"], it["unidad"]))
+
+
 def guardar_borrador(codigo, items):
     """Reemplaza el borrador IA con la lista CURADA por el usuario (Fase 2). Normaliza y descarta
-    las filas sin descripción. Crea la cubicación IA si no existía. Respeta la de Valentina."""
+    las filas sin descripción. Crea la cubicación IA si no existía. Respeta la de Valentina.
+    Además ALIMENTA la receta del tipo de producto (Fase 5): la curación es la inteligencia propia."""
     schema_v3.migrate()
     if _tiene_valentina(codigo):
         return {"ok": False, "error": "Hay cubicación de Valentina; no se edita el borrador IA."}
     norm = [x for x in (_norm_item(m) for m in (items or [])) if x]
     with db.conn() as c:
         _reemplazar_items(c, codigo, norm)
-        db.log_evento(c, codigo, "cubicacion_ia", f"Cubicación curada: {len(norm)} partidas.")
-    return {"ok": True, "items": norm}
+        nombre = c.execute("SELECT nombre FROM licitaciones WHERE codigo=?", (codigo,)).fetchone()
+        tipo = tipo_producto(nombre["nombre"] if nombre else "")
+        if tipo and norm:                      # cada curación mejora la receta del tipo
+            _reemplazar_receta(c, tipo, norm)
+        db.log_evento(c, codigo, "cubicacion_ia",
+                      f"Cubicación curada: {len(norm)} partidas." + (f" Receta '{tipo}' actualizada." if tipo and norm else ""))
+    return {"ok": True, "items": norm, "receta_tipo": tipo}
+
+
+def prellenar_desde_receta(codigo):
+    """Pre-llena el borrador de una licitación desde la receta de su tipo de producto (sin IA).
+    Es la 'aceleración': una lic parecida arranca con el BOM de la receta para solo ajustar deltas.
+    Respeta la cubicación de Valentina. Devuelve {ok, items, tipo} o {ok: False, error}."""
+    schema_v3.migrate()
+    if _tiene_valentina(codigo):
+        return {"ok": False, "error": "Ya hay cubicación de Valentina (tiene prioridad); no se pisa."}
+    with db.conn() as c:
+        nombre = c.execute("SELECT nombre FROM licitaciones WHERE codigo=?", (codigo,)).fetchone()
+        tipo = tipo_producto(nombre["nombre"] if nombre else "")
+        if not tipo:
+            return {"ok": False, "error": "No se pudo determinar el tipo de producto de la licitación."}
+        rec = c.execute("SELECT id FROM cubicaciones WHERE proyecto=? AND origen='receta'", (tipo,)).fetchone()
+        if not rec:
+            return {"ok": False, "error": f"Todavía no hay receta para el tipo '{tipo}'. Curá una y se aprende."}
+        items = [dict(r) for r in c.execute(
+            "SELECT partida, grupo, descripcion, cantidad, unidad FROM cubicacion_items "
+            "WHERE cubicacion_id=? ORDER BY id", (rec[0],)).fetchall()]
+    if not items:
+        return {"ok": False, "error": "La receta está vacía."}
+    with db.conn() as c:
+        _reemplazar_items(c, codigo, items)
+        db.log_evento(c, codigo, "cubicacion_ia",
+                      f"Borrador pre-llenado desde receta '{tipo}': {len(items)} partidas.")
+    return {"ok": True, "items": items, "tipo": tipo}
 
 
 def borrador(codigo):

@@ -260,3 +260,75 @@ def test_margen_sin_techo_falla(tmp_path, monkeypatch):
 def test_margen_sin_cubicacion_falla(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
     assert cubicacion_ia.margen("A")["ok"] is False
+
+
+# ---------------------------------------------------------------- Fase 5: recetas por tipo de producto
+def test_tipo_producto_clasifica():
+    assert cubicacion_ia.tipo_producto("Provisión de container 20 pies") == "contenedor"
+    assert cubicacion_ia.tipo_producto("Sala modular para escuela") == "modular"
+    assert cubicacion_ia.tipo_producto("Baños químicos") == "bano"
+    assert cubicacion_ia.tipo_producto("Servicio de aseo") is None
+
+
+def _lic2(codigo, nombre):
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": codigo, "nombre": nombre})
+
+
+def test_curar_alimenta_la_receta_del_tipo(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)   # 'A' se llama "Módulos" → tipo modular
+    r = cubicacion_ia.guardar_borrador("A", [{"descripcion": "Panel", "cantidad": 20, "unidad": "m2"}])
+    assert r["receta_tipo"] == "modular"
+    # la receta 'modular' quedó guardada (cubicaciones origen='receta')
+    with db.conn() as c:
+        rec = c.execute("SELECT id FROM cubicaciones WHERE proyecto='modular' AND origen='receta'").fetchone()
+        n = c.execute("SELECT COUNT(*) n FROM cubicacion_items WHERE cubicacion_id=?", (rec["id"],)).fetchone()["n"]
+    assert rec is not None and n == 1
+
+
+def test_prellenar_desde_receta_en_lic_parecida(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    # curar 'A' (modular) crea la receta
+    cubicacion_ia.guardar_borrador("A", [{"descripcion": "Panel SIP", "cantidad": 30, "unidad": "m2"},
+                                         {"descripcion": "Estructura", "cantidad": 100, "unidad": "kg"}])
+    # una lic NUEVA del mismo tipo (modular) pre-llena desde la receta, sin IA
+    _lic2("B", "Oficina modular municipal")
+    r = cubicacion_ia.prellenar_desde_receta("B")
+    assert r["ok"] and r["tipo"] == "modular"
+    items = cubicacion_ia.borrador("B")
+    assert [i["descripcion"] for i in items] == ["Panel SIP", "Estructura"]
+    assert items[0]["cantidad"] == 30
+
+
+def test_prellenar_sin_receta_avisa(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _lic2("C", "Sala modular sin receta previa")
+    r = cubicacion_ia.prellenar_desde_receta("C")
+    assert r["ok"] is False and "receta" in r["error"].lower()
+
+
+def test_prellenar_tipo_desconocido_avisa(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _lic2("D", "Servicio de vigilancia")   # no matchea ningún tipo
+    r = cubicacion_ia.prellenar_desde_receta("D")
+    assert r["ok"] is False and "tipo" in r["error"].lower()
+
+
+def test_prellenar_respeta_valentina(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    cubicacion_ia.guardar_borrador("A", [{"descripcion": "x", "cantidad": 1, "unidad": "u"}])
+    _lic2("B", "Módulos oficina")
+    with db.conn() as c:
+        c.execute("INSERT INTO cubicaciones (proyecto, codigo, origen, fecha) VALUES (?,?,?,?)",
+                  ("B", "B", "valentina", "2026-07-01"))
+    r = cubicacion_ia.prellenar_desde_receta("B")
+    assert r["ok"] is False and "Valentina" in r["error"]
+
+
+def test_build_data_expone_receta_disponible(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    cubicacion_ia.guardar_borrador("A", [{"descripcion": "Panel", "cantidad": 20, "unidad": "m2"}])
+    _lic2("B", "Sala modular nueva")   # mismo tipo, sin cubicación propia
+    import tablero_data
+    lics = tablero_data.build_data()["lics"]
+    assert lics["B"]["recetaDisp"] == {"tipo": "modular", "n": 1}

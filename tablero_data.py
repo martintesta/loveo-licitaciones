@@ -17,6 +17,7 @@ import aprendizaje
 import recall
 import comprador
 import worker
+import cubicacion_ia
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
          "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -151,6 +152,11 @@ def build_data():
                  "cantidad": ci["cantidad"], "unidad": ci["unidad"],
                  "precio": ci["precio_unitario"], "total": ci["total"],
                  "fuente": ci["precio_fuente"], "url": ci["precio_url"]})
+        # Recetas por tipo de producto (Fase 5): cuántas partidas hay por tipo, para ofrecer pre-llenar.
+        recetas_n = {rr["proyecto"]: rr["n"] for rr in c.execute(
+            "SELECT cu.proyecto AS proyecto, COUNT(ci.id) AS n FROM cubicaciones cu "
+            "JOIN cubicacion_items ci ON ci.cubicacion_id = cu.id "
+            "WHERE cu.origen='receta' GROUP BY cu.proyecto").fetchall()}
 
     lics, order = {}, []
     groups = {"cierran": [], "nuevas": [], "fitAnio": [], "siguiendo": [], "cierran5": [], "nuevas7d": []}
@@ -176,6 +182,7 @@ def build_data():
         dias = (cierre - now).days if cierre else None
         estado_lbl = ESTADO_LBL.get(res) if res and res != "pendiente" else ESTADO_LBL.get(rev, rev)
         _dd = _dims(sj)  # confianza: cuántas de las 6 dimensiones están realmente evaluadas
+        _tp = cubicacion_ia.tipo_producto(r["nombre"] or "")  # tipo de producto (para recetas, Fase 5)
 
         lics[cod] = {
             "cod": cod, "nom": r["nombre"] or "—", "org": r["organismo"] or "",
@@ -192,6 +199,7 @@ def build_data():
             "descr": (r["descripcion"] or "")[:1200], "eventos": eventos.get(cod, []),
             "docs": docs.get(cod, []), "analisis": analisis.get(cod),
             "cubicIA": cubic_ia.get(cod, []),  # borrador de cubicación asistida (Fase 1)
+            "recetaDisp": ({"tipo": _tp, "n": recetas_n[_tp]} if _tp and _tp in recetas_n else None),
             "incompleto": r["json_detalle"] is None,  # no se bajó el detalle (solo código+nombre)
         }
 
