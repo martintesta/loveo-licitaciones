@@ -98,6 +98,15 @@ def list_folder(folder_id, svc=None):
     return out
 
 
+FOLDER_MIME = "application/vnd.google-apps.folder"
+
+
+def list_subfolders(folder_id, svc=None):
+    """Subcarpetas (id, name) de una carpeta. Para la ingesta por carpeta madre (una sub por código)."""
+    return [{"id": f["id"], "name": f["name"]} for f in list_folder(folder_id, svc)
+            if f.get("mimeType") == FOLDER_MIME]
+
+
 def download_file(file_id, dest_path, svc=None):
     from googleapiclient.http import MediaIoBaseDownload
     svc = svc or _service()
