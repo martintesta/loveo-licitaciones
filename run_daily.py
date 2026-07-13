@@ -56,6 +56,11 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
         avisos = notificar.correr()       # avisos de deadline; no-op si no hay SMTP configurado
     except Exception as e:                # un fallo de notificación NUNCA frena el pipeline
         avisos = {"error": str(e)}
+        try:
+            import observabilidad
+            observabilidad.capturar("run_daily.notificar", e)
+        except Exception:
+            pass
 
     return {"fecha": fecha, "total": len(listado), "candidatos": len(candidatos),
             "admisibles": admisibles, "errores": errores, "relicitaciones": enlaces,
@@ -108,7 +113,7 @@ def procesar_codigo(codigo, manual=True):
             "admisible": bool(adm["admisible"]), "score": score, "ya_existia": ya}
 
 
-if __name__ == "__main__":
+def _main():
     args = sys.argv[1:]
     if "--cache" in args:
         i = args.index("--cache")
@@ -134,3 +139,15 @@ if __name__ == "__main__":
     else:
         fecha = args[0] if args else time.strftime("%d%m%Y")
         print(json.dumps(procesar_dia(fecha), indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    try:
+        _main()
+    except Exception as e:   # un crash del cron diario no puede pasar desapercibido
+        try:
+            import observabilidad
+            observabilidad.capturar("run_daily", e)
+        except Exception:
+            pass
+        raise

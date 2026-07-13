@@ -155,6 +155,15 @@ def _crear_tablas():
             score_despues   INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS errores (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts        TEXT,
+            contexto  TEXT,                        -- app | worker | run_daily | ...
+            mensaje   TEXT,
+            traceback TEXT,
+            resuelto  INTEGER DEFAULT 0
+        );
+
         CREATE TABLE IF NOT EXISTS worker_estado (
             id             INTEGER PRIMARY KEY,       -- siempre 1 (fila única)
             ultimo_ok      TEXT,                      -- última pasada SANA (bajó algo o backlog=0)

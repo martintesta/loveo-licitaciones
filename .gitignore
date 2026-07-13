@@ -35,3 +35,6 @@ node_modules/
 # --- Salidas del deck (se versionan a mano, no en git) ---
 *.pptx
 *.pdf
+
+# backups locales (scripts/backup_db.py)
+backups/

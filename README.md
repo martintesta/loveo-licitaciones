@@ -170,7 +170,9 @@ la plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
    depender de un tercero. Spec completa en `specs/cubicacion-asistida/`.
 5. **Más mercados de Latinoamérica** ◻ — nuevos adaptadores (fuente + reglas + parámetros) sobre el
    mismo núcleo.
-6. **Endurecer operación** ◻ — observabilidad, backups, roles.
+6. **Endurecer operación** ◧ — captura de errores (tabla `errores` + Sentry opcional vía
+   `SENTRY_DSN`; panel de salud en el Inicio) y backup de la base (`scripts/backup_db.py`, por cron)
+   hechos; siguen roles de usuario y warm-up de Render.
 
 ## Docs relacionados
 

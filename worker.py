@@ -190,6 +190,11 @@ def loop(descargar=_descargar_real, intervalo=None):
                   f"Durmiendo {intervalo}s.")
         except Exception as e:  # el loop nunca debe morir por un error puntual
             print(f"[worker] error en la pasada (sigo): {e}")
+            try:
+                import observabilidad
+                observabilidad.capturar("worker", e)
+            except Exception:
+                pass
         time.sleep(intervalo)
 
 

@@ -39,6 +39,7 @@ import usuarios
 import recall
 import comprador
 import cubicacion_ia
+import observabilidad
 
 st.set_page_config(page_title="Loveo Construcciones", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
@@ -52,6 +53,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 db.init_db()
+observabilidad.init()   # Sentry si hay SENTRY_DSN (no-op sin DSN)
 st.session_state.setdefault("last_nonce", None)
 st.session_state.setdefault("user", None)
 
@@ -102,6 +104,7 @@ data["pending_capac"] = st.session_state.get("pending_capac", {})
 data["user"] = st.session_state.user
 data["categorias"] = feedback.categorias_para_ui()
 data["categorias_resultado"] = feedback.categorias_resultado_para_ui()
+data["errores"] = observabilidad.recientes(8)   # errores capturados sin resolver (panel de salud)
 val = _console(data=data, key="console", default=None)
 
 if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_state.last_nonce:
@@ -181,6 +184,11 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
             st.session_state.flash = (
                 f"✓ Preciado: {r['preciados']} partidas ({r['web']} por web). Costo ≈ ${r['costo']:,.0f}."
                 .replace(",", ".") if r.get("ok") else r.get("error", "No se pudo preciar."))
+    elif act == "error_resuelto":
+        eid = val.get("eid")
+        if eid:
+            observabilidad.resolver(eid)
+            st.session_state.flash = "Error marcado como resuelto."
     elif act == "cubic_receta":
         if cod:
             r = cubicacion_ia.prellenar_desde_receta(cod)

@@ -252,8 +252,22 @@ function renderInicio(){
   h+='</div>';
   h+=renderIntel();
   h+=renderRecall();
+  h+=renderErrores();
   h+=renderChat();
   return h;
+}
+function renderErrores(){
+  var es=D.errores||[];
+  if(!es.length)return '';
+  var h='<div class="panel" style="margin-top:13px;border-left:3px solid #B91C1C"><div class="plabel">SALUD · ERRORES SIN RESOLVER ('+es.length+')</div>';
+  h+='<div class="dochint" style="margin:0 0 8px">Errores capturados en el sistema (app / worker / run diario). Revisá y marcá resuelto.</div>';
+  for(var i=0;i<es.length;i++){var e=es[i];
+    h+='<div class="it" style="display:flex;gap:8px;align-items:flex-start">'
+      +'<span class="pill" style="color:#B91C1C;background:#FEE2E2;white-space:nowrap">'+esc(e.contexto||'?')+'</span>'
+      +'<span style="flex:1;min-width:0"><span title="'+escA(e.traceback||'')+'">'+esc((e.mensaje||'—').slice(0,160))+'</span><div class="mut">'+esc(e.ts||'')+'</div></span>'
+      +'<button class="b gh sm" data-error-ok="'+escA(String(e.id))+'" title="Marcar resuelto">✓</button></div>';
+  }
+  return h+'</div>';
 }
 function kpi(label,n,color,key,title){return '<div class="kpi" data-list="'+key+'" data-title="'+escA(title)+'"><div class="l">'+label+'</div><div class="n" style="color:'+color+'">'+n+'</div></div>';}
 
@@ -511,6 +525,7 @@ document.addEventListener('click',function(e){
   if((x=e.target.closest('[data-logout]'))){sendVal({act:'logout'});return;}
   if((x=e.target.closest('[data-addcode]'))){var ci=document.getElementById('add-code');var cc=(ci&&ci.value||'').trim();if(cc){x.textContent='Agregando…';if(ci)ci.value='';sendVal({act:'add_codigo',codigo:cc});}return;}
   if((x=e.target.closest('[data-recall-cod]'))){sendVal({act:'recall',cod:x.getAttribute('data-recall-cod'),accion:x.getAttribute('data-recall-acc')});return;}
+  if((x=e.target.closest('[data-error-ok]'))){sendVal({act:'error_resuelto',eid:x.getAttribute('data-error-ok')});return;}
   if((x=e.target.closest('[data-reppago]'))){var rn=(document.getElementById('rep-nota')||{}).value||'';sendVal({act:'rep_pago',cod:x.getAttribute('data-cod'),nivel:x.getAttribute('data-reppago'),nota:rn.trim()});return;}
   if((x=e.target.closest('[data-cubicia]'))){x.textContent='Generando…';sendVal({act:'cubic_ia',cod:x.getAttribute('data-cubicia')});return;}
   if((x=e.target.closest('[data-cub-add]'))){var cr=document.getElementById('cub-rows');if(cr)cr.insertAdjacentHTML('beforeend',cubRow({}));return;}
