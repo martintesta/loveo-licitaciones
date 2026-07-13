@@ -143,8 +143,13 @@ def descargar_codigo(codigo):
                     if not bajados:
                         carpeta.mkdir(parents=True, exist_ok=True)
                         page.screenshot(path=str(carpeta / "_grilla_sin_descarga.png"))
-                        (carpeta / "_viewattachment.html").write_text(page.content(), encoding="utf-8")
-                        nota = "grilla sin descargas — correr calibrate_ficha.py y enviar _viewattachment.html"
+                        html = page.content()
+                        (carpeta / "_viewattachment.html").write_text(html, encoding="utf-8")
+                        if "recaptcha" in (html or "").lower():
+                            nota = ("protegido por reCAPTCHA — no automatizable; descargá las bases a "
+                                    "mano (browser) y subilas por Drive/storage para la Capa C")
+                        else:
+                            nota = "grilla sin descargas — correr calibrate_ficha.py y enviar _viewattachment.html"
         b.close()
 
     estado = "completo" if bajados else "error"
