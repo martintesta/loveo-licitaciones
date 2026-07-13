@@ -170,10 +170,11 @@ la plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
    depender de un tercero. Spec completa en `specs/cubicacion-asistida/`.
 5. **Más mercados de Latinoamérica** ◻ — nuevos adaptadores (fuente + reglas + parámetros) sobre el
    mismo núcleo.
-6. **Endurecer operación** ◧ — captura de errores (tabla `errores` + Sentry opcional vía
-   `SENTRY_DSN`; panel de salud en el Inicio), backup de la base (`scripts/backup_db.py`, por cron)
-   y **roles** (admin / analista: el admin gestiona keywords y resuelve errores; el resto es para
-   todos, con enforcement server-side) — hechos; sigue el warm-up de Render.
+6. **Endurecer operación** ✅ — captura de errores (tabla `errores` + Sentry opcional vía
+   `SENTRY_DSN`; panel de salud en el Inicio), backup de la base (`scripts/backup_db.py`, por cron),
+   **roles** (admin / analista, enforcement server-side) y **warm-up** contra el cold-start del free
+   tier (`.github/workflows/keep-warm.yml`: pinguea la app cada ~10 min; definí la repo variable
+   `WARMUP_URL`). El fix robusto del cold-start es un tier always-on o un uptime externo.
 
 ## Docs relacionados
 

@@ -1,0 +1,34 @@
+name: keep-warm
+
+# Evita el cold-start del free tier (se apaga tras ~15 min de inactividad) pingueando la app cada
+# ~10 min. Es best-effort: el cron de GitHub Actions puede retrasarse, así que puede haber algún
+# cold-start esporádico. El fix robusto es un tier always-on (Render paid) o un uptime externo
+# (UptimeRobot). Ver README.
+#
+# Setup: definí la repo variable WARMUP_URL con la URL de la app (o su health, p.ej.
+# https://TU-APP.onrender.com/_stcore/health). Sin la variable, el job no hace nada.
+#   Settings → Secrets and variables → Actions → Variables → New variable: WARMUP_URL
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping la app para mantenerla tibia
+        run: |
+          URL="${{ vars.WARMUP_URL }}"
+          if [ -z "$URL" ]; then
+            echo "WARMUP_URL no configurado (repo variable). Nada que hacer."
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 40 "$URL" || echo "000")
+          echo "GET (host oculto) -> HTTP $code"
+          # no fallar el workflow por un cold-start puntual (el próximo ping la levanta)
+          exit 0
