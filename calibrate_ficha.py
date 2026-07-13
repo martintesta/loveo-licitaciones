@@ -57,8 +57,11 @@ def main(codigo):
         page.screenshot(path=str(OUT / "viewattachment.png"), full_page=True)
         (OUT / "viewattachment.html").write_text(html, encoding="utf-8")
 
-        if "actividad anormal" in html.lower():
-            print(" ‼ MURO ANTI-BOT. Reintentá con HEADLESS=False (navegador visible)."); b.close(); return
+        import download
+        if download._html_muro(html):
+            print(" ‼ MURO ANTI-BOT (p.ej. 'Acceso denegado' / robot.png). Este endpoint bloquea el"
+                  " acceso: confirmá que estás en IP residencial chilena (no VPN/red corporativa) y"
+                  " probá con HEADLESS=False."); b.close(); return
 
         data = page.evaluate(r"""()=>{
           const ctrls=[];

@@ -53,3 +53,12 @@ def test_guardar_contenido_distinto_es_otra_fila(tmp_path, monkeypatch):
     download._guardar("C1", "bases.pdf", b"v1")
     download._guardar("C1", "anexo.pdf", b"v2")      # otro sha → segunda fila
     assert len(_docs("C1")) == 2
+
+
+def test_detecta_las_variantes_del_muro_antibot():
+    # variante clásica y la de "Acceso denegado"/robot.png que devuelve ViewAttachment (vista en vivo)
+    assert download._html_muro("<p>Detectamos ACTIVIDAD ANORMAL en su conexión</p>") is True
+    assert download._html_muro('<img src="../images/robot.png" alt="Acceso denegado">') is True
+    assert download._html_muro("<html>Acceso Denegado</html>") is True
+    assert download._html_muro("<table id='grilla'><tr><td>bases.pdf</td></tr></table>") is False
+    assert download._html_muro("") is False

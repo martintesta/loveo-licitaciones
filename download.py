@@ -30,7 +30,9 @@ PORTAL = "https://www.mercadopublico.cl"
 HEADLESS = True   # ← poné False en tu máquina la primera vez
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-MURO = "actividad anormal"   # texto del bloqueo anti-bot
+# Firmas del muro anti-bot de Mercado Público (varían: "actividad anormal" o la página de
+# "Acceso denegado" con robot.png que devuelve ViewAttachment ante un acceso no residencial).
+MUROS = ("actividad anormal", "acceso denegado", "robot.png")
 
 
 def _abrir_ficha(page, codigo):
@@ -50,9 +52,15 @@ def _url_adjuntos(page):
     return f"{PORTAL}/Procurement/Modules/Attachment/ViewAttachment.aspx?enc={m.group(1)}" if m else None
 
 
+def _html_muro(html):
+    """True si el HTML es una página del muro anti-bot (pura, testeable)."""
+    h = (html or "").lower()
+    return any(m in h for m in MUROS)
+
+
 def _es_muro(page):
     try:
-        return MURO in (page.content() or "").lower()
+        return _html_muro(page.content())
     except Exception:
         return False
 
