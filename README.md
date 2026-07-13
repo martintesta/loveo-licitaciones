@@ -140,6 +140,9 @@ python worker.py                                # loop: obtiene bases (B) + anal
 streamlit run tablero3.py                       # consola: login, listado, ficha, aprendizaje
 ```
 
+Para que corra solo (Windows), registrá las tareas programadas: `scripts\install_daily_task.ps1`
+(run diario: descubrir + scoring + avisos) y `scripts\install_worker_task.ps1` (worker Capa B+C).
+
 Config por entorno: las credenciales del mercado y de la IA van en `.env` (nunca en el código).
 `config_local.py` (gitignored) tiene los parámetros/criterios locales; `config_local_example.py` es
 la plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
