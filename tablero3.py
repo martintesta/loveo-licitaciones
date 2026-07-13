@@ -112,7 +112,9 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
     act = val.get("act")
     cod = val.get("cod")
     nota = (val.get("nota") or "").strip()
-    if act == "ask":
+    if not usuarios.permitido(st.session_state.user, act):
+        st.session_state.flash = "Esa acción es solo para administradores."
+    elif act == "ask":
         q = (val.get("question") or "").strip()
         if q:
             try:

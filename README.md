@@ -171,8 +171,9 @@ la plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
 5. **Más mercados de Latinoamérica** ◻ — nuevos adaptadores (fuente + reglas + parámetros) sobre el
    mismo núcleo.
 6. **Endurecer operación** ◧ — captura de errores (tabla `errores` + Sentry opcional vía
-   `SENTRY_DSN`; panel de salud en el Inicio) y backup de la base (`scripts/backup_db.py`, por cron)
-   hechos; siguen roles de usuario y warm-up de Render.
+   `SENTRY_DSN`; panel de salud en el Inicio), backup de la base (`scripts/backup_db.py`, por cron)
+   y **roles** (admin / analista: el admin gestiona keywords y resuelve errores; el resto es para
+   todos, con enforcement server-side) — hechos; sigue el warm-up de Render.
 
 ## Docs relacionados
 

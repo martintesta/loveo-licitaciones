@@ -21,7 +21,28 @@ import schema_v3
 
 SESSION_DAYS = 14  # cuánto dura la sesión persistente (cookie)
 
-PASS_TEMP = "loveo.2026"  # TEMPORAL — cambiar tras el primer login (python usuarios.py passwd <user>)
+# Contraseña de siembra: overridable por entorno (LOVEO_SEED_PASS). El fallback es TEMPORAL y hay
+# que cambiarlo tras el primer login (python usuarios.py passwd <user>).
+PASS_TEMP = os.environ.get("LOVEO_SEED_PASS", "loveo.2026")
+
+# Acciones sensibles reservadas a 'admin' (afectan el pipeline o son técnicas). El resto del flujo
+# diario (seguir/aprobar/descartar/resultado/cubicación/reputación/alta por código) es para todos.
+ACCIONES_ADMIN = {"kw_add", "kw_toggle", "error_resuelto"}
+
+
+def es_admin(user):
+    return bool(user) and user.get("rol") == "admin"
+
+
+def permitido(user, accion):
+    """True si `user` puede ejecutar `accion`. Las de ACCIONES_ADMIN requieren rol 'admin'.
+    Falla CERRADO: sin usuario, nada. El enforcement real vive acá (server-side); la UI solo
+    esconde los controles como UX."""
+    if not user:
+        return False
+    if accion in ACCIONES_ADMIN:
+        return es_admin(user)
+    return True
 
 
 def _hash(password, salt):

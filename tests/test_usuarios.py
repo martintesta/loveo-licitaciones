@@ -81,3 +81,31 @@ def test_sesion_expirada_no_valida(tmp_path, monkeypatch):
     with db.conn() as c:  # forzar expiración en el pasado
         c.execute("UPDATE sesiones SET expira=? WHERE token=?", ("2000-01-01 00:00:00", tok))
     assert usuarios.validar_sesion(tok) is None
+
+
+# ---------------------------------------------------------------- roles / autorización (#5)
+def test_es_admin():
+    assert usuarios.es_admin({"rol": "admin"}) is True
+    assert usuarios.es_admin({"rol": "analista"}) is False
+    assert usuarios.es_admin(None) is False
+
+
+def test_permitido_acciones_admin_only():
+    admin = {"rol": "admin"}
+    analista = {"rol": "analista"}
+    for acc in usuarios.ACCIONES_ADMIN:          # kw_add, kw_toggle, error_resuelto
+        assert usuarios.permitido(admin, acc) is True
+        assert usuarios.permitido(analista, acc) is False
+        assert usuarios.permitido(None, acc) is False
+
+
+def test_permitido_flujo_diario_para_todos():
+    analista = {"rol": "analista"}
+    for acc in ("seguir", "aprobar", "descartar", "resultado:ganada", "cubic_ia",
+                "cubic_guardar", "rep_pago", "add_codigo", "recall"):
+        assert usuarios.permitido(analista, acc) is True
+
+
+def test_permitido_falla_cerrado_sin_usuario():
+    assert usuarios.permitido(None, "aprobar") is False   # fail-closed: sin sesión, nada
+    assert usuarios.permitido(None, "kw_add") is False

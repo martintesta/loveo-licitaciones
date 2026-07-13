@@ -256,7 +256,9 @@ function renderInicio(){
   h+=renderChat();
   return h;
 }
+function esAdmin(){return !!(D.user&&D.user.rol==='admin');}
 function renderErrores(){
+  if(!esAdmin())return '';
   var es=D.errores||[];
   if(!es.length)return '';
   var h='<div class="panel" style="margin-top:13px;border-left:3px solid #B91C1C"><div class="plabel">SALUD · ERRORES SIN RESOLVER ('+es.length+')</div>';
@@ -447,9 +449,10 @@ function renderAsistente(){return '<div class="eyebrow">CONSULTÁ TU BASE</div><
 function renderKeywords(){
   var kws=D.keywords||[],g={incluir:[],excluir:[],amplio:[]};
   kws.forEach(function(k){(g[k.tipo]||(g[k.tipo]=[])).push(k);});
-  var h='<div class="eyebrow">FILTRO DE DESCUBRIMIENTO · EDITABLE</div><div class="h1">Keywords</div>';
-  h+='<div class="dochint" style="margin-top:6px">Definen qué licitaciones de Mercado Público se traen. Incluir = trae · Excluir = descarta · Amplio = red de recall para descubrir términos nuevos.</div>';
-  h+='<div class="docadd" style="margin-top:10px"><input id="kw-input" placeholder="Nuevo término (ej. panel solar)…"><button class="b ok sm" data-kw-add="incluir">+ Incluir</button><button class="b no sm" data-kw-add="excluir">+ Excluir</button><button class="b gh sm" data-kw-add="amplio">+ Amplio</button></div>';
+  var adm=esAdmin();
+  var h='<div class="eyebrow">FILTRO DE DESCUBRIMIENTO'+(adm?' · EDITABLE':'')+'</div><div class="h1">Keywords</div>';
+  h+='<div class="dochint" style="margin-top:6px">Definen qué licitaciones se traen. Incluir = trae · Excluir = descarta · Amplio = red de recall para descubrir términos nuevos.'+(adm?'':' <b>Solo un admin las edita.</b>')+'</div>';
+  if(adm)h+='<div class="docadd" style="margin-top:10px"><input id="kw-input" placeholder="Nuevo término (ej. panel solar)…"><button class="b ok sm" data-kw-add="incluir">+ Incluir</button><button class="b no sm" data-kw-add="excluir">+ Excluir</button><button class="b gh sm" data-kw-add="amplio">+ Amplio</button></div>';
   var TLAB={incluir:"INCLUIR · trae",excluir:"EXCLUIR · descarta",amplio:"AMPLIO · recall"};
   ["incluir","excluir","amplio"].forEach(function(t){
     var arr=g[t]||[];
@@ -457,7 +460,8 @@ function renderKeywords(){
     if(!arr.length)h+='<div class="kwo">—</div>';
     arr.forEach(function(k){var on=k.activo;
       var stat=(k.matched!=null)?'<span class="kwo" title="matchean · avanzaron · descartadas" style="color:#155E75">'+k.matched+'m · '+(k.avanzadas||0)+'a · '+(k.descartadas||0)+'d</span>':'';
-      h+='<div class="kwrow"><span class="kwt'+(on?'':' off')+'">'+esc(k.termino)+'</span>'+stat+'<span class="kwo">'+esc(k.origen||'')+'</span><button class="b '+(on?'gh':'ok')+' sm" data-kw-toggle="'+k.id+'" data-on="'+(on?0:1)+'">'+(on?'desactivar':'activar')+'</button></div>';});
+      var btn=adm?('<button class="b '+(on?'gh':'ok')+' sm" data-kw-toggle="'+k.id+'" data-on="'+(on?0:1)+'">'+(on?'desactivar':'activar')+'</button>'):('<span class="kwo">'+(on?'activa':'inactiva')+'</span>');
+      h+='<div class="kwrow"><span class="kwt'+(on?'':' off')+'">'+esc(k.termino)+'</span>'+stat+'<span class="kwo">'+esc(k.origen||'')+'</span>'+btn+'</div>';});
     h+='</div>';
   });
   return h;
