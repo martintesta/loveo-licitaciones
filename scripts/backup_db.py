@@ -17,7 +17,7 @@ import shutil
 import pathlib
 import datetime
 import subprocess
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 os.chdir(ROOT)
@@ -60,10 +60,10 @@ def backup(dirbackup="backups"):
         u = urlparse(db.DATABASE_URL)
         env = dict(os.environ)
         if u.password:
-            env["PGPASSWORD"] = u.password
+            env["PGPASSWORD"] = unquote(u.password)   # urlparse no decodifica el userinfo (%40 → @)
         env.setdefault("PGSSLMODE", (parse_qs(u.query).get("sslmode", ["require"])[0]))  # Neon exige SSL
         cmd = ["pg_dump", "-h", u.hostname or "localhost", "-p", str(u.port or 5432),
-               "-U", u.username or "", "-d", (u.path or "").lstrip("/")]
+               "-U", unquote(u.username or ""), "-d", (u.path or "").lstrip("/")]
         with open(destino, "wb") as f:
             r = subprocess.run(cmd, env=env, stdout=f, stderr=subprocess.PIPE)
         if r.returncode != 0:

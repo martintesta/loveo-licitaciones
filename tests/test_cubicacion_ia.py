@@ -262,6 +262,23 @@ def test_margen_sin_cubicacion_falla(tmp_path, monkeypatch):
     assert cubicacion_ia.margen("A")["ok"] is False
 
 
+def test_margen_no_aplica_si_una_partida_no_tiene_cantidad(tmp_path, monkeypatch):
+    """Gate de honestidad: una partida CON precio pero SIN cantidad (total=None) NO debe dejar
+    aplicar el margen al score — su costo quedaría en $0 y subestimaría el total."""
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Panel", "cantidad": 10, "unidad": "m2"},
+                    {"descripcion": "Estructura acero", "cantidad": None, "unidad": "kg"}])
+    cubicacion_ia.preciar("A", buscar=lambda d, u: {
+        "precio": 30000 if "Panel" in d else 4000000, "url": "https://x.cl"})
+    _techo("A", 500000)
+    r = cubicacion_ia.margen("A")
+    assert r["ok"] and r["aplicado"] is False and r["sin_precio"] == 1
+    with db.conn() as c:   # el score NO se tocó (margen no evaluado)
+        row = c.execute("SELECT score_json FROM licitaciones WHERE codigo='A'").fetchone()
+    dims = (json.loads(row["score_json"]).get("dimensiones", {}) if row["score_json"] else {})
+    assert not dims.get("margen", {}).get("evaluado")
+
+
 # ---------------------------------------------------------------- Fase 5: recetas por tipo de producto
 def test_tipo_producto_clasifica():
     assert cubicacion_ia.tipo_producto("Provisión de container 20 pies") == "contenedor"

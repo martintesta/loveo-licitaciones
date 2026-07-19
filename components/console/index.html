@@ -344,9 +344,9 @@ function renderCubicIA(l,cod){
     for(var i=0;i<items.length;i++)h+=cubRow(items[i]);
     h+='</div>';
     h+='<button class="b gh sm" data-cub-add="1" style="margin-top:2px">+ Agregar partida</button>';
-    var costo=0,np=0;for(var ci=0;ci<items.length;ci++){if(items[ci].total!=null)costo+=items[ci].total;if(items[ci].precio==null)np++;}
-    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12.5px;border-top:1px solid #E7EAEF;padding-top:6px"><span class="mut">Costo estimado (partidas preciadas)</span><b>'+(costo>0?clp(costo):'—')+'</b></div>';
-    if(np)h+='<div class="dochint" style="margin-top:2px">'+np+' sin precio — se completan del catálogo o por búsqueda web (referencia clickeable 🔗).</div>';
+    var costo=0,np=0;for(var ci=0;ci<items.length;ci++){if(items[ci].total!=null)costo+=items[ci].total;if(items[ci].total==null)np++;}
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12.5px;border-top:1px solid #E7EAEF;padding-top:6px"><span class="mut">Costo estimado (partidas con precio y cantidad)</span><b>'+(costo>0?clp(costo):'—')+'</b></div>';
+    if(np)h+='<div class="dochint" style="margin-top:2px">'+np+' partida(s) sin costo (falta precio o cantidad) — completá y recién ahí se puede llevar el margen al score.</div>';
     h+='<div class="actbar" style="margin-top:10px"><button class="b ok sm" data-cub-save="'+escA(cod)+'">Guardar curación</button><button class="b gh sm" data-cub-preciar="'+escA(cod)+'">$ Preciar (catálogo + web)</button>'+((costo>0&&!np)?'<button class="b gh sm" data-cub-margen="'+escA(cod)+'">Calcular margen → score</button>':'')+'<button class="b gh sm" data-cubicia="'+escA(cod)+'">↻ Regenerar con IA</button></div>';
   }else{
     var rd=l.recetaDisp;

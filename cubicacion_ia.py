@@ -353,7 +353,10 @@ def margen(codigo):
         score_json_str = lic["score_json"] if lic else None
     if not rows:
         return {"ok": False, "error": "La cubicación no tiene partidas."}
-    sin_precio = sum(1 for r in rows if r["precio_unitario"] is None)
+    # "sin costo" = sin total: le falta el PRECIO o la CANTIDAD (la IA devuelve cantidad=null cuando
+    # no hay dato). El gate se cierra sobre el total, no sobre el precio: un ítem con precio pero sin
+    # cantidad aporta $0 al costo y NO debe dejar aplicar el margen al score (subestimaría el costo).
+    sin_precio = sum(1 for r in rows if r["total"] is None)
     costo = sum(r["total"] or 0 for r in rows)
     if not techo:
         return {"ok": False, "error": "Falta el techo de presupuesto (analizá las bases con Capa C)."}
@@ -379,6 +382,9 @@ def margen(codigo):
         total = sum(dims[d]["score"] * scoring.PESOS[d] for d in scoring.PESOS if d in dims)
         sj["score_provisional"] = total
         sj["triage"] = scoring.triage(total)
+        # confianza al día: margen ahora evaluado → suma sus puntos a los "evaluables" (era stale).
+        sj["evaluable_pts"] = sum(scoring.PESOS[d] for d in scoring.PESOS
+                                  if d in dims and dims[d].get("evaluado")) * 10
         requiere = any(not dims[d].get("evaluado") for d in dims)
         sj["requiere_bases"] = requiere
         db.set_score_provisional(c, codigo, total, json.dumps(sj, ensure_ascii=False), requiere)

@@ -63,19 +63,17 @@ def desde_drive(link=None, drv=None):
         for f in drv.list_folder(sub["id"], svc):
             if f.get("mimeType") == drv.FOLDER_MIME:
                 continue                        # no recursivo dentro de la subcarpeta del código
-            nombre = pathlib.Path(f["name"] or "").name   # basename: neutraliza '../' del nombre de Drive
-            if not nombre:
-                continue
             dest.mkdir(parents=True, exist_ok=True)
-            path = (dest / nombre).resolve()
-            if os.path.commonpath([str(path), str(dest)]) != str(dest):
-                continue                        # defensa: no escribir fuera de storage/<codigo>
+            destino = db.safe_child(dest, f["name"])   # basename + confinado (anti path traversal)
+            if not destino:
+                continue
             try:
-                drv.download_file(f["id"], str(path), svc)
-                _registrar(cod, nombre, path, path.read_bytes())
+                ruta, _, _ = drv.download_file(f["id"], str(destino), svc)
+                real = pathlib.Path(ruta)          # ruta REAL escrita (Google-native le agrega ext)
+                _registrar(cod, real.name, real, real.read_bytes())
                 n += 1
                 bajados += 1
-            except Exception:                   # un archivo que falla no frena el resto
+            except Exception:                      # un archivo que falla no frena el resto
                 fallidos += 1
         detalle.append({"codigo": cod, "archivos": n})
     return {"ok": True, "subcarpetas": len(subs), "matched": matched, "bajados": bajados,

@@ -91,3 +91,39 @@ def test_link_que_no_es_carpeta(tmp_path, monkeypatch):
             return ("file", "X")
 
     assert ingest_bases.desde_drive("x/file/X", drv=_F())["ok"] is False
+
+
+def test_usa_el_path_real_de_download_google_native(tmp_path, monkeypatch):
+    """Google Sheet/Doc: download_file guarda con extensión appendeada; el ingest debe registrar
+    y leer ESE path (antes leía el pre-extensión → FileNotFoundError → archivo huérfano)."""
+    _setup(tmp_path, monkeypatch)
+
+    class _GoogleDrive(_FakeDrive):
+        def list_subfolders(self, gid, svc):
+            return [{"id": "s1", "name": "3287-19-LE26"}]
+
+        def list_folder(self, fid, svc):
+            return [{"id": "f1", "name": "Presupuesto",
+                     "mimeType": "application/vnd.google-apps.spreadsheet"}]
+
+        def download_file(self, fid, dest, svc):
+            real = pathlib.Path(str(dest) + ".xlsx")   # el export le agrega la extensión
+            real.parent.mkdir(parents=True, exist_ok=True)
+            real.write_bytes(b"XLSX")
+            return str(real), real.name, "application/vnd.openxmlformats"
+
+    r = ingest_bases.desde_drive("x/folders/M", drv=_GoogleDrive())
+    assert r["ok"] and r["bajados"] == 1 and r.get("fallidos", 0) == 0
+    with db.conn() as c:
+        d = c.execute("SELECT nombre_archivo, ruta_local FROM documentos WHERE codigo='3287-19-LE26'").fetchone()
+    assert d["nombre_archivo"] == "Presupuesto.xlsx" and d["ruta_local"].endswith("Presupuesto.xlsx")
+
+
+def test_safe_child_bloquea_traversal(tmp_path):
+    base = tmp_path / "storage"
+    base.mkdir()
+    assert db.safe_child(base, "bases.pdf") == (base / "bases.pdf").resolve()
+    assert db.safe_child(base, "../evil.txt") == (base / "evil.txt").resolve()    # basename → confinado
+    assert db.safe_child(base, "..\\..\\evil") == (base / "evil").resolve()       # backslash cross-OS
+    assert db.safe_child(base, "") is None
+    assert db.safe_child(base, "..") is None

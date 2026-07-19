@@ -269,7 +269,8 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
                 st.session_state.flash = "Conectá Google Drive primero (ver SETUP_DRIVE.md) y reintentá."
             elif url:
                 try:
-                    files = drive.sync_link(url, os.path.join("storage", cod))
+                    destino = db.safe_child("storage", cod)   # cod viene del frontend: confinarlo
+                    files = drive.sync_link(url, str(destino)) if destino else []
                     with db.conn() as c:
                         for f in files:
                             view = f"https://drive.google.com/file/d/{f['id']}/view"

@@ -50,6 +50,22 @@ REVISION_STATES = {"nueva", "en_revision", "descartada", "aprobada"}
 RESULTADO_STATES = {"pendiente", "presentada", "ganada", "perdida", "desierta"}
 
 
+def safe_child(base, name):
+    """`base / basename(name)`, confinada a `base` (defensa contra path traversal). None si escaparía.
+    Toma el basename de forma cross-OS (barra o backslash) para que valga igual en Windows y Linux."""
+    base = Path(base)
+    leaf = str(name or "").replace("\\", "/").rsplit("/", 1)[-1]
+    if not leaf or leaf in (".", ".."):
+        return None
+    p = (base / leaf).resolve()
+    try:
+        if os.path.commonpath([str(p), str(base.resolve())]) == str(base.resolve()):
+            return p
+    except ValueError:   # rutas en unidades distintas (Windows)
+        pass
+    return None
+
+
 def backend():
     return "postgres" if DATABASE_URL.startswith(("postgres://", "postgresql://")) else "sqlite"
 

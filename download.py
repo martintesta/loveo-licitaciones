@@ -87,7 +87,7 @@ def _guardar(codigo, nombre, contenido: bytes):
     carpeta = db.STORAGE_DIR / codigo
     carpeta.mkdir(parents=True, exist_ok=True)
     sha = hashlib.sha256(contenido).hexdigest()
-    destino = carpeta / nombre
+    destino = db.safe_child(carpeta, nombre) or (carpeta / "adjunto.bin")   # anti path traversal
     destino.write_bytes(contenido)
     with db.conn() as c:
         try:

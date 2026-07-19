@@ -137,11 +137,15 @@ def sync_link(link, dest_dir):
     os.makedirs(dest_dir, exist_ok=True)
     svc = _service()
     results = []
+    import db
     if kind == "folder":
         for f in list_folder(gid, svc):
             if f["mimeType"] == "application/vnd.google-apps.folder":
                 continue  # subcarpetas: por ahora no recursivo
-            path, name, mime = download_file(f["id"], os.path.join(dest_dir, f["name"]), svc)
+            destino = db.safe_child(dest_dir, f["name"])   # basename + confinado (anti path traversal)
+            if not destino:
+                continue
+            path, name, mime = download_file(f["id"], str(destino), svc)
             results.append({"id": f["id"], "name": name, "path": path, "mime": mime})
     else:
         path, name, mime = download_file(gid, os.path.join(dest_dir, "drive_file"), svc)
