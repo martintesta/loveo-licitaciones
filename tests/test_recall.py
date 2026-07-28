@@ -101,6 +101,47 @@ def test_resolver_accion_invalida():
         recall.resolver("R1", "cualquiera")
 
 
+def _sembrar_recall(codigos, nombre="posta rural"):
+    with db.conn() as c:
+        recall.registrar_descartes(c, [{"CodigoExterno": k, "Nombre": nombre} for k in codigos], "08072026")
+
+
+def test_sugerencia_de_keyword_por_promociones(_kws, tmp_path, monkeypatch):
+    # 4 licitaciones que solo pescó la red amplia ('posta'); el usuario promovió 3 → sugerir subirla
+    _db(monkeypatch, tmp_path)
+    _sembrar_recall(["R1", "R2", "R3", "R4"])
+    for k in ("R1", "R2", "R3"):
+        recall.resolver(k, "promovida")
+    recall.resolver("R4", "descartada")
+    sug = recall.sugerencias_keywords(min_apariciones=3, min_confianza=0.6)
+    assert len(sug) == 1
+    s = sug[0]
+    assert s["termino"] == "posta" and s["apariciones"] == 4
+    assert s["promovidas"] == 3 and s["descartadas"] == 1 and s["confianza"] == 0.75
+    # y viaja en el payload de la UI
+    assert recall.auditar()["sugerencias"][0]["termino"] == "posta"
+
+
+def test_no_sugiere_lo_mayormente_descartado(_kws, tmp_path, monkeypatch):
+    _db(monkeypatch, tmp_path)
+    _sembrar_recall(["R1", "R2", "R3"])
+    recall.resolver("R1", "promovida")
+    for k in ("R2", "R3"):
+        recall.resolver(k, "descartada")            # confianza 1/3 < 0.6 → no se sugiere
+    assert recall.sugerencias_keywords() == []
+
+
+def test_no_sugiere_lo_ya_en_incluir(_kws, tmp_path, monkeypatch):
+    # se sembró y promovió como amplio; una vez que 'posta' YA está en INCLUIR, no hay nada que sugerir
+    _db(monkeypatch, tmp_path)
+    _sembrar_recall(["R1", "R2", "R3"])
+    for k in ("R1", "R2", "R3"):
+        recall.resolver(k, "promovida")
+    assert recall.sugerencias_keywords()[0]["termino"] == "posta"        # antes: se sugiere
+    monkeypatch.setattr("keywords.get_active_lists", lambda: (["container", "posta"], [], ["posta"]))
+    assert recall.sugerencias_keywords() == []                          # ya en INCLUIR: nada que aprender
+
+
 def test_exclusion_aprendida_baja_a_excluido(_kws, monkeypatch, tmp_path):
     """Paridad con discover.matchea: una lic vetada por una exclusión APRENDIDA no debe quedar
     'estricto' (falso negativo silencioso), sino 'excluido' → auditable."""

@@ -27,7 +27,7 @@ PASS_TEMP = os.environ.get("LOVEO_SEED_PASS", "loveo.2026")
 
 # Acciones sensibles reservadas a 'admin' (afectan el pipeline o son técnicas). El resto del flujo
 # diario (seguir/aprobar/descartar/resultado/cubicación/reputación/alta por código) es para todos.
-ACCIONES_ADMIN = {"kw_add", "kw_toggle", "error_resuelto"}
+ACCIONES_ADMIN = {"kw_add", "kw_promover", "kw_toggle", "error_resuelto"}
 
 
 def es_admin(user):

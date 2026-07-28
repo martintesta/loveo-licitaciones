@@ -98,7 +98,7 @@ if not st.session_state.user:
 _DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "components", "console")
 _console = components.declare_component("loveo_console", path=_DIR)
 
-data = tablero_data.build_data()
+data = tablero_data.build_data(usuario=st.session_state.user)  # plan sesgado por ESTE usuario (Fase 4)
 data["flash"] = st.session_state.pop("flash", "")
 data["chat"] = st.session_state.get("chat", [])
 data["pending_capac"] = st.session_state.get("pending_capac", {})
@@ -135,6 +135,12 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
         if term:
             keywords.add(term, tipo, origen="manual")
             st.session_state.flash = f"Keyword agregada: '{term}' ({tipo})."
+    elif act == "kw_promover":
+        # el usuario confirma una sugerencia del recall: el término amplio sube a INCLUIR (Fase 4)
+        term = (val.get("termino") or "").strip()
+        if term:
+            keywords.add(term, "incluir", origen="recall")
+            st.session_state.flash = f"'{term}' agregada a INCLUIR — el discovery ya la va a traer."
     elif act == "kw_toggle":
         kid = val.get("kid")
         on = str(val.get("on")) == "1"
@@ -288,7 +294,7 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
     # que el plan del día suba lo que efectivamente ataca (comprador/región/tipo).
     if cod and plan.es_engagement(act):
         try:
-            plan.registrar_engagement(cod)
+            plan.registrar_engagement(cod, usuario=st.session_state.user)   # preferencia por usuario (Fase 4)
         except Exception as e:
             observabilidad.capturar("plan.engagement", e)   # no rompe el flujo, pero queda visible
     st.rerun()

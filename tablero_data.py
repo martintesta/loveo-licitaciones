@@ -111,7 +111,7 @@ def _ensure_init():
     _INIT_DONE.add(key)
 
 
-def build_data():
+def build_data(usuario=None):
     _ensure_init()  # migrate + backfill: una vez por proceso/base, NO en cada carga
     now = datetime.datetime.now()
     year = now.year
@@ -321,8 +321,8 @@ def build_data():
         "aprendizaje": aprendizaje.resumen(_ap),
         "recall": recall.auditar(),
         "worker": worker.salud(),
-        # plan del día, priorizado y sesgado por lo que el usuario efectivamente ataca (Fase 3)
-        "plan": plan.construir(lics, prefs=plan.preferencias()),
+        # plan del día, priorizado y sesgado por lo que ESTE usuario efectivamente ataca (Fase 3/4)
+        "plan": plan.construir(lics, prefs=plan.preferencias(usuario)),
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
             "mesAb": MESES_AB, "meses": MESES,

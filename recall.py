@@ -99,7 +99,43 @@ def auditar(limit=50):
             "WHERE estado='pendiente' ORDER BY fecha_run DESC, id DESC LIMIT ?", (limit,)).fetchall()]
     return {"pendientes": sum(por_bucket.values()),
             "recall": por_bucket.get("recall", 0), "excluido": por_bucket.get("excluido", 0),
-            "items": items}
+            "items": items, "sugerencias": sugerencias_keywords()}
+
+
+def sugerencias_keywords(min_apariciones=3, min_confianza=0.6):
+    """Cierra el loop del recall: el término AMPLIO que pescó licitaciones que el usuario terminó
+    PROMOVIENDO es candidato a subir a INCLUIR. Por término (bucket 'recall', que aún NO esté en
+    INCLUIR) cuenta apariciones/promovidas/descartadas y una confianza [0,1] = promovidas/decididas.
+    Devuelve solo los que tienen volumen y confianza suficientes, ordenados. El usuario solo confirma.
+
+    No abrir dentro de otra conn (usa la propia, igual que auditar)."""
+    schema_v3.migrate()
+    import keywords as kwmod
+    inc, _exc, _amp = kwmod.get_active_lists()
+    ya = {_na(t) for t in inc}                       # lo que ya está en INCLUIR no se sugiere
+    agg = {}                                         # termino -> [apariciones, promovidas, descartadas]
+    with db.conn() as c:
+        rows = c.execute("SELECT kw, estado FROM recall_log WHERE bucket='recall'").fetchall()
+    for r in rows:
+        for term in (r["kw"] or "").split(","):
+            term = term.strip()
+            if not term or _na(term) in ya:
+                continue
+            a = agg.setdefault(term, [0, 0, 0])
+            a[0] += 1
+            if r["estado"] == "promovida":
+                a[1] += 1
+            elif r["estado"] == "descartada":
+                a[2] += 1
+    out = []
+    for term, (ap, prom, desc) in agg.items():
+        decididas = prom + desc
+        conf = (prom / decididas) if decididas else 0.0
+        if ap >= min_apariciones and decididas and conf >= min_confianza:
+            out.append({"termino": term, "apariciones": ap, "promovidas": prom,
+                        "descartadas": desc, "confianza": round(conf, 2)})
+    out.sort(key=lambda s: (s["confianza"], s["apariciones"]), reverse=True)
+    return out
 
 
 def resolver(codigo, accion):

@@ -349,3 +349,40 @@ def test_build_data_expone_receta_disponible(tmp_path, monkeypatch):
     import tablero_data
     lics = tablero_data.build_data()["lics"]
     assert lics["B"]["recetaDisp"] == {"tipo": "modular", "n": 1}
+
+
+# ---------------------------------------------------------------- Fase 4 (plan-del-dia): receta = consenso
+def test_receta_es_consenso_no_ultima_gana(tmp_path, monkeypatch):
+    """La receta AGREGA todas las curaciones del tipo (mediana + consenso), no 'última gana':
+    Panel está en las 3 → mediana; Estructura en 2/3 → entra; 'Flete raro' en 1/3 → se descarta."""
+    _setup(tmp_path, monkeypatch)              # A = "Módulos" (modular)
+    _lic2("B", "Oficina modular")
+    _lic2("C", "Sala modular")
+    cubicacion_ia.guardar_borrador("A", [{"descripcion": "Panel", "cantidad": 20, "unidad": "m2"},
+                                         {"descripcion": "Estructura", "cantidad": 100, "unidad": "kg"}])
+    cubicacion_ia.guardar_borrador("B", [{"descripcion": "Panel", "cantidad": 30, "unidad": "m2"},
+                                         {"descripcion": "Flete raro", "cantidad": 1, "unidad": "gl"}])
+    cubicacion_ia.guardar_borrador("C", [{"descripcion": "Panel", "cantidad": 40, "unidad": "m2"},
+                                         {"descripcion": "Estructura", "cantidad": 120, "unidad": "kg"}])
+    with db.conn() as c:
+        rec = c.execute("SELECT id FROM cubicaciones WHERE proyecto='modular' AND origen='receta'").fetchone()
+        items = {r["descripcion"]: r["cantidad"] for r in c.execute(
+            "SELECT descripcion, cantidad FROM cubicacion_items WHERE cubicacion_id=?", (rec["id"],)).fetchall()}
+    assert set(items) == {"Panel", "Estructura"}       # 'Flete raro' (1/3) quedó afuera
+    assert items["Panel"] == 30                          # mediana(20,30,40), no la última (40)
+    assert items["Estructura"] == 110                    # mediana(100,120)
+
+
+def test_receta_ignora_borradores_no_curados(tmp_path, monkeypatch):
+    """Solo la curación del usuario alimenta la receta: un borrador IA CRUDO (nunca curado) del mismo
+    tipo no debe contaminar el consenso."""
+    _setup(tmp_path, monkeypatch)              # A = modular
+    _lic2("B", "Sala modular")
+    cubicacion_ia.generar("B", extraer=_extraccion(   # B: borrador IA crudo, jamás curado
+        [{"descripcion": "Basura cruda", "cantidad": 999, "unidad": "u"}]))
+    cubicacion_ia.guardar_borrador("A", [{"descripcion": "Panel", "cantidad": 20, "unidad": "m2"}])
+    with db.conn() as c:
+        rec = c.execute("SELECT id FROM cubicaciones WHERE proyecto='modular' AND origen='receta'").fetchone()
+        descs = {r["descripcion"] for r in c.execute(
+            "SELECT descripcion FROM cubicacion_items WHERE cubicacion_id=?", (rec["id"],)).fetchall()}
+    assert descs == {"Panel"}                  # 'Basura cruda' (borrador no curado) no entró

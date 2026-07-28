@@ -156,9 +156,10 @@ def es_engagement(act):
     return act in ENGAGEMENT_ACTS or (act or "").startswith("resultado:")
 
 
-def registrar_engagement(codigo):
-    """Registra atención del usuario en `codigo`: toma comprador/región/tipo del propio código y lo
-    guarda en plan_feedback. No lanza si el código no existe."""
+def registrar_engagement(codigo, usuario=None):
+    """Registra atención de `usuario` en `codigo`: toma comprador/región/tipo del propio código y lo
+    guarda en plan_feedback. No lanza si el código no existe. `usuario` habilita la preferencia
+    por usuario (Fase 4); None = feedback anónimo/global."""
     import db
     import schema_v3
     import cubicacion_ia
@@ -169,13 +170,15 @@ def registrar_engagement(codigo):
         if not r:
             return
         tp = cubicacion_ia.tipo_producto(r["nombre"] or "")
-        c.execute("INSERT INTO plan_feedback (codigo, organismo, region, tipo_producto, ts) "
-                  "VALUES (?,?,?,?,?)", (codigo, r["organismo"], r["region"], tp, db._now()))
+        c.execute("INSERT INTO plan_feedback (codigo, organismo, region, tipo_producto, usuario, ts) "
+                  "VALUES (?,?,?,?,?,?)", (codigo, r["organismo"], r["region"], tp, usuario, db._now()))
 
 
-def preferencias():
+def preferencias(usuario=None):
     """Pesos de preferencia aprendida por eje (comprador/región/tipo) desde plan_feedback,
-    normalizados a [0, PESO_PREF]: el eje con más atención pesa PESO_PREF, el resto proporcional."""
+    normalizados a [0, PESO_PREF]: el eje con más atención pesa PESO_PREF, el resto proporcional.
+    Si se pasa `usuario`, aprende de SU comportamiento (Fase 4); si el usuario aún no tiene historia
+    en la ventana, cae al comportamiento global reciente (cold-start)."""
     import datetime
     import db
     import schema_v3
@@ -183,8 +186,14 @@ def preferencias():
     corte = (datetime.datetime.now() - datetime.timedelta(days=DIAS_PREF)).strftime("%Y-%m-%d %H:%M:%S")
     org, reg, tip = {}, {}, {}
     with db.conn() as c:
-        for r in c.execute("SELECT organismo, region, tipo_producto FROM plan_feedback "
-                           "WHERE ts >= ?", (corte,)).fetchall():
+        rows = []
+        if usuario:
+            rows = c.execute("SELECT organismo, region, tipo_producto FROM plan_feedback "
+                             "WHERE usuario=? AND ts >= ?", (usuario, corte)).fetchall()
+        if not rows:                       # sin historia del usuario aún → comportamiento global
+            rows = c.execute("SELECT organismo, region, tipo_producto FROM plan_feedback "
+                             "WHERE ts >= ?", (corte,)).fetchall()
+        for r in rows:
             if r["organismo"]:
                 org[r["organismo"]] = org.get(r["organismo"], 0) + 1
             if r["region"]:

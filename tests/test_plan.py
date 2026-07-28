@@ -162,6 +162,27 @@ def test_preferencias_ignora_comportamiento_viejo(tmp_path, monkeypatch):
     assert plan.preferencias() == {"organismo": {}, "region": {}, "tipo": {}}  # fuera de ventana
 
 
+def test_preferencia_por_usuario(tmp_path, monkeypatch):
+    # cada usuario aprende de SU comportamiento; el que no tiene historia cae al global (Fase 4)
+    import db
+    import schema_v3
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "A", "nombre": "Sala modular", "organismo": "Muni Ana",
+                                 "region": "Maule"})
+        db.upsert_licitacion(c, {"codigo": "B", "nombre": "Baños", "organismo": "Muni Beto",
+                                 "region": "Ñuble"})
+    plan.registrar_engagement("A", usuario="ana")
+    plan.registrar_engagement("B", usuario="beto")
+    assert plan.preferencias("ana")["organismo"] == {"Muni Ana": plan.PESO_PREF}
+    assert plan.preferencias("beto")["organismo"] == {"Muni Beto": plan.PESO_PREF}
+    glob = plan.preferencias("carla")["organismo"]       # sin historia → comportamiento global
+    assert set(glob) == {"Muni Ana", "Muni Beto"}
+
+
 def test_registrar_engagement_codigo_inexistente_no_rompe(tmp_path, monkeypatch):
     import db
     import schema_v3

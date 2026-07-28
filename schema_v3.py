@@ -161,6 +161,7 @@ def _crear_tablas():
             organismo     TEXT,
             region        TEXT,
             tipo_producto TEXT,
+            usuario       TEXT,                        -- quién invirtió la atención (preferencia por usuario)
             ts            TEXT
         );
 
@@ -233,6 +234,8 @@ def _crear_tablas():
         _asegurar_columna(c, "cubicacion_items", "precio_fuente", "TEXT")
         _asegurar_columna(c, "cubicacion_items", "precio_url", "TEXT")
         _asegurar_columna(c, "precios_referencia", "source_url", "TEXT")
+        _asegurar_columna(c, "plan_feedback", "usuario", "TEXT")   # preferencia por usuario (Fase 4)
+        _asegurar_columna(c, "cubicaciones", "curada", "INTEGER DEFAULT 0")  # solo lo curado alimenta la receta
 
 
 def _asegurar_columna(c, tabla, columna, tipo):

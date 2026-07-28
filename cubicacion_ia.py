@@ -146,20 +146,64 @@ def _reemplazar_receta(c, tipo, items):
                   (cub_id, it["partida"], it["grupo"], it["descripcion"], it["cantidad"], it["unidad"]))
 
 
+def _recomputar_receta(c, tipo):
+    """Recomputa la receta del tipo AGREGANDO todas las cubicaciones IA curadas de licitaciones de
+    ese tipo (consenso), en vez de 'última gana' (Fase 4). Por partida (clave = descripción
+    normalizada) toma la cantidad MEDIANA y conserva solo las que aparecen en al menos la mitad de
+    las cubicaciones del tipo — así la receta filtra el ruido de una sola curación y encarna lo que
+    de verdad se repite. Con una sola cubicación equivale a copiarla (no hay regresión en cold-start)."""
+    import statistics
+    filas = c.execute(
+        "SELECT cu.codigo AS codigo, l.nombre AS nombre, ci.descripcion AS descripcion, "
+        "ci.grupo AS grupo, ci.unidad AS unidad, ci.partida AS partida, ci.cantidad AS cantidad "
+        "FROM cubicacion_items ci "
+        "JOIN cubicaciones cu ON cu.id = ci.cubicacion_id "
+        "JOIN licitaciones l ON l.codigo = cu.codigo "
+        "WHERE cu.origen='ia' AND cu.curada=1").fetchall()   # solo curaciones del usuario, no borradores IA crudos
+    por_codigo = {}
+    for r in filas:
+        if tipo_producto(r["nombre"] or "") == tipo:
+            por_codigo.setdefault(r["codigo"], []).append(r)
+    n_cub = len(por_codigo)
+    if not n_cub:
+        return
+    acc = {}                                   # clave -> datos + cantidades + códigos que la traen
+    for cod, its in por_codigo.items():
+        vistas = set()                         # una lic cuenta UNA vez por clave (no infla la mediana)
+        for it in its:
+            clave = textnorm.na(it["descripcion"])
+            d = acc.setdefault(clave, {"descripcion": it["descripcion"], "grupo": it["grupo"],
+                                       "unidad": it["unidad"], "partida": it["partida"],
+                                       "cantidades": [], "codigos": set()})
+            d["codigos"].add(cod)
+            if it["cantidad"] is not None and clave not in vistas:
+                d["cantidades"].append(it["cantidad"])
+                vistas.add(clave)
+    receta = []
+    for d in acc.values():
+        if len(d["codigos"]) * 2 >= n_cub:     # aparece en ≥ la mitad → consenso
+            cant = round(statistics.median(d["cantidades"]), 2) if d["cantidades"] else None
+            receta.append({"partida": d["partida"], "grupo": d["grupo"],
+                           "descripcion": d["descripcion"], "cantidad": cant, "unidad": d["unidad"]})
+    if receta:
+        _reemplazar_receta(c, tipo, receta)
+
+
 def guardar_borrador(codigo, items):
     """Reemplaza el borrador IA con la lista CURADA por el usuario (Fase 2). Normaliza y descarta
     las filas sin descripción. Crea la cubicación IA si no existía. Respeta la de Valentina.
-    Además ALIMENTA la receta del tipo de producto (Fase 5): la curación es la inteligencia propia."""
+    Además RECOMPUTA la receta del tipo (consenso de todas las curaciones): la inteligencia propia."""
     schema_v3.migrate()
     if _tiene_valentina(codigo):
         return {"ok": False, "error": "Hay cubicación de Valentina; no se edita el borrador IA."}
     norm = [x for x in (_norm_item(m) for m in (items or [])) if x]
     with db.conn() as c:
-        _reemplazar_items(c, codigo, norm)
+        cub_id = _reemplazar_items(c, codigo, norm)
+        c.execute("UPDATE cubicaciones SET curada=1 WHERE id=?", (cub_id,))  # esta cubicación ya es curada
         nombre = c.execute("SELECT nombre FROM licitaciones WHERE codigo=?", (codigo,)).fetchone()
         tipo = tipo_producto(nombre["nombre"] if nombre else "")
-        if tipo and norm:                      # cada curación mejora la receta del tipo
-            _reemplazar_receta(c, tipo, norm)
+        if tipo and norm:                      # cada curación recompone la receta (consenso del tipo)
+            _recomputar_receta(c, tipo)
         db.log_evento(c, codigo, "cubicacion_ia",
                       f"Cubicación curada: {len(norm)} partidas." + (f" Receta '{tipo}' actualizada." if tipo and norm else ""))
     return {"ok": True, "items": norm, "receta_tipo": tipo}

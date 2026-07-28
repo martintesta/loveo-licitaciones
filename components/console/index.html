@@ -441,6 +441,18 @@ function renderRecall(){
   if(!r.pendientes)return '';
   var h='<div class="panel" style="margin-top:13px"><div class="plabel">RECALL · LO QUE EL FILTRO NO TRAJO ('+r.pendientes+')</div>';
   h+='<div class="dochint" style="margin:0 0 8px"><b>'+(r.recall||0)+'</b> por la red amplia (posible falso negativo) y <b>'+(r.excluido||0)+'</b> frenadas por una exclusión (posible sobre-exclusión). Si alguna sirve, copiá el código al alta manual del Listado o sumá la keyword en Palabras clave.</div>';
+  var sg=r.sugerencias||[],radm=esAdmin();
+  if(sg.length){
+    h+='<div class="it" style="background:#ECFDF5;border-color:#A7F3D0"><div class="mut" style="margin-bottom:6px">💡 <b>El recall aprendió</b>: términos que venías promoviendo. Sumalos a INCLUIR y el discovery los trae solo.</div>';
+    for(var s=0;s<sg.length;s++){var su=sg[s];
+      h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:3px 0">'
+        +'<span class="code" style="user-select:all">'+esc(su.termino)+'</span>'
+        +'<span class="mut" style="flex:1;min-width:120px">promoviste '+su.promovidas+'/'+(su.promovidas+su.descartadas)+' · confianza '+Math.round(su.confianza*100)+'% · '+su.apariciones+' apariciones</span>'
+        +(radm?'<button class="b ok sm" data-kw-promover="'+escA(su.termino)+'" title="Agregar a INCLUIR">+ INCLUIR</button>':'')
+        +'</div>';
+    }
+    h+='</div>';
+  }
   for(var i=0;i<items.length;i++){var it=items[i],amber=(it.bucket==='recall');
     h+='<div class="it" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
       +'<span class="pill" style="color:'+(amber?'#B45309':'#B91C1C')+';background:'+(amber?'#FEF3C7':'#FEE2E2')+'">'+(amber?'RECALL':'EXCLUIDO')+'</span>'
@@ -559,6 +571,7 @@ document.addEventListener('click',function(e){
   if((x=e.target.closest('[data-cub-margen]'))){x.textContent='Calculando…';sendVal({act:'cubic_margen',cod:x.getAttribute('data-cub-margen')});return;}
   if((x=e.target.closest('[data-cub-receta]'))){x.textContent='Pre-llenando…';sendVal({act:'cubic_receta',cod:x.getAttribute('data-cub-receta')});return;}
   if((x=e.target.closest('[data-kw-add]'))){var ki=document.getElementById('kw-input');var term=(ki&&ki.value||'').trim();if(term){if(ki)ki.value='';sendVal({act:'kw_add',termino:term,tipo:x.getAttribute('data-kw-add')});}return;}
+  if((x=e.target.closest('[data-kw-promover]'))){sendVal({act:'kw_promover',termino:x.getAttribute('data-kw-promover')});return;}
   if((x=e.target.closest('[data-kw-toggle]'))){sendVal({act:'kw_toggle',kid:x.getAttribute('data-kw-toggle'),on:x.getAttribute('data-on')});return;}
   if((x=e.target.closest('[data-capac-run]'))){sendVal({act:'capac_run',cod:x.getAttribute('data-capac-run')});return;}
   if((x=e.target.closest('[data-capac-cancel]'))){sendVal({act:'capac_cancel',cod:x.getAttribute('data-capac-cancel')});return;}

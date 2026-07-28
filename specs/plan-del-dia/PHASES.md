@@ -34,4 +34,16 @@
 - Entregable: el recall SUGIERE la keyword con confianza (no solo la muestra); modelo de preferencia
   por usuario; recetas que agregan en vez de "última gana".
 - Listo cuando: cada loop propone y el usuario solo confirma; tests.
-- Estado: [ ] pendiente.
+- Estado: [x] hecho. Los tres loops cerrados, cada uno PROPONE y el usuario solo confirma:
+  1. **Recall → keyword.** `recall.sugerencias_keywords()`: el término amplio que pescó licitaciones
+     que el usuario terminó PROMOVIENDO se ofrece para subir a INCLUIR, con confianza
+     (promovidas/decididas) y volumen. La UI lo muestra en el panel de recall; un click (`kw_promover`,
+     admin) lo agrega y el discovery ya lo trae.
+  2. **Preferencia por usuario.** `plan_feedback.usuario`; `registrar_engagement(cod, usuario)` y
+     `preferencias(usuario)` aprenden del comportamiento de CADA usuario; cold-start cae al global.
+     build_data recibe el usuario y sesga el plan por él.
+  3. **Recetas que agregan.** `_recomputar_receta(tipo)`: la receta es el CONSENSO de todas las
+     curaciones del tipo (cantidad = mediana; partida entra si aparece en ≥ la mitad), no "última gana".
+     Con una sola curación equivale a copiarla (sin regresión). +8 tests.
+
+Epic **plan-del-dia CERRADO** (4/4 fases).
