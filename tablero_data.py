@@ -18,6 +18,7 @@ import recall
 import comprador
 import worker
 import cubicacion_ia
+import plan
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
          "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -180,6 +181,7 @@ def build_data():
             except ValueError:
                 sj = {}
         dias = (cierre - now).days if cierre else None
+        _vis = _parse(r["fecha_visita"])                        # visita a terreno (para el plan del día)
         estado_lbl = ESTADO_LBL.get(res) if res and res != "pendiente" else ESTADO_LBL.get(rev, rev)
         _dd = _dims(sj)  # confianza: cuántas de las 6 dimensiones están realmente evaluadas
         _tp = cubicacion_ia.tipo_producto(r["nombre"] or "")  # tipo de producto (para recetas, Fase 5)
@@ -189,7 +191,9 @@ def build_data():
             "reg": r["region"] or "", "regc": _region_corta(r["region"]),
             "monto": _clp(r["monto_estimado"]), "moneda": r["moneda"] or "",
             "cierreFmt": cierre.strftime("%d-%m-%Y %H:%M") if cierre else "", "dias": dias,
-            "visita": (_parse(r["fecha_visita"]).strftime("%d-%m-%Y %H:%M") if _parse(r["fecha_visita"]) else ""),
+            "visita": (_vis.strftime("%d-%m-%Y %H:%M") if _vis else ""),
+            # días a la visita en días de calendario; si la hora de hoy ya pasó, -1 (no accionable).
+            "diasVisita": (None if not _vis else (-1 if _vis < now else (_vis.date() - now.date()).days)),
             "estMp": r["estado_mp"], "estRev": rev, "estRes": res, "estadoLbl": estado_lbl,
             "adm": bool(r["admisible"]), "admMot": r["admisible_motivo"] or "", "vig": bool(r["vigente_oferta"]),
             "desc": (desc.strftime("%d-%m-%Y") if desc else ""), "score": r["score_provisional"],
@@ -316,6 +320,7 @@ def build_data():
         "aprendizaje": aprendizaje.resumen(_ap),
         "recall": recall.auditar(),
         "worker": worker.salud(),
+        "plan": plan.construir(lics),   # próxima mejor acción / plan del día (epic plan-del-dia)
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
             "mesAb": MESES_AB, "meses": MESES,

@@ -229,9 +229,26 @@ function renderWorkerBanner(){
     +'<b>'+w.pendientes+'</b> licitaciones sin bajar sus bases, '+esc(horas)+'. '
     +'Los scores de esas quedan provisionales (incompletos) hasta reactivarlo.</div>';
 }
+function renderPlan(){
+  var ps=D.plan||[];
+  if(!ps.length)return '';
+  var COL={VISITA:'#B91C1C',PRESENTAR:'#047857',CIERRE:'#B45309',CUBICAR:'#0E7490',REVISAR:'#155E75',BASES:'#6D28D9'};
+  var h='<div class="panel" style="margin:0 0 14px;border-left:3px solid #0E7490"><div class="plabel">PLAN DE HOY · QUÉ ATACAR PRIMERO ('+ps.length+')</div>';
+  h+='<div class="dochint" style="margin:0 0 8px">Ordenado por urgencia (deadline) y valor (score × confianza). El sistema sugiere el orden; vos decidís.</div>';
+  for(var i=0;i<ps.length;i++){var p=ps[i],c=COL[p.tipo]||'#69727E';
+    h+='<div class="crow" data-ficha="'+escA(p.codigo)+'" style="cursor:pointer;align-items:flex-start;gap:8px">'
+      +'<span style="min-width:16px;font-family:var(--mono);font-size:12px;color:#9AA2AC">'+(i+1)+'</span>'
+      +'<span class="pill" style="color:#fff;background:'+c+';white-space:nowrap">'+esc(p.etiqueta)+'</span>'
+      +'<span style="flex:1;min-width:0"><span class="nm">'+esc(p.titulo)+'</span>'
+        +'<div class="mut" style="font-size:11.5px;white-space:normal">'+esc(p.motivo)+'</div></span>'
+      +'<span class="mut" style="font-family:var(--mono);font-size:10px;white-space:nowrap">'+esc(p.regc||'')+'</span></div>';
+  }
+  return h+'</div>';
+}
 function renderInicio(){
   var g=D.groups,m=D.meta,h='<div class="eyebrow">QUÉ HACER HOY</div><div class="h1">Hola, Martín</div>';
   h+=renderWorkerBanner();
+  h+=renderPlan();
   h+='<div class="sec"><span class="ic">'+ICONS.clock+'</span><span class="t" data-list="cierran" data-title="Cierran esta semana">CIERRAN ESTA SEMANA</span></div><div class="col">';
   if(g.cierran.length){for(var i=0;i<Math.min(6,g.cierran.length);i++)h+=cierranRow(g.cierran[i]);}else h+='<div style="font-family:var(--mono);font-size:11px;color:#9AA2AC;padding:8px 2px">Nada cierra en los próximos 7 días.</div>';
   h+='</div>';
