@@ -27,11 +27,9 @@ import schema_v3
 
 
 def _confinado(raiz_res, hijo):
-    """True si `hijo` (ya resuelto) cae dentro de `raiz_res` (defensa ante symlinks que escapan)."""
-    try:
-        return os.path.commonpath([str(raiz_res), str(hijo)]) == str(raiz_res)
-    except ValueError:            # rutas en drives distintos (Windows) → fuera
-        return False
+    """True si `hijo` (ya resuelto) cae dentro de `raiz_res` (defensa ante symlinks que escapan).
+    `is_relative_to` (3.9+) evita los bordes de casing/trailing-slash de commonpath en Windows."""
+    return hijo == raiz_res or hijo.is_relative_to(raiz_res)
 
 
 def _registrar_local(cod, path):

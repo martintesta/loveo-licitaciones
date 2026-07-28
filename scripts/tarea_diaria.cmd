@@ -12,8 +12,8 @@ REM ==========================================================================
 setlocal
 cd /d "%~dp0.."
 if not exist "logs" mkdir "logs"
-set "STAMP=%DATE:/=-% %TIME::=-%"
-echo [%STAMP%] inicio corrida diaria >> "logs\tarea_diaria.log"
+echo [%DATE:/=-% %TIME::=-%] inicio corrida diaria >> "logs\tarea_diaria.log"
 python run_daily.py >> "logs\tarea_diaria.log" 2>&1
-echo [%STAMP%] fin (exit %ERRORLEVEL%) >> "logs\tarea_diaria.log"
+set "EXIT=%ERRORLEVEL%"
+echo [%DATE:/=-% %TIME::=-%] fin (exit %EXIT%) >> "logs\tarea_diaria.log"
 endlocal
