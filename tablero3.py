@@ -40,6 +40,7 @@ import recall
 import comprador
 import cubicacion_ia
 import observabilidad
+import plan
 
 st.set_page_config(page_title="Loveo Construcciones", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
@@ -283,4 +284,11 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
                     st.session_state.flash = f"✓ {len(files)} archivo(s) sincronizados desde Drive."
                 except Exception as e:
                     st.session_state.flash = f"Error leyendo Drive: {e}"
+    # Aprendizaje del plan (Fase 3): si el usuario invirtió atención en una lic, registrarlo para
+    # que el plan del día suba lo que efectivamente ataca (comprador/región/tipo).
+    if cod and plan.es_engagement(act):
+        try:
+            plan.registrar_engagement(cod)
+        except Exception as e:
+            observabilidad.capturar("plan.engagement", e)   # no rompe el flujo, pero queda visible
     st.rerun()

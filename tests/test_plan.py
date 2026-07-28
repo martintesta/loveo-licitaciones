@@ -97,3 +97,77 @@ def test_visita_ya_pasada_no_es_accionable():
 def test_limite():
     lics = [_lic(f"C{i}", dias=1) for i in range(20)]
     assert len(_plan(*lics, limite=5)) == 5
+
+
+# ---------------------------------------------------------------- Fase 3: aprender del comportamiento
+def test_es_engagement():
+    assert plan.es_engagement("aprobar") and plan.es_engagement("cubic_margen")
+    assert plan.es_engagement("resultado:ganada")
+    assert not plan.es_engagement("descartar") and not plan.es_engagement("kw_add")
+
+
+def test_preferencia_sube_lo_que_el_usuario_ataca():
+    # dos acciones REVISAR mismo valor; la preferencia por el comprador de A la sube
+    a = _lic("A", tri="Priorizar", org="Muni Fav", reg="Maule", tipoProd="modular")
+    b = _lic("B", tri="Priorizar", org="Muni Otra", reg="Ñuble", tipoProd="bano")
+    sin = _plan(a, b)
+    prefs = {"organismo": {"Muni Fav": 25.0}, "region": {"Maule": 10.0}, "tipo": {}}
+    con = plan.construir({"A": a, "B": b}, prefs=prefs)
+    assert {x["codigo"] for x in sin} == {"A", "B"}
+    assert con[0]["codigo"] == "A"                    # la preferencia la puso primera
+    assert con[0]["prioridad"] > sin[0 if sin[0]["codigo"] == "A" else 1]["prioridad"]
+
+
+def test_registrar_y_preferencias_end_to_end(tmp_path, monkeypatch):
+    import db
+    import schema_v3
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "A", "nombre": "Sala modular", "organismo": "Muni Fav",
+                                 "region": "Maule"})
+        db.upsert_licitacion(c, {"codigo": "B", "nombre": "Baños", "organismo": "Muni Otra",
+                                 "region": "Ñuble"})
+    plan.registrar_engagement("A")
+    plan.registrar_engagement("A")   # dos veces sobre Muni Fav / Maule / modular
+    plan.registrar_engagement("B")   # una sobre Muni Otra
+    p = plan.preferencias()
+    assert p["organismo"]["Muni Fav"] == plan.PESO_PREF        # el más atendido pesa el máximo
+    assert p["organismo"]["Muni Otra"] == round(plan.PESO_PREF / 2, 1)
+    assert p["tipo"].get("modular") == plan.PESO_PREF and "bano" in p["tipo"]
+
+
+def test_pref_boost_no_aplasta_el_deadline():
+    # aunque el usuario prefiera comprador+región+tipo a la vez, el boost total no supera PESO_PREF
+    l = _lic("A", org="Muni Fav", reg="Maule", tipoProd="modular")
+    prefs = {"organismo": {"Muni Fav": plan.PESO_PREF}, "region": {"Maule": plan.PESO_PREF},
+             "tipo": {"modular": plan.PESO_PREF}}
+    assert plan._pref_boost(l, prefs) == plan.PESO_PREF          # capeado, no 3×
+
+
+def test_preferencias_ignora_comportamiento_viejo(tmp_path, monkeypatch):
+    import datetime
+    import db
+    import schema_v3
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    viejo = (datetime.datetime.now() - datetime.timedelta(days=plan.DIAS_PREF + 5)).strftime("%Y-%m-%d %H:%M:%S")
+    with db.conn() as c:
+        c.execute("INSERT INTO plan_feedback (codigo, organismo, region, tipo_producto, ts) "
+                  "VALUES (?,?,?,?,?)", ("Z", "Muni Vieja", "Maule", "modular", viejo))
+    assert plan.preferencias() == {"organismo": {}, "region": {}, "tipo": {}}  # fuera de ventana
+
+
+def test_registrar_engagement_codigo_inexistente_no_rompe(tmp_path, monkeypatch):
+    import db
+    import schema_v3
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    plan.registrar_engagement("NO-EXISTE")            # no lanza
+    assert plan.preferencias() == {"organismo": {}, "region": {}, "tipo": {}}

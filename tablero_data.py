@@ -204,6 +204,7 @@ def build_data():
             "docs": docs.get(cod, []), "analisis": analisis.get(cod),
             "cubicIA": cubic_ia.get(cod, []),  # borrador de cubicación asistida (Fase 1)
             "recetaDisp": ({"tipo": _tp, "n": recetas_n[_tp]} if _tp and _tp in recetas_n else None),
+            "tipoProd": _tp,  # tipo de producto (para el boost de preferencia del plan, Fase 3)
             "incompleto": r["json_detalle"] is None,  # no se bajó el detalle (solo código+nombre)
         }
 
@@ -320,7 +321,8 @@ def build_data():
         "aprendizaje": aprendizaje.resumen(_ap),
         "recall": recall.auditar(),
         "worker": worker.salud(),
-        "plan": plan.construir(lics),   # próxima mejor acción / plan del día (epic plan-del-dia)
+        # plan del día, priorizado y sesgado por lo que el usuario efectivamente ataca (Fase 3)
+        "plan": plan.construir(lics, prefs=plan.preferencias()),
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
             "mesAb": MESES_AB, "meses": MESES,

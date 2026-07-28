@@ -27,6 +27,18 @@ try:
     from config import PLAN_TIPO_BOOST as TIPO_BOOST
 except (ImportError, AttributeError):
     TIPO_BOOST = {"VISITA": 45, "PRESENTAR": 35, "CIERRE": 22, "CUBICAR": 15, "REVISAR": 6, "BASES": 6}
+try:
+    from config import PLAN_PESO_PREF as PESO_PREF
+except (ImportError, AttributeError):
+    PESO_PREF = 25              # cuánto puede sumar la preferencia APRENDIDA (tope total, no por eje)
+try:
+    from config import PLAN_DIAS_PREF as DIAS_PREF
+except (ImportError, AttributeError):
+    DIAS_PREF = 90             # ventana de comportamiento reciente para las preferencias
+
+# Acciones que cuentan como "el usuario invirtió atención" (alimentan la preferencia, Fase 3).
+ENGAGEMENT_ACTS = {"seguir", "aprobar", "capac", "capac_run", "cubic_ia", "cubic_guardar",
+                   "cubic_preciar", "cubic_margen", "cubic_receta", "rep_pago"}
 
 _ESTRES = {  # etiqueta corta por tipo (para la UI)
     "VISITA": "Visita", "PRESENTAR": "Presentar", "CIERRE": "Cierre", "CUBICAR": "Cubicar",
@@ -113,15 +125,74 @@ def _mk(tipo, cod, nom, motivo, l, urgencia, dias):
             "score": l.get("score"), "regc": l.get("regc"), "org": l.get("org")}
 
 
-def construir(lics, hoy=None, limite=12):
-    """Cola priorizada de acciones a partir del `lics` de build_data. hoy queda para la Fase 3
-    (por ahora los días ya vienen calculados en las lics)."""
+def _pref_boost(l, prefs):
+    """Suma de la preferencia aprendida por comprador + región + tipo de producto (Fase 3)."""
+    if not prefs:
+        return 0.0
+    b = prefs.get("organismo", {}).get(l.get("org") or "", 0)
+    b += prefs.get("region", {}).get(l.get("reg") or "", 0)
+    b += prefs.get("tipo", {}).get(l.get("tipoProd") or "", 0)
+    return min(b, PESO_PREF)          # la preferencia empuja, no aplasta un deadline real
+
+
+def construir(lics, hoy=None, limite=12, prefs=None):
+    """Cola priorizada de acciones a partir del `lics` de build_data. `prefs` (de preferencias())
+    sube lo que el usuario efectivamente ataca — comprador/región/tipo (Fase 3). Puro."""
     acciones = []
     for l in (lics or {}).values():
         if not _activa(l):
             continue
         a = _accion_de(l)
         if a:
+            a["prioridad"] = round(a["prioridad"] + _pref_boost(l, prefs), 1)
             acciones.append(a)
     acciones.sort(key=lambda a: a["prioridad"], reverse=True)
     return acciones[:limite]
+
+
+# ---------------------------------------------------------------- Fase 3: aprender del comportamiento
+def es_engagement(act):
+    """True si la acción indica que el usuario invirtió atención (alimenta la preferencia)."""
+    return act in ENGAGEMENT_ACTS or (act or "").startswith("resultado:")
+
+
+def registrar_engagement(codigo):
+    """Registra atención del usuario en `codigo`: toma comprador/región/tipo del propio código y lo
+    guarda en plan_feedback. No lanza si el código no existe."""
+    import db
+    import schema_v3
+    import cubicacion_ia
+    schema_v3.migrate()
+    with db.conn() as c:
+        r = c.execute("SELECT organismo, region, nombre FROM licitaciones WHERE codigo=?",
+                      (codigo,)).fetchone()
+        if not r:
+            return
+        tp = cubicacion_ia.tipo_producto(r["nombre"] or "")
+        c.execute("INSERT INTO plan_feedback (codigo, organismo, region, tipo_producto, ts) "
+                  "VALUES (?,?,?,?,?)", (codigo, r["organismo"], r["region"], tp, db._now()))
+
+
+def preferencias():
+    """Pesos de preferencia aprendida por eje (comprador/región/tipo) desde plan_feedback,
+    normalizados a [0, PESO_PREF]: el eje con más atención pesa PESO_PREF, el resto proporcional."""
+    import datetime
+    import db
+    import schema_v3
+    schema_v3.migrate()
+    corte = (datetime.datetime.now() - datetime.timedelta(days=DIAS_PREF)).strftime("%Y-%m-%d %H:%M:%S")
+    org, reg, tip = {}, {}, {}
+    with db.conn() as c:
+        for r in c.execute("SELECT organismo, region, tipo_producto FROM plan_feedback "
+                           "WHERE ts >= ?", (corte,)).fetchall():
+            if r["organismo"]:
+                org[r["organismo"]] = org.get(r["organismo"], 0) + 1
+            if r["region"]:
+                reg[r["region"]] = reg.get(r["region"], 0) + 1
+            if r["tipo_producto"]:
+                tip[r["tipo_producto"]] = tip.get(r["tipo_producto"], 0) + 1
+
+    def _norm(d):
+        m = max(d.values()) if d else 0
+        return {k: round(PESO_PREF * v / m, 1) for k, v in d.items()} if m else {}
+    return {"organismo": _norm(org), "region": _norm(reg), "tipo": _norm(tip)}

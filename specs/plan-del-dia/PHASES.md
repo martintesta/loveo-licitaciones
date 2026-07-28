@@ -25,7 +25,10 @@
 - Entregable: registrar qué acciones el usuario atiende / ignora / reordena, y ajustar el ranking
   (los tipos/compradores/regiones que efectivamente ataca suben; los que ignora bajan).
 - Listo cuando: tras N días de uso, el orden refleja el comportamiento real; tests.
-- Estado: [ ] pendiente.
+- Estado: [x] hecho. Toda acción forward del usuario (seguir/aprobar/cubicar/marcar resultado…)
+  registra engagement en plan_feedback (comprador/región/tipo). `plan.preferencias()` normaliza a
+  pesos [0, PESO_PREF]; `construir(lics, prefs)` suma ese boost → sube lo que el usuario efectivamente
+  ataca. Hook en tablero3 (`es_engagement`). 6 tests.
 
 ## Fase 4 — Cerrar los loops manuales
 - Entregable: el recall SUGIERE la keyword con confianza (no solo la muestra); modelo de preferencia

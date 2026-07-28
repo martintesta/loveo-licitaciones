@@ -155,6 +155,15 @@ def _crear_tablas():
             score_despues   INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS plan_feedback (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo        TEXT,
+            organismo     TEXT,
+            region        TEXT,
+            tipo_producto TEXT,
+            ts            TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS errores (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
             ts        TEXT,
