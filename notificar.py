@@ -126,6 +126,38 @@ def render(items, worker_alerta=None):
     return asunto, "\n".join(lineas)
 
 
+def _plan_hoy(limite=8):
+    """Top-N acciones del plan del día. Reusa build_data (única fuente que arma todas las señales)."""
+    try:
+        import tablero_data
+        return (tablero_data.build_data().get("plan") or [])[:limite]
+    except Exception as e:   # que un fallo de build_data no rompa el aviso, pero que quede traza
+        try:
+            import observabilidad
+            observabilidad.capturar("notificar.plan", e)
+        except Exception:
+            pass
+        return []
+
+
+def render_plan(acciones, worker_alerta=None):
+    """(asunto, cuerpo) de 'tu plan de hoy': la cola priorizada de acciones con su porqué (Fase 2)."""
+    asunto = "Loveo · tu plan de hoy" + (" · worker mudo" if worker_alerta else "")
+    lineas = []
+    if worker_alerta:
+        lineas += [worker_alerta, ""]
+    if acciones:
+        lineas.append("TU PLAN DE HOY — qué atacar primero:\n")
+        for i, a in enumerate(acciones, 1):
+            lineas.append(f"{i}. [{(a.get('etiqueta') or '').upper()}] {a.get('titulo', '—')} ({a.get('codigo', '')})")
+            if a.get("motivo"):
+                lineas.append(f"    {a['motivo']}")
+    else:
+        lineas.append("Sin acciones prioritarias pendientes hoy.")
+    lineas.append("\n— Loveo Construcciones (aviso automático). No responder a este correo.")
+    return asunto, "\n".join(lineas)
+
+
 def _enviar_smtp(asunto, cuerpo, destinatarios):
     """Envía por SMTP con STARTTLS. Credenciales SOLO desde el entorno."""
     host = os.environ["SMTP_HOST"]
@@ -143,10 +175,9 @@ def _enviar_smtp(asunto, cuerpo, destinatarios):
         s.sendmail(remitente, destinatarios, msg.as_string())
 
 
-def correr(hoy=None, umbral=None, enviar=None):
-    """Arma el digest de las nuevas, lo manda y las registra. `enviar` inyectable para tests.
-
-    Devuelve {candidatas, nuevas, enviado, error?}. No envía nada si no hay nuevas o si falta SMTP."""
+def correr(hoy=None, umbral=None, enviar=None, plan=None):
+    """Manda 'tu plan de hoy' cuando hay un deadline nuevo o el worker está mudo, y lo registra.
+    `enviar` y `plan` inyectables para tests. Devuelve {candidatas, nuevas, enviado, worker_stale, error?}."""
     schema_v3.migrate()
     cands = candidatas(hoy, umbral)
     frescas = nuevas(cands)
@@ -168,7 +199,10 @@ def correr(hoy=None, umbral=None, enviar=None):
         return {"candidatas": len(cands), "nuevas": len(frescas), "enviado": False,
                 "error": "SMTP/LOVEO_ALERT_TO no configurado (ver notificar.py). No se envió."}
 
-    asunto, cuerpo = render(frescas, worker_alerta=(w_txt if w_nuevo else None))
+    # El email es el PLAN DEL DÍA (cola priorizada), no solo los deadlines sueltos (Fase 2). El
+    # disparo sigue siendo "hay un deadline nuevo o el worker está mudo" para no spammear a diario.
+    acciones = plan if plan is not None else _plan_hoy()
+    asunto, cuerpo = render_plan(acciones, worker_alerta=(w_txt if w_nuevo else None))
     enviar = enviar or (lambda a, c, d: _enviar_smtp(a, c, d))
     try:
         enviar(asunto, cuerpo, _destinatarios())
@@ -192,11 +226,9 @@ def correr(hoy=None, umbral=None, enviar=None):
 
 if __name__ == "__main__":
     import sys
-    if "--dry" in sys.argv:
-        cands = candidatas()
-        frescas = {(x["codigo"], x["tipo"], x["fecha"]) for x in nuevas(cands)}
-        for it in cands:
-            marca = "NUEVA" if (it["codigo"], it["tipo"], it["fecha"]) in frescas else "ya avisada"
-            print(f"[{marca}] {it['tipo']} {_dias_txt(it['dias'])}: {it['codigo']} — {it['nombre']}")
+    if "--dry" in sys.argv:   # muestra el email que mandaría (plan del día), sin enviar ni registrar
+        _w, _ = _alerta_worker()
+        _asunto, _cuerpo = render_plan(_plan_hoy(), worker_alerta=_w)
+        print(_asunto + "\n" + "-" * 60 + "\n" + _cuerpo)
     else:
         print(correr())

@@ -63,14 +63,29 @@ def test_correr_envia_una_vez_y_deja_de_avisar(tmp_path, monkeypatch):
     enviados = []
     cap = lambda asunto, cuerpo, dest: enviados.append((asunto, cuerpo, dest))
 
-    r1 = notificar.correr(hoy=HOY, umbral=5, enviar=cap)
+    _plan = [{"etiqueta": "Revisar", "titulo": "Lic A", "codigo": "A", "motivo": "Cierra en 3 días."}]
+    r1 = notificar.correr(hoy=HOY, umbral=5, enviar=cap, plan=_plan)
     assert r1 == {"candidatas": 1, "nuevas": 1, "enviado": True, "worker_stale": False}
     assert len(enviados) == 1
-    assert "A" in enviados[0][1]                 # el código aparece en el cuerpo
+    assert "A" in enviados[0][1]                 # el código aparece en el cuerpo (el plan)
 
-    r2 = notificar.correr(hoy=HOY, umbral=5, enviar=cap)   # segunda pasada: ya avisada
+    r2 = notificar.correr(hoy=HOY, umbral=5, enviar=cap, plan=_plan)   # segunda pasada: ya avisada
     assert r2["nuevas"] == 0 and r2["enviado"] is False
     assert len(enviados) == 1                     # NO se reenvió
+
+
+def test_email_lleva_el_plan_priorizado(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _lic("A", cierre=_fecha(2))
+    plan = [{"etiqueta": "Cubicar", "titulo": "Módulos escuela", "codigo": "A",
+             "motivo": "Cierra en 2 días y falta la cubicación — cargala para el GO/NO-GO."}]
+    enviados = []
+    r = notificar.correr(hoy=HOY, umbral=5, enviar=lambda a, c, d: enviados.append((a, c)), plan=plan)
+    assert r["enviado"] is True
+    asunto, cuerpo = enviados[0]
+    assert "tu plan de hoy" in asunto.lower()
+    assert "TU PLAN DE HOY" in cuerpo and "[CUBICAR]" in cuerpo
+    assert "cargala para el GO/NO-GO" in cuerpo   # el porqué viaja en el email
 
 
 def test_worker_mudo_dispara_aviso_una_vez_al_dia(tmp_path, monkeypatch):

@@ -16,7 +16,10 @@
 ## Fase 2 — Push "tu plan de hoy" por email
 - Entregable: el digest diario (notificar) manda el plan priorizado, no solo los deadlines sueltos.
 - Listo cuando: el email trae las top-N acciones con su porqué; tests con sender inyectado.
-- Estado: [ ] pendiente.
+- Estado: [x] hecho. `notificar.render_plan` arma "TU PLAN DE HOY" (cola priorizada con porqué);
+  `correr` lo manda cuando hay un deadline nuevo o el worker mudo (mismo disparo anti-spam). El plan
+  se toma de build_data (`_plan_hoy`) y es inyectable en `correr` para tests. `--dry` muestra el
+  email real. +1 test.
 
 ## Fase 3 — Aprender del comportamiento
 - Entregable: registrar qué acciones el usuario atiende / ignora / reordena, y ajustar el ranking
