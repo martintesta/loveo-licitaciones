@@ -119,6 +119,63 @@ def test_usa_el_path_real_de_download_google_native(tmp_path, monkeypatch):
     assert d["nombre_archivo"] == "Presupuesto.xlsx" and d["ruta_local"].endswith("Presupuesto.xlsx")
 
 
+# ------------------------------------------------------------ fuente LOCAL (app en la misma máquina)
+def _carpeta_madre(tmp_path):
+    """Arma una carpeta madre real en disco: una subcarpeta que matchea + una huérfana."""
+    madre = tmp_path / "Bases"
+    ok = madre / "3287-19-LE26"
+    ok.mkdir(parents=True)
+    (ok / "bases.pdf").write_bytes(b"PDF-bases")
+    (ok / "anexo.pdf").write_bytes(b"PDF-anexo")
+    huerfana = madre / "9999-99-XX99"
+    huerfana.mkdir()
+    (huerfana / "otra.pdf").write_bytes(b"PDF-otra")
+    return madre
+
+
+def test_local_registra_en_el_lugar_sin_copiar(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)                 # lic 3287-19-LE26 existe; 9999 no
+    madre = _carpeta_madre(tmp_path)
+    r = ingest_bases.desde_local(str(madre))
+    assert r["ok"] and r["subcarpetas"] == 2 and r["matched"] == 1 and r["registrados"] == 2
+    assert r["huerfanos"] == ["9999-99-XX99"]     # la que no matchea se reporta, no se registra
+    with db.conn() as c:
+        docs = c.execute("SELECT nombre_archivo, ruta_local, fuente FROM documentos "
+                         "WHERE codigo='3287-19-LE26'").fetchall()
+        est = c.execute("SELECT docs_estado FROM licitaciones WHERE codigo='3287-19-LE26'").fetchone()
+    assert {d["nombre_archivo"] for d in docs} == {"bases.pdf", "anexo.pdf"}
+    assert all(d["fuente"] == "local" for d in docs)
+    # ruta_local apunta al archivo EN LA CARPETA MADRE (no se copió a storage)
+    assert all(str(madre) in d["ruta_local"] for d in docs)
+    assert not (tmp_path / "storage" / "3287-19-LE26").exists()
+    assert est["docs_estado"] == "descargado"     # lista para la Capa C
+    # la huérfana no dejó nada
+    with db.conn() as c:
+        assert c.execute("SELECT COUNT(*) n FROM documentos WHERE codigo='9999-99-XX99'").fetchone()["n"] == 0
+
+
+def test_local_reingesta_no_duplica_ni_relee(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    madre = _carpeta_madre(tmp_path)
+    ingest_bases.desde_local(str(madre))
+    r2 = ingest_bases.desde_local(str(madre))     # segunda pasada: ya registrados → 0 nuevos
+    assert r2["registrados"] == 0
+    with db.conn() as c:
+        n = c.execute("SELECT COUNT(*) n FROM documentos WHERE codigo='3287-19-LE26'").fetchone()["n"]
+    assert n == 2
+
+
+def test_local_sin_carpeta_da_error(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    monkeypatch.delenv("LOVEO_BASES_LOCAL", raising=False)
+    assert ingest_bases.desde_local(None)["ok"] is False
+
+
+def test_local_carpeta_inexistente_da_error(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    assert ingest_bases.desde_local(str(tmp_path / "no-existe"))["ok"] is False
+
+
 def test_safe_child_bloquea_traversal(tmp_path):
     base = tmp_path / "storage"
     base.mkdir()

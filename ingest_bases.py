@@ -1,16 +1,22 @@
 """
-ingest_bases.py — Ingesta manual de bases desde Drive (workaround del reCAPTCHA de la Capa B).
+ingest_bases.py — Ingesta manual de bases (workaround del reCAPTCHA de la Capa B).
 
 Mercado Público protege los adjuntos con reCAPTCHA → no se pueden bajar solos. Un humano las
-descarga y las deja en una carpeta madre de Drive, con UNA SUBCARPETA POR CÓDIGO. Esto escanea esa
-carpeta, matchea cada subcarpeta con una licitación de la base, baja sus archivos a storage/<codigo>
-y los registra en `documentos` → la Capa C los lee y puntúa. Reusa la conexión OAuth de drive.py
-(actúa como tu cuenta: no hace falta compartir nada).
+descarga y las deja en una carpeta madre con UNA SUBCARPETA POR CÓDIGO. Esto escanea esa carpeta,
+matchea cada subcarpeta con una licitación de la base y registra sus archivos en `documentos` → la
+Capa C los lee y puntúa. Dos lectores de la MISMA verdad, uno por runtime:
 
-  desde_drive(link) -> {ok, subcarpetas, matched, bajados, detalle[]}
+  - desde_local(carpeta): la app corre en la misma máquina → registra las bases EN EL LUGAR (sin
+    copiar), leyendo la ruta directa. Es el camino primario en tu notebook / el worker.
+  - desde_drive(link): puente a la nube → baja las bases a storage/<codigo> vía la conexión OAuth de
+    drive.py (para cuando la app está hosteada u otro usuario las necesita).
 
-  python ingest_bases.py "<link carpeta madre de Drive>"
-  # o poné LOVEO_DRIVE_BASES=<link> en .env y corré:  python ingest_bases.py
+  desde_local(carpeta) -> {ok, subcarpetas, matched, registrados, huerfanos[], detalle[]}
+  desde_drive(link)     -> {ok, subcarpetas, matched, bajados, detalle[]}
+
+  python ingest_bases.py --local                 # usa LOVEO_BASES_LOCAL de .env
+  python ingest_bases.py --local "D:\\Loveo\\Bases"
+  python ingest_bases.py "<link carpeta madre de Drive>"   # o LOVEO_DRIVE_BASES en .env
 """
 import os
 import pathlib
@@ -18,6 +24,64 @@ import hashlib
 
 import db
 import schema_v3
+
+
+def _confinado(raiz_res, hijo):
+    """True si `hijo` (ya resuelto) cae dentro de `raiz_res` (defensa ante symlinks que escapan)."""
+    try:
+        return os.path.commonpath([str(raiz_res), str(hijo)]) == str(raiz_res)
+    except ValueError:            # rutas en drives distintos (Windows) → fuera
+        return False
+
+
+def _registrar_local(cod, path):
+    """Registra un archivo local EN EL LUGAR (sin copiar). Idempotente por (codigo, ruta_local): si
+    ya está registrado no lo re-lee (evita re-hashear PDFs en cada corrida). True si registró algo."""
+    ruta = str(path)
+    with db.conn() as c:
+        if c.execute("SELECT 1 FROM documentos WHERE codigo=? AND ruta_local=?", (cod, ruta)).fetchone():
+            return False
+    _registrar(cod, path.name, path, path.read_bytes(), fuente="local")
+    return True
+
+
+def desde_local(carpeta=None):
+    """Escanea una carpeta madre LOCAL (subcarpeta por código) y registra las bases en el lugar.
+    Matchea el nombre de subcarpeta con un código de la base; reporta las que no matchean (huérfanas).
+    `carpeta` por arg o LOVEO_BASES_LOCAL en .env."""
+    carpeta = carpeta or os.environ.get("LOVEO_BASES_LOCAL", "")
+    if not carpeta:
+        return {"ok": False, "error": "Falta la carpeta madre (arg o LOVEO_BASES_LOCAL en .env)."}
+    raiz = pathlib.Path(carpeta).expanduser()
+    if not raiz.is_dir():
+        return {"ok": False, "error": f"No existe la carpeta: {raiz}"}
+    schema_v3.migrate()
+
+    raiz_res = raiz.resolve()
+    with db.conn() as c:
+        codigos = {r["codigo"] for r in c.execute("SELECT codigo FROM licitaciones").fetchall()}
+
+    subs = [s for s in sorted(raiz.iterdir()) if s.is_dir()]
+    matched, registrados, huerfanos, detalle = 0, 0, [], []
+    for sub in subs:
+        cod = sub.name.strip()
+        if cod not in codigos:            # subcarpeta que no matchea ninguna licitación → huérfana
+            huerfanos.append(sub.name)
+            continue
+        matched += 1
+        n = 0
+        for f in sorted(sub.iterdir()):
+            if not f.is_file():
+                continue
+            real = f.resolve()
+            if not _confinado(raiz_res, real):     # symlink que escapa de la carpeta madre → skip
+                continue
+            if _registrar_local(cod, real):
+                n += 1
+                registrados += 1
+        detalle.append({"codigo": cod, "archivos": n})
+    return {"ok": True, "subcarpetas": len(subs), "matched": matched, "registrados": registrados,
+            "huerfanos": huerfanos, "detalle": detalle}
 
 
 def _registrar(cod, nombre, path, contenido, fuente="drive"):
@@ -83,5 +147,10 @@ def desde_drive(link=None, drv=None):
 if __name__ == "__main__":
     import sys
     import json
-    link = sys.argv[1] if len(sys.argv) > 1 else None
-    print(json.dumps(desde_drive(link), indent=2, ensure_ascii=False))
+    args = sys.argv[1:]
+    if args and args[0] == "--local":                 # fuente LOCAL (app en la misma máquina)
+        carpeta = args[1] if len(args) > 1 else None
+        print(json.dumps(desde_local(carpeta), indent=2, ensure_ascii=False))
+    else:                                             # fuente DRIVE (puente a la nube)
+        link = args[0] if args else None
+        print(json.dumps(desde_drive(link), indent=2, ensure_ascii=False))

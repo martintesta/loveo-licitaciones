@@ -9,7 +9,7 @@ Flujo:  descubrir -> filtrar -> [por cada candidato] detalle -> upsert -> admisi
   python run_daily.py --backfill 5    # los últimos 5 días hábiles no procesados
   python run_daily.py --cache dia.json 11062026   # modo test: usa un listado cacheado
 """
-import sys, time, json
+import os, sys, time, json
 import db, discover, rules, scoring, extract, relicitaciones, notificar
 
 
@@ -52,6 +52,19 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
 
     enlaces = relicitaciones.detectar()   # enlaza desiertas con su re-licitación (conn propia)
 
+    bases = None
+    if os.environ.get("LOVEO_BASES_LOCAL"):   # carpeta madre local → registra bases nuevas para la Capa C
+        try:
+            import ingest_bases
+            bases = ingest_bases.desde_local()
+        except Exception as e:                # un fallo de ingesta NUNCA frena el pipeline
+            bases = {"error": str(e)}
+            try:
+                import observabilidad
+                observabilidad.capturar("run_daily.ingest_local", e)
+            except Exception:
+                pass
+
     try:
         avisos = notificar.correr()       # avisos de deadline; no-op si no hay SMTP configurado
     except Exception as e:                # un fallo de notificación NUNCA frena el pipeline
@@ -64,7 +77,7 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
 
     return {"fecha": fecha, "total": len(listado), "candidatos": len(candidatos),
             "admisibles": admisibles, "errores": errores, "relicitaciones": enlaces,
-            "avisos": avisos}
+            "bases_local": bases, "avisos": avisos}
 
 
 def procesar_codigo(codigo, manual=True):
