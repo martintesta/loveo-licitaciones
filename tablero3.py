@@ -42,7 +42,11 @@ import cubicacion_ia
 import observabilidad
 import plan
 
-st.set_page_config(page_title="Loveo Construcciones", layout="wide", initial_sidebar_state="collapsed")
+import pathlib as _pl
+_ICONO = _pl.Path(__file__).parent / "assets" / "loveo.png"      # favicon de la pestaña (módulo Loveo)
+st.set_page_config(page_title="Loveo Construcciones",
+                   page_icon=str(_ICONO) if _ICONO.exists() else "🏗️",
+                   layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
   #MainMenu, header, footer {visibility:hidden;}
