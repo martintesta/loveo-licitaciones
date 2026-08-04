@@ -65,7 +65,14 @@ def analizar(codigo):
         return {"ok": False, "error": res["error"]}
     ex = res.get("extraccion") or {}
     if ex.get("_parse_error"):
-        return {"ok": False, "error": "No se pudo interpretar la respuesta de la IA. Reintentá."}
+        # la IA a veces devuelve JSON inválido de forma intermitente (mega-pliegos al borde del
+        # límite de salida): un segundo intento suele salir. Solo se paga cuando el primero falla.
+        res = capa_c.analizar_bases(codigo=codigo)
+        if res.get("error"):
+            return {"ok": False, "error": res["error"]}
+        ex = res.get("extraccion") or {}
+        if ex.get("_parse_error"):
+            return {"ok": False, "error": "No se pudo interpretar la respuesta de la IA (2 intentos)."}
 
     with db.conn() as c:
         row = c.execute("SELECT score_provisional, score_json FROM licitaciones WHERE codigo=?", (codigo,)).fetchone()

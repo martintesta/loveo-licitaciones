@@ -85,10 +85,11 @@ def analizar_bases(pdf=None, codigo=None, dry=False):
                 "meta": meta, "muestra_texto": texto[:500]}
 
     client = _client()
-    # 4000: bases ricas (40+ páginas) generan mucho JSON (señales/requisitos); 1500 lo truncaba
-    # a la mitad → JSON inválido → _parse_error. El costo solo crece con lo realmente generado.
+    # 8000: los mega-pliegos (bases + reglamento + EETT + formularios, 60+ páginas legibles) generan
+    # mucho JSON; 4000 quedaba al borde y truncaba de forma intermitente → _parse_error. El costo solo
+    # crece con lo realmente generado. capac_score además reintenta una vez ante un parse fallido.
     msg = client.messages.create(
-        model=MODEL, max_tokens=4000, system=SYSTEM_EXTRACT,
+        model=MODEL, max_tokens=8000, system=SYSTEM_EXTRACT,
         messages=[{"role": "user", "content": f"BASES:\n{texto}"}])
     raw = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
