@@ -69,3 +69,49 @@ def test_respuesta_no_json_marca_parse_error(monkeypatch):
     monkeypatch.setattr(capa_c, "_client", lambda: _FakeClient("esto no es json"))
     r = capa_c.analizar_bases(pdf="x.pdf")
     assert r["extraccion"].get("_parse_error") is True
+
+
+def _doc(c, cod, nombre, ruta, sha):
+    c.execute("INSERT INTO documentos (codigo, nombre_archivo, ruta_local, tipo, bytes, sha256, "
+              "fuente, descargado_at) VALUES (?,?,?,?,?,?,?,?)",
+              (cod, nombre, ruta, ruta.rsplit(".", 1)[-1], 1, sha, "local", "t"))
+
+
+def test_archivo_ilegible_se_saltea_y_sigue(tmp_path, monkeypatch):
+    # un .docx (o PDF corrupto) mezclado NO debe tirar el análisis: se saltea y sigue con los PDFs
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "MIX", "nombre": "Mix"})
+        _doc(c, "MIX", "bases.pdf", "/x/bases.pdf", "sha1")
+        _doc(c, "MIX", "form.docx", "/x/form.docx", "sha2")
+
+    def _texto(ruta, max_chars=12000):
+        if ruta.endswith(".docx"):
+            raise Exception("No /Root object! - Is this really a PDF?")
+        return {"texto": "PRESUPUESTO 50M", "n_paginas": 1, "ocr_paginas": [], "secciones_halladas": []}
+
+    monkeypatch.setattr(bases, "texto_para_analisis", _texto)
+    monkeypatch.setattr(capa_c, "_client", lambda: _FakeClient('{"presupuesto": 50000000}'))
+    r = capa_c.analizar_bases(codigo="MIX")
+    assert not r.get("error")                                   # no tiró: el docx se salteó
+    assert r["extraccion"]["presupuesto"] == 50000000          # analizó el PDF bueno
+    assert any(m.get("error") for m in r["meta"])              # el saltado queda trazado
+    assert any(m.get("paginas") == 1 for m in r["meta"])       # el legible también
+
+
+def test_todos_ilegibles_devuelve_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "BAD", "nombre": "Bad"})
+        _doc(c, "BAD", "roto.pdf", "/x/roto.pdf", "sha1")
+
+    def _boom(ruta, max_chars=12000):
+        raise Exception("Unexpected EOF")
+
+    monkeypatch.setattr(bases, "texto_para_analisis", _boom)
+    r = capa_c.analizar_bases(codigo="BAD")
+    assert r.get("error") and r["meta"]                        # sin nada legible → error con traza

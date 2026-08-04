@@ -65,10 +65,19 @@ def analizar_bases(pdf=None, codigo=None, dry=False):
     bloques = []
     meta = []
     for r in rutas:
-        ex = bases.texto_para_analisis(r, max_chars=12000)
+        try:
+            ex = bases.texto_para_analisis(r, max_chars=12000)
+        except Exception as e:
+            # un archivo ilegible (no-PDF como .docx, o PDF corrupto) NO debe tirar todo el análisis:
+            # se saltea y se sigue con los legibles. Queda registrado en meta para trazabilidad.
+            meta.append({"archivo": r, "error": str(e)[:150]})
+            continue
         bloques.append(ex["texto"])
         meta.append({"archivo": r, "paginas": ex["n_paginas"],
                      "ocr": ex["ocr_paginas"], "secciones": ex["secciones_halladas"]})
+    if not bloques:
+        return {"error": f"Ningún documento legible para {codigo or pdf} "
+                         f"(¿PDFs corruptos o formatos no soportados?).", "meta": meta}
     texto = "\n\n=====\n\n".join(bloques)
 
     if dry:
