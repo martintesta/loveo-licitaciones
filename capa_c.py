@@ -85,16 +85,19 @@ def analizar_bases(pdf=None, codigo=None, dry=False):
                 "meta": meta, "muestra_texto": texto[:500]}
 
     client = _client()
+    # 4000: bases ricas (40+ páginas) generan mucho JSON (señales/requisitos); 1500 lo truncaba
+    # a la mitad → JSON inválido → _parse_error. El costo solo crece con lo realmente generado.
     msg = client.messages.create(
-        model=MODEL, max_tokens=1500, system=SYSTEM_EXTRACT,
+        model=MODEL, max_tokens=4000, system=SYSTEM_EXTRACT,
         messages=[{"role": "user", "content": f"BASES:\n{texto}"}])
     raw = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    salida = getattr(getattr(msg, "usage", None), "output_tokens", None)   # visibilidad: ¿nos acercamos al tope?
     try:
         data = json.loads(raw)
     except Exception:
-        data = {"_parse_error": True, "raw": raw[:800]}
-    return {"modelo": MODEL, "meta": meta, "extraccion": data}
+        data = {"_parse_error": True, "raw": raw[:800]}   # típicamente output truncado (subir max_tokens)
+    return {"modelo": MODEL, "meta": meta, "extraccion": data, "tokens_salida": salida}
 
 
 def preguntar(codigo=None, pdf=None, pregunta="", dry=False):
