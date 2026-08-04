@@ -9,12 +9,35 @@ capac_score.py — Capa C aplicada al score: lee las bases (vía capa_c) y actua
 Honestidad: el margen NO se vuelve "real" acá (eso necesita la cubicación); Capa C aporta
 complejidad evaluada + el techo de presupuesto. Todo queda en la trazabilidad.
 """
+import re
 import json
 import datetime
 import db
 import scoring
 import capa_c
 import schema_v3
+
+
+def _num(v):
+    """La IA a veces devuelve dict/list/str donde se espera un número (ej. plazo/presupuesto).
+    Coerce a int o None — así nunca se bindea un dict a SQLite (que lo rechaza)."""
+    if isinstance(v, bool) or isinstance(v, (dict, list)):
+        return None
+    if isinstance(v, (int, float)):
+        return int(v)
+    if isinstance(v, str):
+        d = re.sub(r"\D", "", v)              # "336.469.000"/"60 días" → dígitos
+        return int(d) if d else None
+    return None
+
+
+def _texto(v):
+    """Coerce a texto para columnas TEXT: dict/list → JSON; None y str se mantienen."""
+    if v is None or isinstance(v, str):
+        return v
+    if isinstance(v, (dict, list)):
+        return json.dumps(v, ensure_ascii=False)
+    return str(v)
 
 
 def estimar(codigo):
@@ -56,12 +79,9 @@ def analizar(codigo):
     csc, cnota = _complejidad(signals)
     dims["complejidad"] = {"score": csc, "nota": cnota, "evaluado": True}
 
-    pres = ex.get("presupuesto_clp")
+    pres = _num(ex.get("presupuesto_clp"))     # la IA puede devolver dict/str: coerce a int o None
     if pres:
-        try:
-            pres_txt = f"${int(pres):,}".replace(",", ".")
-        except (ValueError, TypeError):
-            pres_txt = str(pres)
+        pres_txt = f"${pres:,}".replace(",", ".")
         dims["margen"] = {"score": 5, "evaluado": False,
                           "nota": f"Techo de presupuesto {pres_txt} (Capa C). Falta costo/cubicación de Valentina para el margen."}
 
@@ -78,7 +98,9 @@ def analizar(codigo):
         c.execute("""INSERT INTO analisis_bases
                      (codigo, ts, modelo, resumen, presupuesto_clp, plazo_dias, json_extraccion, score_antes, score_despues)
                      VALUES (?,?,?,?,?,?,?,?,?)""",
-                  (codigo, ts, res.get("modelo"), ex.get("resumen"), pres, ex.get("plazo_entrega_dias"),
+                  (codigo, ts, res.get("modelo"), _texto(ex.get("resumen")), pres,
+                   _num(ex.get("plazo_entrega_dias")),
                    json.dumps(ex, ensure_ascii=False), score_antes, total))
         db.log_evento(c, codigo, "capa_c", f"Bases analizadas (Capa C). Score {score_antes}→{total}.")
-    return {"ok": True, "score_antes": score_antes, "score_despues": total, "resumen": ex.get("resumen")}
+    return {"ok": True, "score_antes": score_antes, "score_despues": total,
+            "resumen": _texto(ex.get("resumen"))}
