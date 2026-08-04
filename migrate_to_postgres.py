@@ -15,12 +15,10 @@ import db
 import schema_v2
 import schema_v3
 
-# Orden: padres antes que hijos (por las FK).
-TABLES = [
-    "licitaciones", "runs", "eventos", "documentos",
-    "adjudicaciones", "items", "competidores", "participaciones", "relicitaciones",
-    "cubicaciones", "cubicacion_items", "precios_referencia", "analisis_bases",
-]
+# Orden: padres antes que hijos (por las FK). Fuente ÚNICA: migrate_region.TABLES — antes había una
+# lista propia más corta y este script (el que siembra el deploy) migraba SIN usuarios, keywords,
+# descartes/resultados, recall_log, plan_feedback, etc.
+from migrate_region import TABLES
 
 
 def main():

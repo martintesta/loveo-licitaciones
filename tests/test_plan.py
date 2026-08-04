@@ -106,6 +106,14 @@ def test_es_engagement():
     assert not plan.es_engagement("descartar") and not plan.es_engagement("kw_add")
 
 
+def test_no_es_engagement_calificar_pago_ni_preview():
+    """Auditoría: rep_pago puede marcar un comprador como MALO — contarlo como preferencia hacía
+    que el plan priorizara al comprador que se quiere evitar. capac es solo el preview de costo."""
+    assert not plan.es_engagement("rep_pago")
+    assert not plan.es_engagement("capac")
+    assert plan.es_engagement("capac_run")          # el análisis REAL sí cuenta
+
+
 def test_preferencia_sube_lo_que_el_usuario_ataca():
     # dos acciones REVISAR mismo valor; la preferencia por el comprador de A la sube
     a = _lic("A", tri="Priorizar", org="Muni Fav", reg="Maule", tipoProd="modular")

@@ -113,22 +113,25 @@ def sugerencias_keywords(min_apariciones=3, min_confianza=0.6):
     import keywords as kwmod
     inc, _exc, _amp = kwmod.get_active_lists()
     ya = {_na(t) for t in inc}                       # lo que ya está en INCLUIR no se sugiere
-    agg = {}                                         # termino -> [apariciones, promovidas, descartadas]
+    # Se agrega por LICITACIÓN, no por fila: hay una fila por (codigo, fecha_run), así que una lic
+    # que reaparece muchos días inflaba apariciones/confianza y podía gatillar sola una sugerencia.
+    agg = {}                                         # termino -> {apariciones, promovidas, descartadas}: sets de códigos
     with db.conn() as c:
-        rows = c.execute("SELECT kw, estado FROM recall_log WHERE bucket='recall'").fetchall()
+        rows = c.execute("SELECT codigo, kw, estado FROM recall_log WHERE bucket='recall'").fetchall()
     for r in rows:
         for term in (r["kw"] or "").split(","):
             term = term.strip()
             if not term or _na(term) in ya:
                 continue
-            a = agg.setdefault(term, [0, 0, 0])
-            a[0] += 1
+            a = agg.setdefault(term, {"ap": set(), "prom": set(), "desc": set()})
+            a["ap"].add(r["codigo"])
             if r["estado"] == "promovida":
-                a[1] += 1
+                a["prom"].add(r["codigo"])
             elif r["estado"] == "descartada":
-                a[2] += 1
+                a["desc"].add(r["codigo"])
     out = []
-    for term, (ap, prom, desc) in agg.items():
+    for term, a in agg.items():
+        ap, prom, desc = len(a["ap"]), len(a["prom"]), len(a["desc"])
         decididas = prom + desc
         conf = (prom / decididas) if decididas else 0.0
         if ap >= min_apariciones and decididas and conf >= min_confianza:

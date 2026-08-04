@@ -180,7 +180,9 @@ def build_data(usuario=None):
                 sj = json.loads(r["score_json"])
             except ValueError:
                 sj = {}
-        dias = (cierre - now).days if cierre else None
+        # días de CALENDARIO (no timedelta.days, que trunca por 24h): así el tablero, el plan y el
+        # email (alertas.dias_hasta) dicen todos lo mismo. Antes: cierre mañana 08:00 → "cierra HOY".
+        dias = (cierre.date() - now.date()).days if cierre else None
         _vis = _parse(r["fecha_visita"])                        # visita a terreno (para el plan del día)
         estado_lbl = ESTADO_LBL.get(res) if res and res != "pendiente" else ESTADO_LBL.get(rev, rev)
         _dd = _dims(sj)  # confianza: cuántas de las 6 dimensiones están realmente evaluadas

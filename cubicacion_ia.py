@@ -48,15 +48,26 @@ def _extraer_real(codigo):
 
 
 def _cantidad(v):
-    """Cantidad a float, tolerando el formato chileno (coma decimal). None si no se puede.
-    '1,5'→1.5 · '1.000,5'→1000.5 (coma=decimal, punto=miles) · '120'→120 · '1.5'→1.5 (sin coma)."""
+    """Cantidad a float, tolerando el formato chileno. None si no se puede.
+    '1,5'→1.5 · '1.000,5'→1000.5 (coma=decimal, punto=miles) · '120'→120 · '1.5'→1.5 (decimal)
+    · '1.000'→1000 y '2.500'→2500 (punto + 3 dígitos = MILES chileno).
+
+    A diferencia de un precio CLP, en una cantidad los decimales cortos son legítimos (1.5 m²,
+    2.75 ton), así que solo se trata como miles el patrón de 3 dígitos exactos tras el punto.
+    Antes '1.000' daba 1.0 → costo ~1000× bajo → margen inflado."""
     if v is None:
         return None
-    s = str(v).strip()
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = re.sub(r"[^\d.,]", "", str(v)).strip()      # "120 un" → "120"
     if not s:
         return None
-    if "," in s:                       # formato chileno: el punto es separador de miles
+    if "," in s:                                     # coma decimal → el punto es de miles
         s = s.replace(".", "").replace(",", ".")
+    elif re.fullmatch(r"\d{1,3}(\.\d{3})+", s):      # 1.000 · 2.500 · 1.234.567 → miles
+        s = s.replace(".", "")
     try:
         return float(s)
     except (ValueError, TypeError):

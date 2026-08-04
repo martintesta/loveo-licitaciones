@@ -122,6 +122,24 @@ def test_sugerencia_de_keyword_por_promociones(_kws, tmp_path, monkeypatch):
     assert recall.auditar()["sugerencias"][0]["termino"] == "posta"
 
 
+def test_sugerencia_cuenta_por_licitacion_no_por_corrida(_kws, tmp_path, monkeypatch):
+    """Auditoría: hay una fila por (codigo, fecha_run). Una lic que reaparece muchos días NO debe
+    inflar apariciones/confianza (antes: 1 lic promovida en 3 corridas + 1 descartada → conf 0.75
+    y sugería; en realidad son 2 licitaciones decididas 50/50)."""
+    _db(monkeypatch, tmp_path)
+    with db.conn() as c:                              # A aparece en 3 corridas distintas, B en 1
+        for run in ("01072026", "02072026", "03072026"):
+            recall.registrar_descartes(c, [{"CodigoExterno": "A", "Nombre": "posta rural"}], run)
+        recall.registrar_descartes(c, [{"CodigoExterno": "B", "Nombre": "posta rural"}], "01072026")
+    recall.resolver("A", "promovida")
+    recall.resolver("B", "descartada")
+    sug = recall.sugerencias_keywords(min_apariciones=2, min_confianza=0.6)
+    assert sug == []                                  # 1 promovida / 2 licitaciones = 0.5 < 0.6
+    todas = recall.sugerencias_keywords(min_apariciones=2, min_confianza=0.0)
+    assert todas[0]["apariciones"] == 2               # 2 licitaciones, no 4 filas
+    assert todas[0]["promovidas"] == 1 and todas[0]["confianza"] == 0.5
+
+
 def test_no_sugiere_lo_mayormente_descartado(_kws, tmp_path, monkeypatch):
     _db(monkeypatch, tmp_path)
     _sembrar_recall(["R1", "R2", "R3"])

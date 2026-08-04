@@ -120,9 +120,20 @@ def test_cantidad_formato_chileno():
     assert cubicacion_ia._cantidad("1,5") == 1.5          # coma decimal (Chile)
     assert cubicacion_ia._cantidad("1.000,5") == 1000.5   # punto miles + coma decimal
     assert cubicacion_ia._cantidad("120") == 120.0
-    assert cubicacion_ia._cantidad("1.5") == 1.5          # sin coma → punto decimal (inglés) ok
+    assert cubicacion_ia._cantidad("1.5") == 1.5          # 1 decimal → decimal (1,5 m²)
+    assert cubicacion_ia._cantidad("2.75") == 2.75        # 2 decimales → decimal (2,75 ton)
     assert cubicacion_ia._cantidad("") is None and cubicacion_ia._cantidad(None) is None
     assert cubicacion_ia._cantidad("abc") is None
+
+
+def test_cantidad_miles_chilenos_no_se_achica():
+    """Regresión: '1.000' daba 1.0 → costo ~1000× bajo → MARGEN INFLADO (auditoría)."""
+    assert cubicacion_ia._cantidad("1.000") == 1000.0
+    assert cubicacion_ia._cantidad("2.500") == 2500.0
+    assert cubicacion_ia._cantidad("1.234.567") == 1234567.0
+    assert cubicacion_ia._cantidad("120 un") == 120.0     # limpia la unidad pegada
+    assert cubicacion_ia._cantidad(1500) == 1500.0        # numérico pasa derecho
+    assert cubicacion_ia._cantidad(True) is None          # bool no es cantidad
 
 
 def test_guardar_cantidad_con_coma_no_se_pierde(tmp_path, monkeypatch):

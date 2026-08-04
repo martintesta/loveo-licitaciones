@@ -11,10 +11,10 @@ y no se choca con el tope de 100 páginas / 32 MB del modo PDF nativo.
 OCR es opcional: si pytesseract/pdf2image no están, se omite y se avisa (no rompe).
 """
 import re
+import unicodedata
 from pathlib import Path
 import pdfplumber
 
-from textnorm import na as _na  # normalización compartida (una sola fuente de verdad)
 
 MIN_CHARS_PAGINA = 40   # bajo esto, la página se considera "sin texto" → candidata a OCR
 
@@ -60,9 +60,29 @@ def pdf_a_texto(ruta):
             "ocr_paginas": ocr_pgs, "n_paginas": len(paginas)}
 
 
+def _normalizar_con_mapa(s):
+    """(texto_normalizado, mapa) para buscar encabezados y poder volver al texto ORIGINAL.
+
+    `textnorm.na` (encode ascii+ignore) BORRA lo no representable (viñetas, dashes, comillas
+    tipográficas, °…) y las ligaduras ('ﬁ') expanden a 2 chars: en ambos casos los offsets del
+    normalizado NO coinciden con los del original, y recortar con ellos devolvía secciones corridas.
+    Acá se normaliza sin restricción de longitud y `mapa[i]` guarda el índice ORIGINAL que produjo
+    el char i del normalizado, así el recorte siempre cae en el lugar correcto."""
+    out, mapa = [], []
+    for i, ch in enumerate(s or ""):
+        d = unicodedata.normalize("NFKD", ch)
+        base = "".join(c for c in d if not unicodedata.combining(c)) or ch
+        for c in base.lower():                    # 'ﬁ' → 'f','i' (ambos apuntan al mismo índice)
+            out.append(c)
+            mapa.append(i)
+    mapa.append(len(s or ""))                     # centinela: fin del texto
+    return "".join(out), mapa
+
+
 def secciones(texto):
-    """Parte el texto por encabezados relevantes; cada sección = desde su match hasta el siguiente."""
-    n = _na(texto)
+    """Parte el texto por encabezados relevantes; cada sección = desde su match hasta el siguiente.
+    Busca sobre el texto normalizado y traduce las posiciones al ORIGINAL vía el mapa de offsets."""
+    n, mapa = _normalizar_con_mapa(texto)
     hits = []
     for nombre, pat in SECCIONES.items():
         m = re.search(pat, n)
@@ -71,8 +91,10 @@ def secciones(texto):
     hits.sort()
     out = {}
     for idx, (pos, nombre) in enumerate(hits):
-        fin = hits[idx + 1][0] if idx + 1 < len(hits) else min(len(texto), pos + 2500)
-        out[nombre] = texto[pos:fin].strip()
+        ini = mapa[pos]                                     # posición en el texto ORIGINAL
+        fin = (mapa[hits[idx + 1][0]] if idx + 1 < len(hits)
+               else min(len(texto), ini + 2500))
+        out[nombre] = texto[ini:fin].strip()
     return out
 
 

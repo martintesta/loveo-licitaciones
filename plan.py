@@ -36,9 +36,15 @@ try:
 except (ImportError, AttributeError):
     DIAS_PREF = 90             # ventana de comportamiento reciente para las preferencias
 
-# Acciones que cuentan como "el usuario invirtió atención" (alimentan la preferencia, Fase 3).
-ENGAGEMENT_ACTS = {"seguir", "aprobar", "capac", "capac_run", "cubic_ia", "cubic_guardar",
-                   "cubic_preciar", "cubic_margen", "cubic_receta", "rep_pago"}
+# Acciones que cuentan como "el usuario invirtió atención EN PERSEGUIR esta lic" (preferencia, Fase 3).
+# Deliberadamente NO incluyen:
+#  - rep_pago: es un juicio sobre el comprador (puede ser MALO). Marcarlo como mal pagador subía su
+#    preferencia → el plan priorizaba al comprador que se quiere evitar (señal invertida). La
+#    reputación ya entra al score por su propia vía (comprador.reputaciones en build_data).
+#  - capac: es solo el PREVIEW de costo; el usuario puede mirarlo y cancelar. El análisis real
+#    (capac_run) sí cuenta.
+ENGAGEMENT_ACTS = {"seguir", "aprobar", "capac_run", "cubic_ia", "cubic_guardar",
+                   "cubic_preciar", "cubic_margen", "cubic_receta"}
 
 _ESTRES = {  # etiqueta corta por tipo (para la UI)
     "VISITA": "Visita", "PRESENTAR": "Presentar", "CIERRE": "Cierre", "CUBICAR": "Cubicar",
