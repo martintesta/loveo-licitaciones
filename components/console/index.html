@@ -241,7 +241,8 @@ function renderPlan(){
       +'<span class="pill" style="color:#fff;background:'+c+';white-space:nowrap">'+esc(p.etiqueta)+'</span>'
       +'<span style="flex:1;min-width:0"><span class="nm">'+esc(p.titulo)+'</span>'
         +'<div class="mut" style="font-size:11.5px;white-space:normal">'+esc(p.motivo)+'</div></span>'
-      +'<span class="mut" style="font-family:var(--mono);font-size:10px;white-space:nowrap">'+esc(p.regc||'')+'</span></div>';
+      +'<span class="mut" style="font-family:var(--mono);font-size:10px;white-space:nowrap">'+esc(p.regc||'')+'</span>'
+      +'<button class="b gh sm" data-planno="'+escA(p.codigo)+'" title="No priorizar esta: el plan lo aprende">✕</button></div>';
   }
   return h+'</div>';
 }
@@ -571,6 +572,11 @@ document.addEventListener('click',function(e){
   if((x=e.target.closest('[data-cub-margen]'))){x.textContent='Calculando…';sendVal({act:'cubic_margen',cod:x.getAttribute('data-cub-margen')});return;}
   if((x=e.target.closest('[data-cub-receta]'))){x.textContent='Pre-llenando…';sendVal({act:'cubic_receta',cod:x.getAttribute('data-cub-receta')});return;}
   if((x=e.target.closest('[data-kw-add]'))){var ki=document.getElementById('kw-input');var term=(ki&&ki.value||'').trim();if(term){if(ki)ki.value='';sendVal({act:'kw_add',termino:term,tipo:x.getAttribute('data-kw-add')});}return;}
+  if((x=e.target.closest('[data-planno]'))){
+    e.stopPropagation();   // no abrir la ficha: el click es para descartar la sugerencia
+    var mot=prompt('¿Por qué no priorizar esta? (ej: muy lejos, sin capacidad, margen bajo)');
+    if(mot!==null)sendVal({act:'plan_no',cod:x.getAttribute('data-planno'),motivo:mot});
+    return;}
   if((x=e.target.closest('[data-kw-promover]'))){sendVal({act:'kw_promover',termino:x.getAttribute('data-kw-promover')});return;}
   if((x=e.target.closest('[data-kw-toggle]'))){sendVal({act:'kw_toggle',kid:x.getAttribute('data-kw-toggle'),on:x.getAttribute('data-on')});return;}
   if((x=e.target.closest('[data-capac-run]'))){sendVal({act:'capac_run',cod:x.getAttribute('data-capac-run')});return;}

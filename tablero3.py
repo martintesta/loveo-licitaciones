@@ -197,6 +197,23 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
                 r = cubicacion_ia.guardar_borrador(cod, val.get("items") or [])
                 st.session_state.flash = (f"✓ Cubicación curada: {len(r['items'])} partidas."
                                           if r.get("ok") else r.get("error", "No se pudo guardar."))
+                # Si CORRIGIÓ lo que el sistema propuso, es la señal más informativa que hay:
+                # se registra aparte del engagement genérico (que solo dice "le prestó atención").
+                corr = r.get("correcciones")
+                if r.get("ok") and corr:
+                    try:
+                        plan.registrar_correccion(cod, usuario=_username,
+                                                  motivo=f"cubicación: +{corr['agregadas']} "
+                                                         f"−{corr['quitadas']} ~{corr['ajustadas']}")
+                    except Exception as e:
+                        observabilidad.capturar("plan.correccion", e)
+        elif act == "plan_no":
+            # El usuario saca una acción del plan diciendo POR QUÉ: evidencia negativa explícita.
+            # Baja al comprador/región/tipo en vez de solo no subirlos.
+            motivo = (val.get("motivo") or "").strip() or "sin motivo"
+            if cod:
+                plan.registrar_rechazo(cod, usuario=_username, motivo=motivo)
+                st.session_state.flash = f"Anotado: no priorizar esta ({motivo}). El plan lo aprende."
         elif act == "cubic_preciar":
             if cod:
                 r = cubicacion_ia.preciar(cod)

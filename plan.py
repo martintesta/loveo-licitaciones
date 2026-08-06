@@ -35,6 +35,10 @@ try:
     from config import PLAN_DIAS_PREF as DIAS_PREF
 except (ImportError, AttributeError):
     DIAS_PREF = 90             # ventana de comportamiento reciente para las preferencias
+try:
+    from config import PLAN_K_CONFIANZA as K_CONFIANZA
+except (ImportError, AttributeError):
+    K_CONFIANZA = 10           # cuánta evidencia hace falta para acercarse al tope (n/(n+K))
 
 # Acciones que cuentan como "el usuario invirtió atención EN PERSEGUIR esta lic" (preferencia, Fase 3).
 # Deliberadamente NO incluyen:
@@ -138,7 +142,9 @@ def _pref_boost(l, prefs):
     b = prefs.get("organismo", {}).get(l.get("org") or "", 0)
     b += prefs.get("region", {}).get(l.get("reg") or "", 0)
     b += prefs.get("tipo", {}).get(l.get("tipoProd") or "", 0)
-    return min(b, PESO_PREF)          # la preferencia empuja, no aplasta un deadline real
+    # Acotado en AMBOS sentidos: empuja pero no aplasta un deadline real, y un rechazo hunde
+    # pero no saca del plan algo que cierra mañana.
+    return max(-PESO_PREF, min(b, PESO_PREF))
 
 
 def construir(lics, hoy=None, limite=12, prefs=None):
@@ -173,10 +179,16 @@ def es_engagement(act):
     return act in ENGAGEMENT_ACTS or (act or "").startswith("resultado:")
 
 
-def registrar_engagement(codigo, usuario=None):
-    """Registra atención de `usuario` en `codigo`: toma comprador/región/tipo del propio código y lo
-    guarda en plan_feedback. No lanza si el código no existe. `usuario` habilita la preferencia
-    por usuario (Fase 4); None = feedback anónimo/global."""
+def registrar_engagement(codigo, usuario=None, senal="engagement", peso=1.0, motivo=None):
+    """Registra una SEÑAL de aprendizaje sobre `codigo` (toma comprador/región/tipo del propio código).
+    No lanza si el código no existe.
+
+    `senal`/`peso` tipan la evidencia — no toda vale lo mismo ni toda es positiva:
+      engagement  (+1)  el usuario invirtió atención (la más débil, pero llega a diario)
+      correccion  (+2)  corrigió una estimación del sistema: dice QUÉ estaba mal, no solo qué le importa
+      alta_manual (+2)  se tomó el trabajo de traerla a mano: intención deliberada
+      rechazo     (−2)  la descartó del plan con motivo: evidencia EN CONTRA
+    """
     import db
     import schema_v3
     import cubicacion_ia
@@ -188,39 +200,131 @@ def registrar_engagement(codigo, usuario=None):
         if not r:
             return
         tp = cubicacion_ia.tipo_producto(r["nombre"] or "")
-        c.execute("INSERT INTO plan_feedback (codigo, organismo, region, tipo_producto, usuario, ts) "
-                  "VALUES (?,?,?,?,?,?)", (codigo, r["organismo"], r["region"], tp, usuario, db._now()))
+        c.execute("INSERT INTO plan_feedback (codigo, organismo, region, tipo_producto, usuario, "
+                  "senal, peso, motivo, ts) VALUES (?,?,?,?,?,?,?,?,?)",
+                  (codigo, r["organismo"], r["region"], tp, usuario, senal, float(peso), motivo,
+                   db._now()))
 
 
-def preferencias(usuario=None):
-    """Pesos de preferencia aprendida por eje (comprador/región/tipo) desde plan_feedback,
-    normalizados a [0, PESO_PREF]: el eje con más atención pesa PESO_PREF, el resto proporcional.
-    Si se pasa `usuario`, aprende de SU comportamiento (Fase 4); si el usuario aún no tiene historia
-    en la ventana, cae al comportamiento global reciente (cold-start)."""
+# Peso por tipo de señal. La corrección y el alta manual valen más que un click; el rechazo resta.
+PESOS_SENAL = {"engagement": 1.0, "correccion": 2.0, "alta_manual": 2.0, "rechazo": -2.0}
+
+
+def registrar_correccion(codigo, usuario=None, motivo=None):
+    """El usuario corrigió una estimación del sistema (ej.: cambió cantidades de la cubicación IA).
+    Es la señal más informativa que existe y llega el mismo día."""
+    registrar_engagement(codigo, usuario, "correccion", PESOS_SENAL["correccion"], motivo)
+
+
+def registrar_rechazo(codigo, usuario=None, motivo=None):
+    """El usuario sacó una acción del plan con un motivo. Evidencia NEGATIVA: baja compradores,
+    regiones y tipos que no quiere ver arriba."""
+    registrar_engagement(codigo, usuario, "rechazo", PESOS_SENAL["rechazo"], motivo)
+
+
+def backfill_desde_eventos(usuario=None):
+    """Reconstruye señal de aprendizaje desde `eventos`, que ya registra decisiones humanas desde
+    antes de que existiera plan_feedback. Sin esto el motor arranca en cero teniendo historia.
+
+    Traduce:
+      agregada_manual  -> alta_manual (+2)   se tomó el trabajo de traerla: intención deliberada
+      cambio_estado    -> según a dónde movió la licitación (aprobada/en_revision suman, descartada resta)
+
+    Idempotente: no re-inserta una señal ya reconstruida (misma licitación, señal y timestamp).
+    Devuelve el conteo por tipo de señal."""
+    import db
+    import schema_v3
+    import cubicacion_ia
+    schema_v3.migrate()
+    usuario = _usuario_id(usuario)
+    hechos = {"alta_manual": 0, "engagement": 0, "rechazo": 0, "omitidos": 0}
+    with db.conn() as c:
+        ya = {(r["codigo"], r["senal"], r["ts"]) for r in
+              c.execute("SELECT codigo, senal, ts FROM plan_feedback").fetchall()}
+        lics = {r["codigo"]: r for r in
+                c.execute("SELECT codigo, organismo, region, nombre FROM licitaciones").fetchall()}
+        evs = c.execute("SELECT codigo, tipo, detalle, ts FROM eventos "
+                        "WHERE tipo IN ('agregada_manual','cambio_estado') ORDER BY ts").fetchall()
+        for e in evs:
+            lic = lics.get(e["codigo"])
+            if not lic:
+                hechos["omitidos"] += 1
+                continue
+            det = (e["detalle"] or "").lower()
+            if e["tipo"] == "agregada_manual":
+                senal = "alta_manual"
+            elif "descartada" in det:
+                senal = "rechazo"
+            elif "aprobada" in det or "en_revision" in det:
+                senal = "engagement"
+            else:
+                hechos["omitidos"] += 1
+                continue
+            if (e["codigo"], senal, e["ts"]) in ya:
+                continue
+            tp = cubicacion_ia.tipo_producto(lic["nombre"] or "")
+            c.execute("INSERT INTO plan_feedback (codigo, organismo, region, tipo_producto, usuario, "
+                      "senal, peso, motivo, ts) VALUES (?,?,?,?,?,?,?,?,?)",
+                      (e["codigo"], lic["organismo"], lic["region"], tp, usuario, senal,
+                       PESOS_SENAL[senal], (e["detalle"] or "")[:200], e["ts"]))
+            hechos[senal] += 1
+    return hechos
+
+
+def preferencias(usuario=None, detalle=False):
+    """Preferencia aprendida por eje (comprador/región/tipo), en [-PESO_PREF, +PESO_PREF].
+
+    La evidencia SE GANA: el aporte de cada clave se pondera por su confianza `n/(n+K_CONFIANZA)`,
+    donde n es la cantidad de decisiones que la respaldan. Antes se normalizaba dividiendo por el
+    máximo, así que **una sola decisión se llevaba el tope completo** (era el máximo de su propio
+    conjunto): un click valía tanto como cincuenta. Con K=10: 3 decisiones ≈ 23% del tope,
+    12 ≈ 55%, 36 ≈ 78%.
+
+    El peso es CON SIGNO: un rechazo con motivo baja al comprador en vez de solo no subirlo.
+
+    `usuario` aprende de SU comportamiento; sin historia propia cae al global (cold-start).
+    `detalle=True` devuelve también la evidencia por clave, para poder explicar el porqué.
+    """
     import datetime
     import db
     import schema_v3
     schema_v3.migrate()
     usuario = _usuario_id(usuario)
     corte = (datetime.datetime.now() - datetime.timedelta(days=DIAS_PREF)).strftime("%Y-%m-%d %H:%M:%S")
-    org, reg, tip = {}, {}, {}
+    org, reg, tip = {}, {}, {}          # clave -> [suma_pesos, n_decisiones]
     with db.conn() as c:
         rows = []
         if usuario:
-            rows = c.execute("SELECT organismo, region, tipo_producto FROM plan_feedback "
-                             "WHERE usuario=? AND ts >= ?", (usuario, corte)).fetchall()
-        if not rows:                       # sin historia del usuario aún → comportamiento global
-            rows = c.execute("SELECT organismo, region, tipo_producto FROM plan_feedback "
-                             "WHERE ts >= ?", (corte,)).fetchall()
+            rows = c.execute("SELECT organismo, region, tipo_producto, COALESCE(peso, 1.0) AS peso "
+                             "FROM plan_feedback WHERE usuario=? AND ts >= ?",
+                             (usuario, corte)).fetchall()
+        if not rows:                    # sin historia del usuario aún → comportamiento global
+            rows = c.execute("SELECT organismo, region, tipo_producto, COALESCE(peso, 1.0) AS peso "
+                             "FROM plan_feedback WHERE ts >= ?", (corte,)).fetchall()
         for r in rows:
-            if r["organismo"]:
-                org[r["organismo"]] = org.get(r["organismo"], 0) + 1
-            if r["region"]:
-                reg[r["region"]] = reg.get(r["region"], 0) + 1
-            if r["tipo_producto"]:
-                tip[r["tipo_producto"]] = tip.get(r["tipo_producto"], 0) + 1
+            p = r["peso"] if r["peso"] is not None else 1.0
+            for campo, acc in (("organismo", org), ("region", reg), ("tipo_producto", tip)):
+                k = r[campo]
+                if k:
+                    a = acc.setdefault(k, [0.0, 0])
+                    a[0] += p
+                    a[1] += 1
 
-    def _norm(d):
-        m = max(d.values()) if d else 0
-        return {k: round(PESO_PREF * v / m, 1) for k, v in d.items()} if m else {}
-    return {"organismo": _norm(org), "region": _norm(reg), "tipo": _norm(tip)}
+    def _pesos(d):
+        if not d:
+            return {}, {}
+        escala = max(abs(v[0]) for v in d.values()) or 1.0
+        pesos, ev = {}, {}
+        for k, (suma, n) in d.items():
+            confianza = n / (n + K_CONFIANZA)          # la evidencia se gana
+            pesos[k] = round(PESO_PREF * (suma / escala) * confianza, 1)
+            ev[k] = {"n": n, "suma": round(suma, 1), "confianza": round(confianza, 2)}
+        return pesos, ev
+
+    po, eo = _pesos(org)
+    pr, er = _pesos(reg)
+    pt, et = _pesos(tip)
+    out = {"organismo": po, "region": pr, "tipo": pt}
+    if detalle:
+        out["evidencia"] = {"organismo": eo, "region": er, "tipo": et}
+    return out

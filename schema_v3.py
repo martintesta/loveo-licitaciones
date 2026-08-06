@@ -237,6 +237,11 @@ def _crear_tablas():
         _asegurar_columna(c, "plan_feedback", "usuario", "TEXT")   # preferencia por usuario (Fase 4)
         _asegurar_columna(c, "licitaciones", "comuna", "TEXT")     # las consume scoring (_logistico
         _asegurar_columna(c, "licitaciones", "modalidad", "TEXT")  # y _cashflow); antes se perdían
+        # Señal de aprendizaje tipada y con peso (Fase 1 del motor adaptativo). Antes toda fila valía
+        # lo mismo y solo podía ser positiva: no se podía aprender de una corrección ni de un rechazo.
+        _asegurar_columna(c, "plan_feedback", "senal", "TEXT")     # engagement|correccion|rechazo|alta_manual
+        _asegurar_columna(c, "plan_feedback", "peso", "REAL")      # negativo = evidencia en contra
+        _asegurar_columna(c, "plan_feedback", "motivo", "TEXT")    # por qué (explicabilidad)
         _asegurar_columna(c, "cubicaciones", "curada", "INTEGER DEFAULT 0")  # solo lo curado alimenta la receta
 
 

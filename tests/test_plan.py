@@ -142,9 +142,10 @@ def test_registrar_y_preferencias_end_to_end(tmp_path, monkeypatch):
     plan.registrar_engagement("A")   # dos veces sobre Muni Fav / Maule / modular
     plan.registrar_engagement("B")   # una sobre Muni Otra
     p = plan.preferencias()
-    assert p["organismo"]["Muni Fav"] == plan.PESO_PREF        # el más atendido pesa el máximo
-    assert p["organismo"]["Muni Otra"] == round(plan.PESO_PREF / 2, 1)
-    assert p["tipo"].get("modular") == plan.PESO_PREF and "bano" in p["tipo"]
+    # el más atendido pesa MÁS (ya no "el máximo": la evidencia se gana, ver confianza ponderada)
+    assert p["organismo"]["Muni Fav"] > p["organismo"]["Muni Otra"] > 0
+    assert p["organismo"]["Muni Fav"] < plan.PESO_PREF          # 2 decisiones no llegan al tope
+    assert p["tipo"].get("modular", 0) > 0 and "bano" in p["tipo"]
 
 
 def test_pref_boost_no_aplasta_el_deadline():
@@ -185,8 +186,9 @@ def test_preferencia_por_usuario(tmp_path, monkeypatch):
                                  "region": "Ñuble"})
     plan.registrar_engagement("A", usuario="ana")
     plan.registrar_engagement("B", usuario="beto")
-    assert plan.preferencias("ana")["organismo"] == {"Muni Ana": plan.PESO_PREF}
-    assert plan.preferencias("beto")["organismo"] == {"Muni Beto": plan.PESO_PREF}
+    assert list(plan.preferencias("ana")["organismo"]) == ["Muni Ana"]      # cada uno aprende el suyo
+    assert list(plan.preferencias("beto")["organismo"]) == ["Muni Beto"]
+    assert plan.preferencias("ana")["organismo"]["Muni Ana"] > 0
     glob = plan.preferencias("carla")["organismo"]       # sin historia → comportamiento global
     assert set(glob) == {"Muni Ana", "Muni Beto"}
 
@@ -206,9 +208,104 @@ def test_usuario_dict_de_sesion_no_rompe(tmp_path, monkeypatch):
         db.upsert_licitacion(c, {"codigo": "A", "nombre": "Sala modular", "organismo": "Muni X",
                                  "region": "Maule"})
     plan.registrar_engagement("A", usuario=sesion)          # antes: ProgrammingError
-    assert plan.preferencias(sesion)["organismo"] == {"Muni X": plan.PESO_PREF}
-    assert plan.preferencias("martin")["organismo"] == {"Muni X": plan.PESO_PREF}   # str sigue OK
+    assert plan.preferencias(sesion)["organismo"]["Muni X"] > 0
+    assert plan.preferencias("martin")["organismo"]["Muni X"] > 0        # str sigue funcionando
     assert plan._usuario_id(None) is None and plan._usuario_id({}) is None
+
+
+def _db(tmp_path, monkeypatch, lics=(("A", "Sala modular", "Muni A", "Maule"),)):
+    import db
+    import schema_v3
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    with db.conn() as c:
+        for cod, nom, org, reg in lics:
+            db.upsert_licitacion(c, {"codigo": cod, "nombre": nom, "organismo": org, "region": reg})
+    return db
+
+
+# ---------------------------------------------------- Fase 1 motor adaptativo: la evidencia se gana
+def test_una_sola_decision_no_se_lleva_el_tope(tmp_path, monkeypatch):
+    """Bug de diseño: se normalizaba dividiendo por el MÁXIMO, así que la única clave con feedback
+    era su propio máximo y se llevaba PESO_PREF completo. Un click valía tanto como cincuenta."""
+    _db(tmp_path, monkeypatch)
+    plan.registrar_engagement("A", usuario="u")
+    p = plan.preferencias("u")
+    boost = p["organismo"]["Muni A"]
+    assert 0 < boost < plan.PESO_PREF * 0.2, f"1 decisión no debe acercarse al tope (dio {boost})"
+
+
+def test_la_confianza_crece_con_la_evidencia(tmp_path, monkeypatch):
+    _db(tmp_path, monkeypatch)
+    vistos = []
+    for i in range(36):
+        plan.registrar_engagement("A", usuario="u")
+        if i + 1 in (3, 12, 36):
+            vistos.append(plan.preferencias("u")["organismo"]["Muni A"])
+    assert vistos[0] < vistos[1] < vistos[2], "más evidencia debe pesar más"
+    assert vistos[2] < plan.PESO_PREF          # nunca supera el tope
+    assert vistos[2] > plan.PESO_PREF * 0.6    # con 36 decisiones ya pesa de verdad
+
+
+def test_el_rechazo_es_evidencia_negativa(tmp_path, monkeypatch):
+    """Un rechazo con motivo debe BAJAR al comprador, no solo dejar de subirlo."""
+    _db(tmp_path, monkeypatch)
+    for _ in range(5):
+        plan.registrar_rechazo("A", usuario="u", motivo="muy lejos")
+    p = plan.preferencias("u")
+    assert p["organismo"]["Muni A"] < 0, "el rechazo debe dar peso negativo"
+    l = _lic("A", org="Muni A", reg="Maule")
+    assert plan._pref_boost(l, p) < 0                      # hunde
+    assert plan._pref_boost(l, p) >= -plan.PESO_PREF       # pero acotado
+
+
+def test_el_aprendizaje_nunca_entierra_un_deadline():
+    """INVARIANTE: por mucho que el usuario rechace un comprador/región/tipo, algo que cierra
+    MAÑANA tiene que seguir arriba de algo sin apuro. El aprendizaje inclina, no manda."""
+    odiada = _lic("ODIADA", org="X", reg="R", tipoProd="t", dias=1, score=70)
+    amada = _lic("AMADA", org="Y", reg="S", tipoProd="u", dias=None, score=70)
+    prefs = {"organismo": {"X": -plan.PESO_PREF, "Y": plan.PESO_PREF},
+             "region": {"R": -plan.PESO_PREF, "S": plan.PESO_PREF},
+             "tipo": {"t": -plan.PESO_PREF, "u": plan.PESO_PREF}}
+    res = plan.construir({"ODIADA": odiada, "AMADA": amada}, prefs=prefs)
+    assert res[0]["codigo"] == "ODIADA"                        # el deadline manda igual
+    assert plan._pref_boost(odiada, prefs) == -plan.PESO_PREF  # acotado aunque sean 3 ejes
+
+
+def test_correccion_pesa_mas_que_un_click(tmp_path, monkeypatch):
+    _db(tmp_path, monkeypatch, lics=(("A", "Sala modular", "Muni A", "Maule"),
+                                     ("B", "Sala modular", "Muni B", "Maule")))
+    plan.registrar_engagement("A", usuario="u")           # click
+    plan.registrar_correccion("B", usuario="u", motivo="ajustó cantidades")
+    p = plan.preferencias("u")
+    assert p["organismo"]["Muni B"] > p["organismo"]["Muni A"]
+
+
+def test_preferencias_explica_su_evidencia(tmp_path, monkeypatch):
+    """Explicabilidad: el motor debe poder decir POR QUÉ subió algo."""
+    _db(tmp_path, monkeypatch)
+    for _ in range(4):
+        plan.registrar_engagement("A", usuario="u")
+    ev = plan.preferencias("u", detalle=True)["evidencia"]["organismo"]["Muni A"]
+    assert ev["n"] == 4 and 0 < ev["confianza"] < 1
+
+
+def test_backfill_reconstruye_historia_desde_eventos(tmp_path, monkeypatch):
+    """El motor no debe arrancar en cero teniendo decisiones humanas ya registradas en `eventos`."""
+    db = _db(tmp_path, monkeypatch, lics=(("A", "Sala modular", "Muni A", "Maule"),
+                                          ("B", "Container", "Muni B", "Ñuble")))
+    with db.conn() as c:
+        db.log_evento(c, "A", "agregada_manual", "alta manual por código")
+        db.log_evento(c, "B", "cambio_estado", "revision -> descartada. es mobiliario, no construcción")
+    r = plan.backfill_desde_eventos(usuario="u")
+    assert r["alta_manual"] == 1 and r["rechazo"] == 1
+    p = plan.preferencias("u")
+    assert p["organismo"]["Muni A"] > 0        # el alta manual suma
+    assert p["organismo"]["Muni B"] < 0        # el descarte resta
+    assert plan.backfill_desde_eventos(usuario="u") == {"alta_manual": 0, "engagement": 0,
+                                                        "rechazo": 0, "omitidos": 0}   # idempotente
 
 
 def test_registrar_engagement_codigo_inexistente_no_rompe(tmp_path, monkeypatch):

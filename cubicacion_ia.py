@@ -224,6 +224,7 @@ def guardar_borrador(codigo, items):
         return {"ok": False, "error": "Hay cubicación de Valentina; no se edita el borrador IA."}
     norm = [x for x in (_norm_item(m) for m in (items or [])) if x]
     with db.conn() as c:
+        correcciones = _diff_curacion(c, codigo, norm)   # ANTES de reemplazar: qué cambió el usuario
         cub_id = _reemplazar_items(c, codigo, norm, preservar_precios=True)  # no perder el preciado
         c.execute("UPDATE cubicaciones SET curada=1 WHERE id=?", (cub_id,))  # esta cubicación ya es curada
         nombre = c.execute("SELECT nombre FROM licitaciones WHERE codigo=?", (codigo,)).fetchone()
@@ -232,7 +233,28 @@ def guardar_borrador(codigo, items):
             _recomputar_receta(c, tipo)
         db.log_evento(c, codigo, "cubicacion_ia",
                       f"Cubicación curada: {len(norm)} partidas." + (f" Receta '{tipo}' actualizada." if tipo and norm else ""))
-    return {"ok": True, "items": norm, "receta_tipo": tipo}
+    return {"ok": True, "items": norm, "receta_tipo": tipo, "correcciones": correcciones}
+
+
+def _diff_curacion(c, codigo, nuevos):
+    """Qué CORRIGIÓ el usuario respecto de lo que el sistema había propuesto: partidas agregadas,
+    quitadas y cantidades cambiadas. Es la señal más informativa del motor (dice qué estaba MAL,
+    no solo qué le importa) y hasta ahora se perdía entera. Devuelve {agregadas, quitadas, ajustadas}
+    o None si no había borrador previo (primera curación: no hay contra qué comparar)."""
+    cur = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'", (codigo,)).fetchone()
+    if not cur:
+        return None
+    previos = {textnorm.na(r["descripcion"] or ""): r["cantidad"] for r in c.execute(
+        "SELECT descripcion, cantidad FROM cubicacion_items WHERE cubicacion_id=?", (cur[0],)).fetchall()}
+    if not previos:
+        return None
+    ahora = {textnorm.na(i["descripcion"] or ""): i["cantidad"] for i in nuevos}
+    agregadas = [k for k in ahora if k not in previos]
+    quitadas = [k for k in previos if k not in ahora]
+    ajustadas = [k for k in ahora if k in previos and ahora[k] != previos[k]]
+    if not (agregadas or quitadas or ajustadas):
+        return None                     # guardó sin cambiar nada: no es una corrección
+    return {"agregadas": len(agregadas), "quitadas": len(quitadas), "ajustadas": len(ajustadas)}
 
 
 def prellenar_desde_receta(codigo):
