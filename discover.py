@@ -21,11 +21,17 @@ import requests
 import db
 from textnorm import na as _na, pat as _pat  # normalización compartida (una sola fuente de verdad)
 
-# ---- Configuración: en producción, mové TICKET y las keywords a config_local.py (gitignored) ----
+# ---- Configuración ----
+# El TICKET vive en .env (LOVEO_CHILECOMPRA_TICKET) y lo resuelve config.py. Antes se pedía a
+# config_local junto con las keywords: como config_local NO define TICKET, el import fallaba entero
+# y se caía al ticket PÚBLICO de pruebas (rate-limited, 429) aunque hubiera uno propio en .env.
+from config import TICKET  # noqa: E402  (config resuelve .env → ticket propio, o el de prueba)
+
+# Keywords/exclusiones estáticas: solo FALLBACK. La fuente de verdad es la tabla `keywords`
+# (ver _patrones), sembrada desde config_local.KEYWORDS_INCLUIR/EXCLUIR.
 try:
-    from config_local import TICKET, KEYWORDS, EXCLUSIONES
+    from config_local import KEYWORDS, EXCLUSIONES
 except ImportError:
-    TICKET = "F8537A18-6766-4DEF-9E59-426B4FEE2844"  # ticket PÚBLICO de pruebas (rate-limited)
     KEYWORDS = [
         "container", "conteiner", "contenedor", "box dental", "box veterinari",
         "baño modular", "baños modulares", "sala modular", "salas dentales",

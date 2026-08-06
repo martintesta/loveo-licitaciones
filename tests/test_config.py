@@ -39,3 +39,11 @@ def test_config_expone_el_contrato():
     assert isinstance(config.USANDO_TICKET_PRUEBA, bool)
     assert isinstance(config.DIAS_HACIA_ATRAS, int)
     assert hasattr(config, "KEYWORDS_INCLUIR")       # la calibración quedó cargada (real o ejemplo)
+
+
+def test_discover_usa_el_ticket_de_config_no_uno_propio():
+    """Regresión: discover pedía TICKET a config_local junto con las keywords. Como config_local NO
+    define TICKET, el import fallaba ENTERO y se caía al ticket PÚBLICO de pruebas (rate-limited)
+    aunque hubiera uno propio en .env — en silencio, con 429 intermitentes."""
+    import discover
+    assert discover.TICKET == config.TICKET, "discover debe usar el ticket de config (.env)"
