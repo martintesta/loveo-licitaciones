@@ -109,7 +109,27 @@ Objetivo (si se valida): que un cliente externo se suscriba y use sin que toquem
 4. **Worker residencial** + **jobs diarios**.
 5. Observabilidad + costos.
 
+## 5.1 Decisión tomada (2026-08-06): LOCAL-FIRST, deploy en pausa
+
+El sistema corre **en la máquina del usuario**, contra SQLite local. El deploy en Render queda
+**suspendido**, no eliminado (`render.yaml` sigue en el repo: reactivarlo es un click).
+
+**Por qué.** No es una limitación técnica pendiente, es la arquitectura que corresponde al uso real:
+- Un solo usuario efectivo. El segundo no necesita entrar desde su máquina todavía.
+- La **ingesta de bases lee una carpeta del disco** (`LOVEO_BASES_LOCAL`). En la nube ese paso no existe.
+- Contra Neon (Oregon) `build_data` tardaba ~21 s por interacción; en local ~0,03 s (~600×).
+- La tarea diaria (descubrir + scorear + auto-curar cobertura) corre por Task Scheduler en esa máquina.
+- Con el deploy activo y Neon congelada, la app hosteada mostraba datos viejos: peor que no tenerla.
+
+**Cuándo se reactiva** (cualquiera de las tres):
+1. Un segundo usuario necesita entrar desde su propia máquina.
+2. Entra un tercer usuario / el equipo crece.
+3. Se despliega para un cliente externo.
+
+**Cómo se reactiva**: re-sembrar Neon (`DATABASE_URL=<neon> python migrate_to_postgres.py`, que ya
+copia las 25 tablas), descomentar `DATABASE_URL` y reactivar el servicio en Render.
+
 ## 6. Decisiones abiertas
-- ❓ Dónde hostear (VPS propio vs PaaS) y dónde el Postgres.
+- ~~❓ Dónde hostear~~ → resuelto arriba: local-first, deploy en pausa hasta que haya multiusuario real.
 - ❓ Forma del worker residencial (agente custom vs proxy residencial CL).
 - ❓ Cuándo cortar a front React (H2) vs estirar Streamlit.
