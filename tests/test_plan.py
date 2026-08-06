@@ -191,6 +191,26 @@ def test_preferencia_por_usuario(tmp_path, monkeypatch):
     assert set(glob) == {"Muni Ana", "Muni Beto"}
 
 
+def test_usuario_dict_de_sesion_no_rompe(tmp_path, monkeypatch):
+    """Regresión del crash en producción: la UI guarda el usuario como dict {username, nombre, rol}
+    y se pasaba crudo a la query → sqlite3.ProgrammingError "type 'dict' is not supported" y el
+    tablero ENTERO no cargaba. preferencias/registrar_engagement deben aceptar dict o str."""
+    import db
+    import schema_v3
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    schema_v3.migrate()
+    sesion = {"username": "martin", "nombre": "Martín Testa", "rol": "admin"}
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "A", "nombre": "Sala modular", "organismo": "Muni X",
+                                 "region": "Maule"})
+    plan.registrar_engagement("A", usuario=sesion)          # antes: ProgrammingError
+    assert plan.preferencias(sesion)["organismo"] == {"Muni X": plan.PESO_PREF}
+    assert plan.preferencias("martin")["organismo"] == {"Muni X": plan.PESO_PREF}   # str sigue OK
+    assert plan._usuario_id(None) is None and plan._usuario_id({}) is None
+
+
 def test_registrar_engagement_codigo_inexistente_no_rompe(tmp_path, monkeypatch):
     import db
     import schema_v3

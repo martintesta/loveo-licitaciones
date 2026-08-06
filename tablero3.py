@@ -102,7 +102,8 @@ if not st.session_state.user:
 _DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "components", "console")
 _console = components.declare_component("loveo_console", path=_DIR)
 
-data = tablero_data.build_data(usuario=st.session_state.user)  # plan sesgado por ESTE usuario (Fase 4)
+_username = (st.session_state.user or {}).get("username")     # el user de sesión es un dict, no un str
+data = tablero_data.build_data(usuario=_username)             # plan sesgado por ESTE usuario (Fase 4)
 data["flash"] = st.session_state.pop("flash", "")
 data["chat"] = st.session_state.get("chat", [])
 data["pending_capac"] = st.session_state.get("pending_capac", {})
@@ -298,7 +299,7 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
     # que el plan del día suba lo que efectivamente ataca (comprador/región/tipo).
     if cod and plan.es_engagement(act):
         try:
-            plan.registrar_engagement(cod, usuario=st.session_state.user)   # preferencia por usuario (Fase 4)
+            plan.registrar_engagement(cod, usuario=_username)   # preferencia por usuario (Fase 4)
         except Exception as e:
             observabilidad.capturar("plan.engagement", e)   # no rompe el flujo, pero queda visible
     st.rerun()

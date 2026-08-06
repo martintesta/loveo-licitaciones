@@ -157,6 +157,17 @@ def construir(lics, hoy=None, limite=12, prefs=None):
 
 
 # ---------------------------------------------------------------- Fase 3: aprender del comportamiento
+def _usuario_id(u):
+    """Nombre de usuario como TEXTO. El user de sesión de la UI es un dict
+    {username, nombre, rol}: bindearlo crudo reventaba SQLite ("type 'dict' is not supported")
+    y tiraba TODO el tablero. Acepta str, dict o None."""
+    if u is None:
+        return None
+    if isinstance(u, dict):
+        u = u.get("username")
+    return str(u) if u else None
+
+
 def es_engagement(act):
     """True si la acción indica que el usuario invirtió atención (alimenta la preferencia)."""
     return act in ENGAGEMENT_ACTS or (act or "").startswith("resultado:")
@@ -170,6 +181,7 @@ def registrar_engagement(codigo, usuario=None):
     import schema_v3
     import cubicacion_ia
     schema_v3.migrate()
+    usuario = _usuario_id(usuario)
     with db.conn() as c:
         r = c.execute("SELECT organismo, region, nombre FROM licitaciones WHERE codigo=?",
                       (codigo,)).fetchone()
@@ -189,6 +201,7 @@ def preferencias(usuario=None):
     import db
     import schema_v3
     schema_v3.migrate()
+    usuario = _usuario_id(usuario)
     corte = (datetime.datetime.now() - datetime.timedelta(days=DIAS_PREF)).strftime("%Y-%m-%d %H:%M:%S")
     org, reg, tip = {}, {}, {}
     with db.conn() as c:
