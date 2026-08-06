@@ -111,12 +111,37 @@ def _ensure_init():
     _INIT_DONE.add(key)
 
 
+def _seguro(etiqueta, fn, default):
+    """Ejecuta un bloque OPCIONAL de build_data sin que su falla mate el tablero.
+
+    Un error acá es PERMANENTE (la app no carga nunca, en ninguna pantalla), a diferencia de una
+    acción, que solo rompe ese click. Se loguea a observabilidad y se degrada al default: el panel
+    correspondiente queda vacío, pero el resto del tablero funciona."""
+    try:
+        return fn()
+    except Exception as e:
+        try:
+            import observabilidad
+            observabilidad.capturar(f"build_data.{etiqueta}", e)
+        except Exception:
+            pass
+        return default
+
+
 def build_data(usuario=None):
     _ensure_init()  # migrate + backfill: una vez por proceso/base, NO en cada carga
     now = datetime.datetime.now()
     year = now.year
     with db.conn() as c:
-        raw = [dict(r) for r in c.execute("SELECT * FROM licitaciones").fetchall()]
+        # Columnas explícitas, NO 'SELECT *': json_detalle es el ~72% del peso de la tabla (blobs de
+        # varios KB por fila) y acá solo se necesita saber si está vacío → se pide como flag.
+        raw = [dict(r) for r in c.execute(
+            "SELECT codigo, nombre, organismo, region, monto_estimado, moneda, fecha_cierre, "
+            "       fecha_visita, estado_mp, descripcion, admisible, admisible_motivo, "
+            "       vigente_oferta, estado_revision, estado_resultado, score_provisional, "
+            "       score_json, fecha_descubierta, fecha_actualizada, "
+            "       (json_detalle IS NULL) AS sin_detalle "
+            "FROM licitaciones").fetchall()]
         eventos = {}
         for e in c.execute("SELECT codigo, ts, tipo, detalle FROM eventos ORDER BY ts").fetchall():
             eventos.setdefault(e["codigo"], []).append({"ts": e["ts"], "tipo": e["tipo"], "det": e["detalle"]})
@@ -207,7 +232,7 @@ def build_data(usuario=None):
             "cubicIA": cubic_ia.get(cod, []),  # borrador de cubicación asistida (Fase 1)
             "recetaDisp": ({"tipo": _tp, "n": recetas_n[_tp]} if _tp and _tp in recetas_n else None),
             "tipoProd": _tp,  # tipo de producto (para el boost de preferencia del plan, Fase 3)
-            "incompleto": r["json_detalle"] is None,  # no se bajó el detalle (solo código+nombre)
+            "incompleto": bool(r["sin_detalle"]),  # no se bajó el detalle (solo código+nombre)
         }
 
         if rev != "descartada":
@@ -244,8 +269,8 @@ def build_data(usuario=None):
     groups["nuevas"].sort(key=lambda x: lics[x]["desc"], reverse=True)
 
     # Ajuste asistido por descartes/resultados (Fases 3/B): 1 lectura, se aplica por lic (display-only).
-    _ap = aprendizaje.cargar()
-    _rep = comprador.reputaciones()  # reputación de pago por comprador (Ficha Comprador manual)
+    _ap = _seguro("aprendizaje", aprendizaje.cargar, {})
+    _rep = _seguro("comprador", comprador.reputaciones, {})  # reputación de pago (Ficha Comprador manual)
     for _l in lics.values():
         _l["ajuste"] = aprendizaje.ajuste_lic(_ap, _l["reg"], _l["org"])
         rp = _rep.get(_l["org"])
@@ -320,11 +345,12 @@ def build_data(usuario=None):
         "lics": lics, "order": order, "groups": groups, "intel": intel, "metricas": metricas,
         "keywords": kws,
         "actualizado": actualizado,
-        "aprendizaje": aprendizaje.resumen(_ap),
-        "recall": recall.auditar(),
-        "worker": worker.salud(),
+        # paneles opcionales: si uno falla se degrada (vacío) en vez de matar TODO el tablero
+        "aprendizaje": _seguro("aprendizaje.resumen", lambda: aprendizaje.resumen(_ap), {}),
+        "recall": _seguro("recall", recall.auditar, {}),
+        "worker": _seguro("worker", worker.salud, {}),
         # plan del día, priorizado y sesgado por lo que ESTE usuario efectivamente ataca (Fase 3/4)
-        "plan": plan.construir(lics, prefs=plan.preferencias(usuario)),
+        "plan": _seguro("plan", lambda: plan.construir(lics, prefs=plan.preferencias(usuario)), []),
         "meta": {
             "year": year, "monthsShown": (now.month if year == now.year else 12),
             "mesAb": MESES_AB, "meses": MESES,

@@ -142,6 +142,34 @@ def test_guardar_cantidad_con_coma_no_se_pierde(tmp_path, monkeypatch):
     assert r["items"][0]["cantidad"] == 12.5             # antes se perdía (float('12,5') → error)
 
 
+def test_guardar_no_borra_el_preciado_ya_pagado(tmp_path, monkeypatch):
+    """QA: el form de la UI solo manda descripción/cantidad/unidad/grupo. Guardar la curación
+    después de preciar BORRABA precio, fuente, URL y partida (trabajo pagado, en silencio).
+    Deben preservarse, y el total RECALCULARSE con la cantidad nueva (no arrastrar el viejo)."""
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"partida": "Estructura", "descripcion": "Panel SIP", "cantidad": 10, "unidad": "m2"}])
+    cubicacion_ia.preciar("A", buscar=lambda d, u: {"precio": 12500, "url": "https://sodimac.cl/x"})
+    # el usuario corrige la cantidad y vuelve a guardar (payload real del form: sin precio ni partida)
+    cubicacion_ia.guardar_borrador("A", [{"descripcion": "Panel SIP", "cantidad": 12,
+                                          "unidad": "m2", "grupo": "material"}])
+    it = cubicacion_ia.borrador("A")[0]
+    assert it["precio_unitario"] == 12500 and it["precio_url"] == "https://sodimac.cl/x"
+    assert it["partida"] == "Estructura"          # el form no lo manda: se conserva
+    assert it["cantidad"] == 12                   # la edición del usuario manda
+    assert it["total"] == 150000                  # RECALCULADO (12×12500), no el viejo 125000
+
+
+def test_regenerar_con_ia_si_descarta_precios_viejos(tmp_path, monkeypatch):
+    """Al REGENERAR con IA el BOM cambia: los precios anteriores no deben re-adjuntarse."""
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Panel SIP", "cantidad": 10, "unidad": "m2"}])
+    cubicacion_ia.preciar("A", buscar=lambda d, u: {"precio": 12500, "url": "https://x.cl"})
+    cubicacion_ia.generar("A", extraer=_extraccion([{"descripcion": "Panel SIP", "cantidad": 5,
+                                                     "unidad": "m2"}]))
+    it = cubicacion_ia.borrador("A")[0]
+    assert it["precio_unitario"] is None and it["total"] is None   # borrador nuevo, sin preciar
+
+
 def test_guardar_respeta_valentina(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
     with db.conn() as c:

@@ -95,12 +95,22 @@ def _tiene_valentina(codigo):
                          (codigo,)).fetchone() is not None
 
 
-def _reemplazar_items(c, codigo, items):
+def _reemplazar_items(c, codigo, items, preservar_precios=False):
     """Dentro de una conn abierta: reusa (o crea) la cubicación IA de `codigo` y reemplaza sus
-    items por `items` (ya normalizados). No usa lastrowid: re-SELECT por (codigo, origen='ia')."""
+    items por `items` (ya normalizados). No usa lastrowid: re-SELECT por (codigo, origen='ia').
+
+    `preservar_precios=True` (curación del usuario): el form de la UI solo manda descripción/
+    cantidad/unidad/grupo, así que un guardado borraba el PRECIADO ya pagado (precio, fuente, URL)
+    y la `partida`. Se re-adjuntan por descripción normalizada; el `total` se RECALCULA con la
+    cantidad nueva (arrastrarlo daría un costo viejo → margen mentiroso)."""
     cur = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'", (codigo,)).fetchone()
+    previos = {}
     if cur:
         cub_id = cur[0]
+        if preservar_precios:
+            for r in c.execute("SELECT partida, descripcion, precio_unitario, precio_fuente, precio_url "
+                               "FROM cubicacion_items WHERE cubicacion_id=?", (cub_id,)).fetchall():
+                previos[textnorm.na(r["descripcion"] or "")] = r
         c.execute("DELETE FROM cubicacion_items WHERE cubicacion_id=?", (cub_id,))
     else:
         c.execute("INSERT INTO cubicaciones (proyecto, codigo, origen, fecha) VALUES (?,?,?,?)",
@@ -108,9 +118,14 @@ def _reemplazar_items(c, codigo, items):
         cub_id = c.execute("SELECT id FROM cubicaciones WHERE codigo=? AND origen='ia'",
                            (codigo,)).fetchone()[0]
     for it in items:
-        c.execute("INSERT INTO cubicacion_items "
-                  "(cubicacion_id, partida, grupo, descripcion, cantidad, unidad) VALUES (?,?,?,?,?,?)",
-                  (cub_id, it["partida"], it["grupo"], it["descripcion"], it["cantidad"], it["unidad"]))
+        p = previos.get(textnorm.na(it["descripcion"] or "")) if previos else None
+        partida = it["partida"] or (p["partida"] if p else None)   # el form no renderiza `partida`
+        pu = p["precio_unitario"] if p else None
+        total = (pu * it["cantidad"]) if (pu is not None and it["cantidad"] is not None) else None
+        c.execute("INSERT INTO cubicacion_items (cubicacion_id, partida, grupo, descripcion, cantidad, "
+                  "unidad, precio_unitario, total, precio_fuente, precio_url) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                  (cub_id, partida, it["grupo"], it["descripcion"], it["cantidad"], it["unidad"],
+                   pu, total, (p["precio_fuente"] if p else None), (p["precio_url"] if p else None)))
     return cub_id
 
 
@@ -209,7 +224,7 @@ def guardar_borrador(codigo, items):
         return {"ok": False, "error": "Hay cubicación de Valentina; no se edita el borrador IA."}
     norm = [x for x in (_norm_item(m) for m in (items or [])) if x]
     with db.conn() as c:
-        cub_id = _reemplazar_items(c, codigo, norm)
+        cub_id = _reemplazar_items(c, codigo, norm, preservar_precios=True)  # no perder el preciado
         c.execute("UPDATE cubicaciones SET curada=1 WHERE id=?", (cub_id,))  # esta cubicación ya es curada
         nombre = c.execute("SELECT nombre FROM licitaciones WHERE codigo=?", (codigo,)).fetchone()
         tipo = tipo_producto(nombre["nombre"] if nombre else "")

@@ -25,6 +25,27 @@ def test_build_data_devuelve_estructura(tmp_path, monkeypatch):
     assert "actualizado" in data  # freshness de los datos
 
 
+def test_un_panel_roto_no_mata_el_tablero(tmp_path, monkeypatch):
+    """QA: un error en build_data es PERMANENTE (la app no carga NUNCA, como pasó con el user
+    dict → SQL). Los paneles opcionales deben degradarse, no tumbar todo."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    import plan
+    import recall
+    import worker
+    import tablero_data
+
+    def _explota(*a, **k):
+        raise RuntimeError("panel roto")
+
+    monkeypatch.setattr(recall, "auditar", _explota)
+    monkeypatch.setattr(worker, "salud", _explota)
+    monkeypatch.setattr(plan, "preferencias", _explota)
+    data = tablero_data.build_data()          # antes: RuntimeError → tablero muerto
+    assert data["recall"] == {} and data["worker"] == {} and data["plan"] == []
+    assert isinstance(data["lics"], dict)     # el resto del tablero sigue vivo
+
+
 def test_incompleto_marca_lics_sin_detalle(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DATABASE_URL", "")
     monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
