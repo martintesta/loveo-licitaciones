@@ -14,6 +14,7 @@ import schema_v3
 import competencia
 import keywords as kwmod
 import aprendizaje
+import cobertura
 import recall
 import comprador
 import worker
@@ -349,6 +350,9 @@ def build_data(usuario=None):
         "aprendizaje": _seguro("aprendizaje.resumen", lambda: aprendizaje.resumen(_ap), {}),
         "recall": _seguro("recall", recall.auditar, {}),
         "worker": _seguro("worker", worker.salud, {}),
+        # cobertura del barrido: el sistema audita SUS PROPIOS huecos (días que no procesó o
+        # procesó mal), para que un día perdido no sea invisible.
+        "cobertura": _seguro("cobertura", cobertura.estado, {}),
         # plan del día, priorizado y sesgado por lo que ESTE usuario efectivamente ataca (Fase 3/4)
         "plan": _seguro("plan", lambda: plan.construir(lics, prefs=plan.preferencias(usuario)), []),
         "meta": {

@@ -151,7 +151,30 @@ def _main():
             d += 1
     else:
         fecha = args[0] if args else time.strftime("%d%m%Y")
-        print(json.dumps(procesar_dia(fecha), indent=2, ensure_ascii=False))
+        res = procesar_dia(fecha)
+        # AUTO-CURACIÓN: además del día de hoy, recupera días hábiles que nunca se procesaron o
+        # que se procesaron mal (la API falló y quedaron marcados como OK). Sin esto un día perdido
+        # es invisible para siempre: se detectaron 62 licitaciones faltantes cruzando contra un
+        # registro externo. Acotado por corrida — cada día es una llamada más a la API.
+        if not args:
+            res["cobertura"] = _curar_cobertura()
+        print(json.dumps(res, indent=2, ensure_ascii=False))
+
+
+def _curar_cobertura(limite=None):
+    """Reprocesa los agujeros de cobertura detectados. Devuelve qué recuperó y qué queda."""
+    import cobertura
+    limite = cobertura.CURAR_POR_CORRIDA if limite is None else limite
+    pendientes = cobertura.a_reprocesar(limite)
+    recuperados = []
+    for f in pendientes:
+        try:
+            r = procesar_dia(f)
+            recuperados.append({"fecha": f, "total": r.get("total"), "candidatos": r.get("candidatos")})
+        except Exception as e:
+            recuperados.append({"fecha": f, "error": str(e)[:120]})
+    e = cobertura.estado()
+    return {"recuperados": recuperados, "huecos_restantes": e["huecos"], "pct": e["pct"]}
 
 
 if __name__ == "__main__":

@@ -229,6 +229,22 @@ function renderWorkerBanner(){
     +'<b>'+w.pendientes+'</b> licitaciones sin bajar sus bases, '+esc(horas)+'. '
     +'Los scores de esas quedan provisionales (incompletos) hasta reactivarlo.</div>';
 }
+function renderCobertura(){
+  // El barrido se audita solo: un día que no se procesó (o se procesó mal) es invisible salvo que
+  // el sistema lo diga. Sin esto hubo que cruzar contra una planilla externa para descubrir el hueco.
+  var c=D.cobertura;
+  if(!c||!c.esperados||!c.huecos)return '';
+  var grave=(c.pct<80);
+  var col=grave?'#B91C1C':'#B45309', bg=grave?'#FEE2E2':'#FEF3C7', bd=grave?'#FCA5A5':'#FCD34D';
+  var det=[];
+  if(c.faltantes&&c.faltantes.length)det.push(c.faltantes.length+' día(s) sin barrer');
+  if(c.sospechosos&&c.sospechosos.length)det.push(c.sospechosos.length+' con resultado sospechoso (la API falló y quedó marcado como OK)');
+  return '<div style="background:'+bg+';border:1px solid '+bd+';border-left:4px solid '+col+';'
+    +'padding:10px 13px;border-radius:4px;margin:0 0 12px;font-size:12.5px">'
+    +'<b style="color:'+col+'">COBERTURA DEL BARRIDO · '+c.pct+'%</b> — '+esc(det.join(' · '))
+    +'<div class="mut" style="margin-top:3px;font-size:11.5px">Procesó '+c.procesados+' de '+c.esperados
+    +' días hábiles. La corrida diaria recupera los huecos de a poco; lo no barrido son licitaciones que el sistema nunca vio.</div></div>';
+}
 function renderPlan(){
   var ps=D.plan||[];
   if(!ps.length)return '';
@@ -249,6 +265,7 @@ function renderPlan(){
 function renderInicio(){
   var g=D.groups,m=D.meta,h='<div class="eyebrow">QUÉ HACER HOY</div><div class="h1">Hola, Martín</div>';
   h+=renderWorkerBanner();
+  h+=renderCobertura();
   h+=renderPlan();
   h+='<div class="sec"><span class="ic">'+ICONS.clock+'</span><span class="t" data-list="cierran" data-title="Cierran esta semana">CIERRAN ESTA SEMANA</span></div><div class="col">';
   if(g.cierran.length){for(var i=0;i<Math.min(6,g.cierran.length);i++)h+=cierranRow(g.cierran[i]);}else h+='<div style="font-family:var(--mono);font-size:11px;color:#9AA2AC;padding:8px 2px">Nada cierra en los próximos 7 días.</div>';
