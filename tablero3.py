@@ -41,6 +41,8 @@ import comprador
 import cubicacion_ia
 import observabilidad
 import plan
+import base64
+import informe
 
 import pathlib as _pl
 _ICONO = _pl.Path(__file__).parent / "assets" / "loveo.png"      # favicon de la pestaña (módulo Loveo)
@@ -114,6 +116,7 @@ data["categorias_resultado"] = feedback.categorias_resultado_para_ui()
 # (el enforcement real vive acá; el `if(!esAdmin())` del componente es solo UX).
 data["errores"] = (observabilidad.recientes(8)
                    if usuarios.es_admin(st.session_state.user) else [])
+data["informe"] = st.session_state.pop("informe_listo", None)   # informe recién generado: se dispara UNA vez
 val = _console(data=data, key="console", default=None)
 
 if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_state.last_nonce:
@@ -187,6 +190,16 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
             if org and nivel in comprador.NIVELES:
                 comprador.set_reputacion(org, nivel, nota)
                 st.session_state.flash = f"✓ Reputación de '{org}': {comprador.NIVEL_LABEL[nivel]}."
+        elif act == "informe_export":
+            if cod:
+                r = informe.generar_xlsx(cod)
+                if isinstance(r, dict):
+                    st.session_state.flash = r.get("error", "No se pudo generar el informe.")
+                else:
+                    st.session_state.informe_listo = {
+                        "cod": cod, "filename": f"informe_{cod}.xlsx",
+                        "b64": base64.b64encode(r).decode("ascii")}
+                    st.session_state.flash = "✓ Informe generado — se descarga solo."
         elif act == "cubic_ia":
             if cod:
                 r = cubicacion_ia.generar(cod)

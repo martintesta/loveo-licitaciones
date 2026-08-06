@@ -395,7 +395,7 @@ function renderCubicIA(l,cod){
 function renderFicha(cod){
   var l=D.lics[cod];if(!l)return backBtn()+'<div class="empty">No encontrada.</div>';
   var h='<div>'+backBtn();
-  h+='<div class="fhead"><div style="flex:1;min-width:240px"><div class="code" style="font-size:12px">'+esc(l.cod)+'</div><div class="h1" style="margin-top:4px">'+esc(l.nom)+'</div><div class="badges">'+pill(l.tri)+'<span class="badge">'+esc(l.estadoLbl)+'</span>'+(l.adm?'<span class="badge adm">Admisible</span>':'')+'</div></div><div class="verdict"><div class="vk">SCORE PROV.</div><div class="vv">'+(l.score==null?'—':l.score)+'<span>/120</span></div>'+confLine(l)+(l.reqBases?'<div class="vx">falta cubicación</div>':'')+'</div></div>';
+  h+='<div class="fhead"><div style="flex:1;min-width:240px"><div class="code" style="font-size:12px">'+esc(l.cod)+'</div><div class="h1" style="margin-top:4px">'+esc(l.nom)+'</div><div class="badges">'+pill(l.tri)+'<span class="badge">'+esc(l.estadoLbl)+'</span>'+(l.adm?'<span class="badge adm">Admisible</span>':'')+'<button class="b gh sm" data-informe="'+escA(cod)+'" title="Exportar informe .xlsx (con fórmulas) con lo que el sistema sabe de esta licitación">📊 Exportar informe</button></div></div><div class="verdict"><div class="vk">SCORE PROV.</div><div class="vv">'+(l.score==null?'—':l.score)+'<span>/120</span></div>'+confLine(l)+(l.reqBases?'<div class="vx">falta cubicación</div>':'')+'</div></div>';
   var aj=l.ajuste;
   if(aj&&(aj.delta!==0||(aj.alertas&&aj.alertas.length))){
     var up=aj.delta>0;
@@ -552,7 +552,20 @@ function renderPH(v){return '<div class="eyebrow">EN CONSTRUCCIÓN</div><div cla
 function doSearch(v){if(!v||!v.trim()){paint();return;}var q=naLC(v),out=[];for(var i=0;i<D.order.length;i++){var c=D.order[i],l=D.lics[c];if(naLC(l.cod+' '+l.nom+' '+l.org+' '+l.reg).indexOf(q)>=0)out.push(c);}var h='<div class="eyebrow">BÚSQUEDA</div><div class="h1">"'+esc(v)+'"</div><div class="dsub">'+out.length+(out.length===1?' resultado':' resultados')+'</div>';h+= out.length?('<div class="tbl">'+thead()+listRowsHTML(out)+'</div>'):'<div class="empty">Sin resultados.</div>';document.getElementById('app-content').innerHTML=h;}
 
 function viewHTML(){var s=stack[stack.length-1];if(s.t==='inicio')return renderInicio();if(s.t==='list')return renderList(s.key,s.title);if(s.t==='ficha')return renderFicha(s.cod);if(s.t==='listado')return renderListado();if(s.t==='radar')return renderRadar();if(s.t==='senales')return renderSenales();if(s.t==='asistente')return renderAsistente();if(s.t==='metricas')return renderMetricas();if(s.t==='keywords')return renderKeywords();if(s.t==='aprendizaje')return renderAprendizaje();return renderPH(s.t);}
-function paint(){var html=viewHTML();if(D.flash)html='<div class="flash">'+esc(D.flash)+'</div>'+html;document.getElementById('app-content').innerHTML=html;var sc=document.querySelector('.scroll');if(sc)sc.scrollTop=0;var n=document.getElementById('nota');if(n)n.focus();fit();}
+var _informeDescargado=null;
+function maybeDescargarInforme(){
+  // D.informe se popea server-side (mismo patrón que flash): llega UNA vez por generación, así
+  // que alcanza con no repetir el mismo cod dos veces (evita re-disparar en reruns no relacionados).
+  var inf=D.informe;
+  if(inf&&inf.b64&&inf.cod!==_informeDescargado){
+    _informeDescargado=inf.cod;
+    var a=document.createElement('a');
+    a.href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+inf.b64;
+    a.download=inf.filename||('informe_'+inf.cod+'.xlsx');
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  }
+}
+function paint(){var html=viewHTML();if(D.flash)html='<div class="flash">'+esc(D.flash)+'</div>'+html;document.getElementById('app-content').innerHTML=html;var sc=document.querySelector('.scroll');if(sc)sc.scrollTop=0;var n=document.getElementById('nota');if(n)n.focus();fit();maybeDescargarInforme();}
 function nav(s){openForm=null;stack.push(s);paint();}
 function back(){openForm=null;if(stack.length>1){stack.pop();paint();}}
 function go(v){openForm=null;stack=[{t:v}];document.querySelectorAll('.item').forEach(function(b){b.classList.remove('on')});var btn=document.querySelector('.item[onclick="go(\''+v+'\')"]');if(btn)btn.classList.add('on');document.getElementById('crumb').textContent=CRUMBS[v]||v.toUpperCase();paint();}
@@ -594,6 +607,7 @@ document.addEventListener('click',function(e){
     var mot=prompt('¿Por qué no priorizar esta? (ej: muy lejos, sin capacidad, margen bajo)');
     if(mot!==null)sendVal({act:'plan_no',cod:x.getAttribute('data-planno'),motivo:mot});
     return;}
+  if((x=e.target.closest('[data-informe]'))){x.textContent='Generando…';sendVal({act:'informe_export',cod:x.getAttribute('data-informe')});return;}
   if((x=e.target.closest('[data-kw-promover]'))){sendVal({act:'kw_promover',termino:x.getAttribute('data-kw-promover')});return;}
   if((x=e.target.closest('[data-kw-toggle]'))){sendVal({act:'kw_toggle',kid:x.getAttribute('data-kw-toggle'),on:x.getAttribute('data-on')});return;}
   if((x=e.target.closest('[data-capac-run]'))){sendVal({act:'capac_run',cod:x.getAttribute('data-capac-run')});return;}
