@@ -16,6 +16,9 @@ import db
 import schema_v3
 from textnorm import na as _na, pat as _pat  # normalización compartida (una sola fuente de verdad)
 
+TIPOS = ("incluir", "excluir", "amplio")          # los buckets reales de get_active_lists / la UI
+TIPOS_VALIDOS = TIPOS + ("skip",)                 # 'skip' solo lo puede sugerir la IA (no se guarda)
+
 
 def seed_if_empty():
     schema_v3.migrate()
@@ -62,6 +65,10 @@ def _ins(c, termino, tipo, origen):
 
 
 def add(termino, tipo="incluir", origen="manual", nota=""):
+    """Agrega una keyword. `tipo` se valida contra TIPOS: un valor fuera del enum quedaría en un
+    bucket fantasma (ni la trae el discovery ni se ve en la UI para desactivarla)."""
+    if tipo not in TIPOS:
+        raise ValueError(f"tipo inválido: {tipo!r} (esperado {TIPOS})")
     seed_if_empty()
     with db.conn() as c:
         c.execute("INSERT OR IGNORE INTO keywords(termino, tipo, origen, activo, nota, creado_at) VALUES (?,?,?,1,?,?)",
@@ -69,6 +76,12 @@ def add(termino, tipo="incluir", origen="manual", nota=""):
 
 
 def set_activo(kid, on):
+    """`kid` llega como string del DOM: se castea a int. SQLite lo tolera por afinidad, Postgres NO
+    (compara integer con text y falla) → castear acá evita el bug al activar DATABASE_URL."""
+    try:
+        kid = int(kid)
+    except (TypeError, ValueError):
+        return
     with db.conn() as c:
         c.execute("UPDATE keywords SET activo=? WHERE id=?", (1 if on else 0, kid))
 
@@ -116,7 +129,16 @@ def _juzgar(termino, n, ejemplos):
         raw = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
         raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         d = json.loads(raw)
-        return d.get("tipo", "incluir"), d.get("razon", "")
+        # La salida del LLM NO se confía: si devuelve "INCLUIR", "core", un dict o cualquier cosa
+        # fuera del enum, la keyword caía en el bucket 'amplio' del else de get_active_lists (el
+        # discovery no la traía) y quedaba invisible en la página Keywords (que solo itera los 3
+        # tipos válidos) → imposible de ver o desactivar. Ante algo raro, se usa la heurística.
+        tipo = d.get("tipo")
+        tipo = tipo.strip().lower() if isinstance(tipo, str) else ""
+        if tipo not in TIPOS_VALIDOS:
+            return ("incluir" if n > 0 else "amplio"), "respuesta de IA no reconocida; heurística"
+        razon = d.get("razon", "")
+        return tipo, (razon if isinstance(razon, str) else json.dumps(razon, ensure_ascii=False))
     except Exception:
         return ("incluir" if n > 0 else "amplio"), (
             "matchea histórico (heurística sin IA)" if n > 0 else "sin matches históricos; entra como amplio para vigilar")

@@ -15,7 +15,9 @@ Notas honestas:
 import db
 
 
-def resumen():
+def resumen(limite=None):
+    """Una fila por competidor. `limite` acota EN SQL (el tablero solo muestra el top 6: traer todo
+    y cortar en Python materializa la tabla entera por render)."""
     with db.conn() as c:
         return [dict(r) for r in c.execute("""
             SELECT k.rut, k.razon_social, k.contacto, k.desde_anio,
@@ -27,7 +29,7 @@ def resumen():
             LEFT JOIN participaciones p ON p.rut = k.rut
             GROUP BY k.rut
             ORDER BY facturado_total DESC
-        """).fetchall()]
+        """ + ("LIMIT ?" if limite else ""), ((limite,) if limite else ())).fetchall()]
 
 
 def facturado_por_anio(rut):

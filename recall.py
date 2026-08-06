@@ -117,7 +117,11 @@ def sugerencias_keywords(min_apariciones=3, min_confianza=0.6):
     # que reaparece muchos días inflaba apariciones/confianza y podía gatillar sola una sugerencia.
     agg = {}                                         # termino -> {apariciones, promovidas, descartadas}: sets de códigos
     with db.conn() as c:
-        rows = c.execute("SELECT codigo, kw, estado FROM recall_log WHERE bucket='recall'").fetchall()
+        # DISTINCT: recall_log tiene una fila por (codigo, fecha_run), así que una lic que reaparece
+        # 30 días son 30 filas idénticas para este cálculo. Como abajo se deduplica por código igual,
+        # colapsarlas en SQL evita materializar un scan que crece con cada corrida diaria.
+        rows = c.execute("SELECT DISTINCT codigo, kw, estado FROM recall_log "
+                         "WHERE bucket='recall'").fetchall()
     for r in rows:
         for term in (r["kw"] or "").split(","):
             term = term.strip()

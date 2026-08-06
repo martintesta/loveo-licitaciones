@@ -235,6 +235,8 @@ def _crear_tablas():
         _asegurar_columna(c, "cubicacion_items", "precio_url", "TEXT")
         _asegurar_columna(c, "precios_referencia", "source_url", "TEXT")
         _asegurar_columna(c, "plan_feedback", "usuario", "TEXT")   # preferencia por usuario (Fase 4)
+        _asegurar_columna(c, "licitaciones", "comuna", "TEXT")     # las consume scoring (_logistico
+        _asegurar_columna(c, "licitaciones", "modalidad", "TEXT")  # y _cashflow); antes se perdían
         _asegurar_columna(c, "cubicaciones", "curada", "INTEGER DEFAULT 0")  # solo lo curado alimenta la receta
 
 

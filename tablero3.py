@@ -110,7 +110,10 @@ data["pending_capac"] = st.session_state.get("pending_capac", {})
 data["user"] = st.session_state.user
 data["categorias"] = feedback.categorias_para_ui()
 data["categorias_resultado"] = feedback.categorias_resultado_para_ui()
-data["errores"] = observabilidad.recientes(8)   # errores capturados sin resolver (panel de salud)
+# Los tracebacks (rutas, SQL, datos) van SOLO al admin: filtrado server-side, no escondido en la UI
+# (el enforcement real vive acá; el `if(!esAdmin())` del componente es solo UX).
+data["errores"] = (observabilidad.recientes(8)
+                   if usuarios.es_admin(st.session_state.user) else [])
 val = _console(data=data, key="console", default=None)
 
 if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_state.last_nonce:
@@ -275,15 +278,28 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
                 docid = val.get("docid")
                 if docid:
                     with db.conn() as c:
-                        c.execute("DELETE FROM documentos WHERE id=? AND codigo=?", (docid, cod))
-                        db.log_evento(c, cod, "documento", "documento quitado")
+                        # el id llega como string del DOM → a int (SQLite tolera, Postgres no).
+                        # Solo se loguea si REALMENTE borró: antes dejaba un evento de trazabilidad
+                        # mintiendo (y el documento seguía en pantalla) cuando no matcheaba nada.
+                        try:
+                            docid = int(docid)
+                        except (TypeError, ValueError):
+                            docid = -1
+                        cur = c.execute("DELETE FROM documentos WHERE id=? AND codigo=?", (docid, cod))
+                        if getattr(cur, "rowcount", 0):
+                            db.log_evento(c, cod, "documento", "documento quitado")
+                        else:
+                            st.session_state.flash = "Ese documento ya no estaba."
             elif act == "doc_sync":
                 url = (val.get("url") or "").strip()
                 if not drive.disponible():
                     st.session_state.flash = "Conectá Google Drive primero (ver SETUP_DRIVE.md) y reintentá."
                 elif url:
                     try:
-                        destino = db.safe_child("storage", cod)   # cod viene del frontend: confinarlo
+                        # db.STORAGE_DIR (absoluto, junto al repo): "storage" relativo se resolvía
+                        # contra el CWD, así que lanzar streamlit desde otra carpeta dejaba los
+                        # archivos fuera del repo y la Capa C después no los encontraba.
+                        destino = db.safe_child(db.STORAGE_DIR, cod)   # cod viene del frontend: confinarlo
                         files = drive.sync_link(url, str(destino)) if destino else []
                         with db.conn() as c:
                             for f in files:

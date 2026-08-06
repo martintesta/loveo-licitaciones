@@ -284,7 +284,7 @@ def build_data(usuario=None):
                  for l in lics.values() if l.get("estMp") == 7][:6]
     competidores = []
     try:
-        for r in competencia.resumen()[:6]:
+        for r in competencia.resumen(limite=6):   # el top se acota en SQL, no materializando todo
             competidores.append({"razon": r["razon_social"], "part": r["participaciones"], "ganadas": r["ganadas"]})
     except Exception:
         competidores = []

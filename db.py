@@ -171,6 +171,8 @@ def init_db():
             nombre            TEXT NOT NULL,
             organismo         TEXT,
             region            TEXT,
+            comuna            TEXT,                  -- usada por scoring._logistico
+            modalidad         TEXT,                  -- usada por scoring._cashflow
             monto_estimado    REAL,
             moneda            TEXT,
             fecha_cierre      TEXT,
@@ -260,9 +262,12 @@ def log_evento(c, codigo, tipo, detalle=""):
 def upsert_licitacion(c, row: dict):
     existe = c.execute("SELECT codigo FROM licitaciones WHERE codigo=?", (row["codigo"],)).fetchone()
     now = _now()
-    cols = ["nombre", "organismo", "region", "monto_estimado", "moneda", "fecha_cierre",
-            "fecha_visita", "tipo_pago", "estado_mp", "descripcion", "prohibicion_subc",
-            "subcontratacion", "direccion_visita", "json_detalle"]
+    # comuna/modalidad las produce discover._aplanar_detalle y las CONSUME scoring (_logistico y
+    # _cashflow): si no se persisten, cualquier re-score desde la DB da cashflow neutro y logístico
+    # sin comuna, en silencio. Se guardan.
+    cols = ["nombre", "organismo", "region", "comuna", "modalidad", "monto_estimado", "moneda",
+            "fecha_cierre", "fecha_visita", "tipo_pago", "estado_mp", "descripcion",
+            "prohibicion_subc", "subcontratacion", "direccion_visita", "json_detalle"]
     if existe:
         sets = ", ".join(f"{k}=?" for k in cols) + ", fecha_actualizada=?"
         c.execute(f"UPDATE licitaciones SET {sets} WHERE codigo=?",

@@ -142,3 +142,17 @@ def test_build_data_no_repite_el_trabajo_pesado(tmp_path, monkeypatch):
     tablero_data.build_data()
     tablero_data.build_data()
     assert n["c"] == 1   # el trabajo pesado del schema corre una sola vez por proceso/base
+
+
+def test_upsert_persiste_comuna_y_modalidad(tmp_path, monkeypatch):
+    """QA: discover las produce y scoring las CONSUME (_logistico/_cashflow), pero upsert las
+    descartaba → un re-score leyendo de la DB daba cashflow neutro y logístico sin comuna,
+    en silencio. Deben viajar hasta la tabla."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    db.init_db()
+    with db.conn() as c:
+        db.upsert_licitacion(c, {"codigo": "K", "nombre": "Módulos", "region": "Maule",
+                                 "comuna": "Talca", "modalidad": 2})
+        r = c.execute("SELECT comuna, modalidad FROM licitaciones WHERE codigo='K'").fetchone()
+    assert r["comuna"] == "Talca" and str(r["modalidad"]) == "2"
