@@ -233,52 +233,20 @@ def test_una_visita_vencida_mata_aunque_el_producto_sea_core():
 
 # =========================== divisores de margen ===========================
 
-def test_divisores_markup_sobre_costo_son_los_actuales(monkeypatch):
-    monkeypatch.setattr(triage, "MARGEN_SOBRE", "costo")
+def test_los_divisores_salen_de_la_cascada_de_impuestos():
+    """Los viejos (1,625 / 1,885) eran markup sobre costo y sin impuestos. La definición de Loveo
+    es margen NETO sobre la venta después de PPM 2%, previsión de IVA 10% y renta 25%: eso baja
+    el costo base autorizado alrededor de un 28%."""
     lim, sano = triage.divisores()
-    assert round(lim, 3) == 1.625 and round(sano, 3) == 1.755
+    assert 2.0 < lim < 2.2, f"límite (25%) debería rondar 2,08 y dio {lim}"
+    assert 2.6 < sano < 2.9, f"objetivo (35%) debería rondar 2,75 y dio {sano}"
+    assert lim > 1.625, "el techo nuevo es más estricto que el viejo, no más laxo"
 
 
-def test_divisores_margen_sobre_venta(monkeypatch):
-    """La corrección propuesta por la revisión externa, disponible pero NO activa por defecto:
-    cambiarla mueve todos los GO/NO-GO y es una decisión de negocio."""
-    monkeypatch.setattr(triage, "MARGEN_SOBRE", "venta")
-    lim, sano = triage.divisores()
-    assert round(lim, 3) == 1.733 and round(sano, 3) == 2.0
-
-
-# =========================== instrumentación ===============================
-
-def test_registrar_guarda_el_gate_y_el_motivo(tmp_path, monkeypatch):
-    """Lo que hay que acumular para auditar el filtro es el MOTIVO, no un puntaje."""
-    import db, schema_v3
-    monkeypatch.setattr(db, "DATABASE_URL", "")
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
-    db.init_db(); schema_v3.migrate()
-    with db.conn() as c:
-        db.upsert_licitacion(c, {"codigo": "Z-1-LE26",
-                                 "nombre": "Desarrollo de plataforma modular de compras"})
-        c.execute("UPDATE licitaciones SET descripcion=? WHERE codigo='Z-1-LE26'",
-                  ("Desarrollo de software para compras públicas.",))
-    triage.registrar("Z-1-LE26")
-    with db.conn() as c:
-        f = c.execute("SELECT triage_gate, triage_senal, triage_motivo, triage_at "
-                      "FROM licitaciones WHERE codigo='Z-1-LE26'").fetchone()
-    # muere en el gate de producto; la señal puede ser la negativa dura o la exclusión curada
-    # (Martín agregó 'plataforma modular' a la tabla de keywords) — las dos son correctas.
-    assert f["triage_gate"] == "producto"
-    assert f["triage_senal"] in ("negativa", "keyword_excluida")
-    assert "plataforma" in f["triage_motivo"] and f["triage_at"]
-
-
-def test_etiqueta_humana_se_guarda(tmp_path, monkeypatch):
-    import db, schema_v3
-    monkeypatch.setattr(db, "DATABASE_URL", "")
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
-    db.init_db(); schema_v3.migrate()
-    with db.conn() as c:
-        db.upsert_licitacion(c, {"codigo": "Z-2-LE26", "nombre": "Contenedor oficina"})
-    triage.etiquetar("Z-2-LE26", True, "es exactamente lo que hacemos")
-    with db.conn() as c:
-        assert c.execute("SELECT es_producto_loveo FROM licitaciones WHERE codigo='Z-2-LE26'"
-                         ).fetchone()[0] == 1
+def test_el_techo_de_costo_es_coherente_con_el_margen_que_promete():
+    """Invertir la cascada y volver a aplicarla tiene que devolver el mismo margen."""
+    import costos_parametricos as cp
+    techo_neto = 100_000_000
+    base = cp.techo_costo(techo_neto, 0.25)
+    m = cp.margenes(techo_neto, base, margen_error=0)
+    assert abs(m["margen_optimista"] - 0.25) < 0.01

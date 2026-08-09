@@ -371,18 +371,21 @@ def _fecha_literal(txt, hoy):
 # —lo habitual en construcción— los correctos son 1,733 (1,30/0,75) y 2,000-2,167 (1,30/0,65 y
 # 1,30/0,60). La diferencia autoriza precios 6-13% más bajos de lo que la política permite.
 # NO se cambió: es una decisión de negocio, no un bug de código. Queda como parámetro.
-MARGEN_SOBRE = os.environ.get("LOVEO_MARGEN_SOBRE", "costo")     # "costo" | "venta"
-SOBRECOSTO = float(os.environ.get("LOVEO_SOBRECOSTO", "0.30"))
 MARGEN_MIN = float(os.environ.get("LOVEO_MARGEN_MIN", "0.25"))
 MARGEN_OBJ = float(os.environ.get("LOVEO_MARGEN_OBJ", "0.35"))
 
 
 def divisores():
-    """(límite, sano): costo base máximo = techo_neto / divisor. Depende de la convención."""
-    f = 1 + SOBRECOSTO
-    if MARGEN_SOBRE == "venta":
-        return f / (1 - MARGEN_MIN), f / (1 - MARGEN_OBJ)
-    return f * (1 + MARGEN_MIN), f * (1 + MARGEN_OBJ)
+    """(límite, sano): costo base máximo = techo_neto / divisor.
+
+    Ya no es un markup: sale de invertir la cascada de impuestos de Loveo (PPM 2% + previsión de
+    IVA 10% + renta 25% sobre el neto). Los valores viejos —1,625 y 1,885— eran markup sobre
+    costo y sin impuestos: autorizaban un costo base ~28% más alto del que la política de margen
+    realmente permite. Ver costos_parametricos.techo_costo()."""
+    import costos_parametricos as cp
+    ref = 1_000_000_000        # techo_costo redondea a pesos: con monto=1 truncaría a 0
+    return (ref / (cp.techo_costo(ref, MARGEN_MIN) or 1e-9),
+            ref / (cp.techo_costo(ref, MARGEN_OBJ) or 1e-9))
 
 
 def gate_presupuesto(lic):

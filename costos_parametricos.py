@@ -7,10 +7,12 @@ TODO ESTO SALE DE PROYECTOS GANADOS Y EJECUTADOS, no de supuestos. Fuentes (2025
 y la planilla de seguimiento de flujos con costo ESTIMADO vs costo REAL de cada uno.
 
 DOS HALLAZGOS QUE CAMBIAN EL MODELO FINANCIERO
-1. El margen de Loveo se calcula SOBRE LA VENTA, no sobre el costo. Verificado en la planilla
-   propia: Vicuña, ingreso 30.252.101, costo real 24.544.067, "Margen Real %" 0,1887 =
-   (30.252.101 − 24.544.067) / 30.252.101. Es margen sobre ingreso. Por lo tanto los divisores
-   correctos son 1,733 (mínimo 25%) y 2,000-2,167 (objetivo 35-40%), no 1,625/1,885.
+1. El margen de Loveo se calcula SOBRE EL NETO Y DESPUÉS DE IMPUESTOS: PPM 2%, previsión de
+   IVA 10% y renta 25% a provisionar (definición de Martín, ago-2026). La planilla de flujos
+   muestra el margen OPERATIVO —Vicuña: (30.252.101 − 24.544.067)/30.252.101 = 18,9%— que es
+   sobre venta pero antes de impuestos; el margen que decide el GO/NO-GO es el de después.
+   Los divisores pasan de 1,625/1,885 (markup sobre costo, sin impuestos) a 2,081 (mínimo 25%)
+   y 2,752-3,281 (objetivo 35-40%): el costo base autorizado baja ~28%.
 2. El sobrecosto del 30% es EMPÍRICAMENTE CORRECTO, pero se estaba aplicando tarde. Medido sobre
    los 5 proyectos cerrados: costo_real / costo_estimado = 1,304 en promedio (σ = 0,14). O sea el
    30% no es un colchón conservador: es el valor esperado. Los proyectos que decepcionaron son
@@ -26,7 +28,7 @@ import os
 # --- Verificado contra la planilla de flujos: 5 proyectos con estimado y real ---
 SOBRECOSTO_MEDIDO = 0.304          # costo_real / costo_estimado − 1
 SOBRECOSTO_SIGMA = 0.14            # dispersión: 1,156 (Coquimbo) a 1,515 (Maipú)
-MARGEN_SOBRE = "venta"             # confirmado con la fórmula de la propia planilla
+MARGEN_SOBRE = "neto_post_impuestos"   # ver la cascada más abajo
 FECHA_DATOS = "2026-01"            # los precios unitarios son de esta fecha: reajustar
 
 # --- Módulo base, por tipo. Precio unitario REAL pagado, sin acondicionar ----
@@ -126,17 +128,91 @@ def estimar(tipo="modulo_estandar", acondicionamiento="basico", n_modulos=1, m2=
     }
 
 
-def margenes(monto_neto, costo_base, margen_error=None):
-    """Margen optimista y conservador SOBRE LA VENTA, que es como los calcula Loveo.
+# ---------------------------------------------------------------------------
+# Cascada de impuestos — definición de Martín (ago-2026)
+# ---------------------------------------------------------------------------
+# "El margen se calcula sobre el Neto y descontando los impuestos a pagar por ese proyecto: el
+#  PPM 2% por proyecto, el IVA, y el impuesto a la ganancia a previsionar para el año siguiente."
+#
+# Los parámetros salen de las planillas de Loveo, no de la teoría:
+#   · Zapallar: "Previsión de IVA (10%)" = 1.373.659 sobre ingresos de 13.736.590. Es exactamente
+#     el 10%, y es la regla que Loveo aplica. El 19% nominal no se paga entero porque los
+#     materiales traen crédito fiscal; el 10% es el neto efectivo medido.
+#   · Zapallar: "Impuestos SII 1.070.885 — ppm + iva" confirma que ambos se tratan como salida
+#     del proyecto.
+#
+# NOTA CONTABLE, deliberadamente no aplicada: el PPM es un ANTICIPO que se acredita contra el
+# impuesto a la renta anual, así que restar los dos por separado sobrecuenta ~2% del neto. Se
+# deja así porque es la provisión que Martín pidió y peca de conservadora, que en un filtro de
+# GO/NO-GO es el lado correcto para equivocarse. `PPM_ACREDITA_RENTA=True` da la versión contable.
+PPM = float(os.environ.get("LOVEO_PPM", "0.02"))
+PREVISION_IVA = float(os.environ.get("LOVEO_PREVISION_IVA", "0.10"))
+IMPUESTO_RENTA = float(os.environ.get("LOVEO_RENTA", "0.25"))
+PPM_ACREDITA_RENTA = os.environ.get("LOVEO_PPM_ACREDITA", "0") == "1"
 
-    El buffer por defecto es la σ medida del sobrecosto (14%), no un 10% inventado: es la
-    dispersión real entre lo que se estimó y lo que costó en los 5 proyectos cerrados."""
+# Los precios unitarios de las planillas son BRUTOS (con IVA): Quillón lo deja explícito —
+# "Total materiales 4.163.000 / Neto materiales 3.498.319" = 4.163.000/1,19. Para comparar contra
+# un techo NETO hay que convertirlos, o el costo queda inflado un 19%.
+COSTO_ES_BRUTO = True
+FRACCION_COSTO_CON_IVA = 0.80      # Quillón 81%, San Felipe 93%; la mano de obra no lleva crédito
+
+
+def costo_a_neto(costo_bruto, fraccion=None):
+    """Los precios paramétricos vienen con IVA. El techo de la licitación es neto."""
+    if not COSTO_ES_BRUTO:
+        return costo_bruto
+    f = FRACCION_COSTO_CON_IVA if fraccion is None else fraccion
+    return costo_bruto * f / 1.19 + costo_bruto * (1 - f)
+
+
+def margenes(monto_neto, costo_base, margen_error=None, detalle=False, costo_ya_neto=False):
+    """Margen NETO DESPUÉS DE IMPUESTOS sobre el precio de oferta, como lo define Loveo.
+
+    Cascada: precio neto − costo (a neto, con sobrecosto) − PPM − previsión IVA − renta."""
     if not monto_neto:
         return None
     err = SOBRECOSTO_SIGMA if margen_error is None else margen_error
     f = 1 + SOBRECOSTO_MEDIDO
-    opt = (monto_neto - costo_base * f) / monto_neto
-    cons = (monto_neto - costo_base * (1 + err) * f) / monto_neto
-    return {"margen_optimista": round(opt, 4), "margen_conservador": round(cons, 4),
-            "semaforo": "verde" if cons > 0.30 else "rojo" if cons < 0.12 else "amarillo",
-            "descarta": cons < 0 and opt < 0}
+
+    def cascada(costo_bruto_con_sobrecosto):
+        # `costo_ya_neto` importa: las cubicaciones de los análisis están en neto, los precios
+        # de las planillas de compra están en bruto. Convertir dos veces descuenta un 19% que
+        # no existe y hace pasar licitaciones que no cierran.
+        costo = (costo_bruto_con_sobrecosto if costo_ya_neto
+                 else costo_a_neto(costo_bruto_con_sobrecosto))
+        bruto = monto_neto - costo
+        ppm = PPM * monto_neto
+        iva = PREVISION_IVA * monto_neto
+        base = max(0.0, bruto - iva - (0.0 if PPM_ACREDITA_RENTA else ppm))
+        renta = IMPUESTO_RENTA * base
+        if PPM_ACREDITA_RENTA:
+            renta = max(0.0, renta - ppm)          # el PPM se acredita, no se suma
+        final = bruto - ppm - iva - renta
+        return final / monto_neto, {"costo_neto": round(costo), "utilidad_operativa": round(bruto),
+                                    "ppm": round(ppm), "iva": round(iva), "renta": round(renta),
+                                    "utilidad_final": round(final)}
+
+    opt, d_opt = cascada(costo_base * f)
+    cons, d_cons = cascada(costo_base * (1 + err) * f)
+    r = {"margen_optimista": round(opt, 4), "margen_conservador": round(cons, 4),
+         "semaforo": "verde" if cons > 0.30 else "rojo" if cons < 0.12 else "amarillo",
+         "descarta": opt < 0}
+    if detalle:
+        r["cascada_optimista"], r["cascada_conservadora"] = d_opt, d_cons
+    return r
+
+
+def techo_costo(monto_neto, margen_objetivo):
+    """Costo base BRUTO máximo para alcanzar ese margen neto. Invierte la cascada.
+
+    Reemplaza a los divisores 1,625/1,885 (markup sobre costo, sin impuestos), que autorizaban
+    costos muy por encima de lo que la política de margen realmente permite."""
+    t = 1.0 - PPM - PREVISION_IVA
+    # margen = (1 − c/P − PPM − IVA) − renta ; renta = R × (1 − c/P − IVA [− PPM])
+    base_sin_ppm = t if not PPM_ACREDITA_RENTA else (1.0 - PREVISION_IVA)
+    c_sobre_p = base_sin_ppm - (margen_objetivo + (PPM if PPM_ACREDITA_RENTA else 0.0)) / (1 - IMPUESTO_RENTA)
+    if c_sobre_p <= 0:
+        return 0
+    costo_neto_max = c_sobre_p * monto_neto
+    bruto = costo_neto_max / (FRACCION_COSTO_CON_IVA / 1.19 + (1 - FRACCION_COSTO_CON_IVA))
+    return int(bruto / (1 + SOBRECOSTO_MEDIDO))

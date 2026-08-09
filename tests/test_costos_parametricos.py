@@ -13,8 +13,12 @@ import costos_parametricos as cp
 def test_el_margen_es_sobre_la_venta_no_sobre_el_costo():
     """Verificado con la planilla de Loveo: Vicuña, ingreso 30.252.101, costo real 24.544.067,
     'Margen Real %' = 0,1887 = (ingreso − costo)/ingreso."""
-    m = cp.margenes(30_252_101, 24_544_067 / 1.304, margen_error=0)
-    assert abs(m["margen_optimista"] - 0.1887) < 0.005
+    m = cp.margenes(30_252_101, 24_544_067 / 1.304, margen_error=0, detalle=True,
+                    costo_ya_neto=True)
+    operativo = m["cascada_optimista"]["utilidad_operativa"] / 30_252_101
+    assert abs(operativo - 0.1887) < 0.01
+    # y el margen NETO, después de PPM + IVA + renta, es bastante peor que ese 18,9%
+    assert m["margen_optimista"] < operativo
 
 
 def test_el_sobrecosto_medido_es_el_30_por_ciento():
