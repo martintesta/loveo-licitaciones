@@ -257,6 +257,18 @@ def _crear_tablas():
         _asegurar_columna(c, "licitaciones", "visita_fecha_txt", "TEXT")  # fecha literal (orientativa)
         _asegurar_columna(c, "licitaciones", "visita_fragmento", "TEXT")  # texto real para verificar
         _asegurar_columna(c, "licitaciones", "visita_detectada_at", "TEXT")
+        # Embudo de triage (reemplaza al score provisional como puerta de entrada). Se guarda EN
+        # QUÉ GATE murió cada licitación, no un número: el score viejo registraba un puntaje que
+        # no explicaba nada y cuyo umbral superior era inalcanzable. El motivo es la señal barata
+        # que sí se puede acumular hoy; los resultados ganada/perdida tardan años a este volumen.
+        _asegurar_columna(c, "licitaciones", "triage_gate", "TEXT")      # producto|presupuesto|calendario|NULL si pasó
+        _asegurar_columna(c, "licitaciones", "triage_senal", "TEXT")     # qué regla decidió
+        _asegurar_columna(c, "licitaciones", "triage_motivo", "TEXT")
+        _asegurar_columna(c, "licitaciones", "triage_confianza", "TEXT")  # alta|media|baja
+        _asegurar_columna(c, "licitaciones", "triage_at", "TEXT")
+        # Etiqueta HUMANA: ¿era producto de Loveo? Es el set de entrenamiento del Gate 1 y la
+        # única forma de medir sus falsos positivos, que son los caros.
+        _asegurar_columna(c, "licitaciones", "es_producto_loveo", "INTEGER")
 
 
 def _asegurar_columna(c, tabla, columna, tipo):

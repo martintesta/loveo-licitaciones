@@ -84,7 +84,8 @@ def desde_local(carpeta=None):
         detalle.append({"codigo": cod, "archivos": n})
     return {"ok": True, "subcarpetas": len(subs), "matched": matched, "registrados": registrados,
             "huerfanos": huerfanos, "detalle": detalle,
-            "visitas": _detectar_visitas(con_nuevos, matcheados)}
+            "visitas": _detectar_visitas(con_nuevos, matcheados),
+            "montos": _completar_montos(con_nuevos, matcheados)}
 
 
 def _detectar_visitas(con_nuevos, matcheados):
@@ -99,6 +100,20 @@ def _detectar_visitas(con_nuevos, matcheados):
     try:
         import visitas
         return visitas.al_ingestar(con_nuevos, matcheados)
+    except Exception as e:
+        return {"error": str(e)[:200]}
+
+
+def _completar_montos(con_nuevos, matcheados):
+    """Completa `monto_estimado` desde el pliego en las que el API dejó en null.
+
+    Mismo motivo que la visita: el dato existe en el documento y el API no lo trae. Sin techo no
+    hay margen que calcular, y el margen es lo que decide el GO/NO-GO. Sólo escribe donde falta:
+    el API es la fuente oficial, el pliego el respaldo."""
+    try:
+        import montos
+        objetivo = list(dict.fromkeys(list(con_nuevos or []) + list(matcheados or [])))
+        return montos.al_ingestar(objetivo)
     except Exception as e:
         return {"error": str(e)[:200]}
 
@@ -165,7 +180,8 @@ def desde_drive(link=None, drv=None):
         detalle.append({"codigo": cod, "archivos": n})
     return {"ok": True, "subcarpetas": len(subs), "matched": matched, "bajados": bajados,
             "fallidos": fallidos, "detalle": detalle,
-            "visitas": _detectar_visitas(con_nuevos, matcheados)}
+            "visitas": _detectar_visitas(con_nuevos, matcheados),
+            "montos": _completar_montos(con_nuevos, matcheados)}
 
 
 if __name__ == "__main__":
