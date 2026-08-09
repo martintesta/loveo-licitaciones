@@ -141,6 +141,9 @@ def build_data(usuario=None):
             "       fecha_visita, estado_mp, descripcion, admisible, admisible_motivo, "
             "       vigente_oferta, estado_revision, estado_resultado, score_provisional, "
             "       score_json, fecha_descubierta, fecha_actualizada, "
+            "       margen_neto, veredicto_fin, costo_base_est, veredicto_fuente, "
+            "       triage_gate, triage_motivo, triage_confianza, visita_caracter, "
+            "       visita_fecha_txt, "
             "       (json_detalle IS NULL) AS sin_detalle "
             "FROM licitaciones").fetchall()]
         eventos = {}
@@ -231,6 +234,14 @@ def build_data(usuario=None):
             "adm": bool(r["admisible"]), "admMot": r["admisible_motivo"] or "", "vig": bool(r["vigente_oferta"]),
             "desc": (desc.strftime("%d-%m-%Y") if desc else ""), "score": r["score_provisional"],
             "tri": sj.get("triage"), "reqBases": bool(sj.get("requiere_bases")), "dims": _dd,
+            # Veredicto financiero y embudo: lo que antes había que ir a buscar al Excel de
+            # análisis. Vive en la licitación para que el tablero lo muestre sin abrir nada.
+            "margen": r["margen_neto"], "vere": r["veredicto_fin"],
+            "vereFuente": r["veredicto_fuente"],
+            "costoBase": _clp(r["costo_base_est"]) if r["costo_base_est"] else "",
+            "gate": r["triage_gate"], "gateMot": r["triage_motivo"] or "",
+            "gateConf": r["triage_confianza"],
+            "visCar": r["visita_caracter"], "visFecha": r["visita_fecha_txt"] or "",
             "evDims": sum(1 for d in _dd if d["ev"]), "nDims": len(_dd) or 6,
             "evalPts": sj.get("evaluable_pts"),
             "descr": (r["descripcion"] or "")[:1200], "eventos": eventos.get(cod, []),

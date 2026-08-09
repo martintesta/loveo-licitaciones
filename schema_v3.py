@@ -269,6 +269,14 @@ def _crear_tablas():
         # Etiqueta HUMANA: ¿era producto de Loveo? Es el set de entrenamiento del Gate 1 y la
         # única forma de medir sus falsos positivos, que son los caros.
         _asegurar_columna(c, "licitaciones", "es_producto_loveo", "INTEGER")
+        # Veredicto financiero: margen NETO después de PPM + previsión de IVA + renta, contra el
+        # techo del pliego. Vive en la licitación, no en un Excel suelto: el tablero lo muestra
+        # sin abrir nada, que es donde hace falta cuando quedan horas para el cierre.
+        _asegurar_columna(c, "licitaciones", "costo_base_est", "REAL")   # cubicación o paramétrico
+        _asegurar_columna(c, "licitaciones", "margen_neto", "REAL")      # después de impuestos
+        _asegurar_columna(c, "licitaciones", "veredicto_fin", "TEXT")    # GO|LIMITE|AJUSTADO|NO-GO
+        _asegurar_columna(c, "licitaciones", "veredicto_fuente", "TEXT")  # cubicacion|parametrico
+        _asegurar_columna(c, "licitaciones", "veredicto_at", "TEXT")
 
 
 def _asegurar_columna(c, tabla, columna, tipo):
