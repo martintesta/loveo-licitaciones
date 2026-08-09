@@ -2,12 +2,13 @@
 
 > Log append-only de lo cerrado. Fecha ABSOLUTA + commit + cómo se verificó.
 
-- 2026-08-08 `c59513b` (rama `analisis-integral-y-precios`) — Catálogo de precios vivo: refresco mensual por internet,
+- 2026-08-08 `c527c83` (rama `analisis-integral-y-precios`) — Catálogo de precios vivo: refresco mensual por internet,
   correcciones manuales, historial con fecha+hora y link de origen.
   Verificado con `python scripts/preflight.py` → **413 passed, 1 skipped**.
   - `precios.py` + `tests/test_precios.py` (17 sensores, ninguno toca la red).
-  - Tarea mensual registrada y **ejecutada de verdad** durante la verificación:
-    `schtasks /Run /TN LoveoPreciosTEST` → `logs\tarea_precios.log` con `exit 0`.
+  - La tarea mensual se probó de punta a punta bajo un nombre de prueba (`LoveoPreciosTEST`):
+    registrada, **ejecutada de verdad** (`schtasks /Run` → `logs\tarea_precios.log` con `exit 0`) y
+    después borrada. Ver el ⚠️ de abajo: la tarea definitiva todavía NO está registrada.
   - Búsqueda de precios unificada: `cubicacion_ia._buscar_web_real` y el job mensual ahora cotizan
     por la misma función (`precios.buscar_precio_web`), y `analisis.precios_catalogo` delega en
     `precios.catalogo` — antes eran tres implementaciones que podían discrepar sobre "el precio

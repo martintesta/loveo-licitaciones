@@ -2,7 +2,7 @@
 
 > Log append-only de lo cerrado. Fecha ABSOLUTA + commit + cómo se verificó.
 
-- 2026-08-08 `c59513b` (rama `analisis-integral-y-precios`) — Fases 1-6 cerradas. El export de una licitación pasó de 2 hojas a
+- 2026-08-08 `c527c83` (rama `analisis-integral-y-precios`) — Fases 1-6 cerradas. El export de una licitación pasó de 2 hojas a
   8-9, todo por fórmulas encadenadas, y se guarda solo en la carpeta de bases.
   Verificado con `python scripts/preflight.py` → **394 passed, 1 skipped** (el skip es el smoke de
   Postgres, que pide `TEST_DATABASE_URL`; venía de antes).
