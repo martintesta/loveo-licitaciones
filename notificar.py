@@ -45,13 +45,16 @@ def disponible():
 def candidatas(hoy=None, umbral=None):
     """Licitaciones EN JUEGO (no descartadas ni cerradas) con cierre o visita dentro del umbral.
 
-    Devuelve un item por evento: {codigo, nombre, organismo, region, score, tipo, fecha, dias}."""
+    Devuelve un item por evento: {codigo, nombre, organismo, region, score, tipo, fecha, dias}.
+    Los items de cierre cargan además `visita` (el carácter leído del PLIEGO): `fecha_visita` es la
+    del API y viene null siempre, así que sin esto el aviso de cierre no decía nada de la visita —
+    justamente lo que hay que hacer ANTES de que el cierre llegue."""
     umbral = config.DIAS_ALERTA_CIERRE if umbral is None else umbral
     out = []
     with db.conn() as c:
         rows = c.execute(
             "SELECT codigo, nombre, organismo, region, score_provisional AS score, "
-            "       fecha_cierre, fecha_visita "
+            "       fecha_cierre, fecha_visita, visita_caracter "
             "FROM licitaciones "
             "WHERE estado_revision != 'descartada' "
             "  AND (estado_resultado IS NULL OR estado_resultado = 'pendiente')").fetchall()
@@ -61,9 +64,30 @@ def candidatas(hoy=None, umbral=None):
             if dias is not None and 0 <= dias <= umbral:
                 out.append({"codigo": r["codigo"], "nombre": r["nombre"] or "—",
                             "organismo": r["organismo"] or "—", "region": r["region"] or "—",
-                            "score": r["score"], "tipo": tipo, "fecha": fecha, "dias": dias})
+                            "score": r["score"], "tipo": tipo, "fecha": fecha, "dias": dias,
+                            "visita": r["visita_caracter"] if tipo == "cierre" else None})
+    out += _sin_bases(hoy)
     out.sort(key=lambda x: x["dias"])
     return out
+
+
+def _sin_bases(hoy=None):
+    """Vigentes SIN bases descargadas con la ventana de visita ya corriendo (visitas.en_riesgo()).
+
+    Es el único aviso que se dispara por AUSENCIA de dato: sin bases no se puede leer el pliego, y
+    por eso mismo no se sabe si convoca visita. Se ordena por cierre como el resto para que entre
+    en el mismo digest; si no tiene cierre parseable va al final."""
+    try:
+        import visitas
+        riesgo = visitas.en_riesgo(hoy=hoy)
+    except Exception:                       # la alerta nueva no puede voltear el digest de deadlines
+        return []
+    return [{"codigo": x["codigo"], "nombre": x["nombre"] or "—",
+             "organismo": x["organismo"] or "—", "region": x["region"] or "—",
+             "score": x["score"], "tipo": "sin_bases", "fecha": x["fecha_cierre"],
+             "dias": x["dias_al_cierre"] if x["dias_al_cierre"] is not None else 999,
+             "dias_publicada": x["dias_publicada"], "visita": None}
+            for x in riesgo]
 
 
 def nuevas(cands):
@@ -107,6 +131,11 @@ def render(items, worker_alerta=None):
     """(asunto, cuerpo) del digest. items = candidatas nuevas; worker_alerta = warning opcional."""
     n = len(items)
     partes = []
+    # La visita excluyente va PRIMERO en el asunto: es la única que ya no se puede arreglar después.
+    n_vis = sum(1 for it in items if it.get("visita") == "obligatoria")
+    if n_vis:
+        partes.append(f"{n_vis} visita{'s' if n_vis != 1 else ''} EXCLUYENTE"
+                      f"{'S' if n_vis != 1 else ''}")
     if n:
         partes.append(f"{n} deadline{'s' if n != 1 else ''}")
     if worker_alerta:
@@ -118,10 +147,20 @@ def render(items, worker_alerta=None):
     if items:
         lineas.append("Licitaciones que entran en la ventana de alerta:\n")
         for it in items:
-            que = "Cierre" if it["tipo"] == "cierre" else "Visita a terreno"
+            que = {"cierre": "Cierre", "visita": "Visita a terreno",
+                   "sin_bases": "SIN BASES"}.get(it["tipo"], it["tipo"])
             sc = f" · score {it['score']}" if it["score"] is not None else ""
-            lineas.append(f"• [{_dias_txt(it['dias']).upper()}] {que} — {it['nombre']} ({it['codigo']})")
+            cuando = "sin fecha" if it["dias"] == 999 else _dias_txt(it["dias"]).upper()
+            lineas.append(f"• [{cuando}] {que} — {it['nombre']} ({it['codigo']})")
             lineas.append(f"    {it['organismo']} · {it['region']}{sc} · {it['fecha']}")
+            # Lo que hay que hacer ANTES del cierre, no el cierre mismo.
+            if it.get("visita") in ("obligatoria", "puntuada"):
+                lineas.append(f"    ⚠ VISITA A TERRENO {it['visita'].upper()} detectada en el pliego"
+                              + (" — no asistir deja la oferta INADMISIBLE"
+                                 if it["visita"] == "obligatoria" else " — no asistir cuesta puntaje"))
+            if it["tipo"] == "sin_bases":
+                lineas.append(f"    ⚠ Publicada hace {it.get('dias_publicada')} días y todavía sin "
+                              "bases: no se puede saber si convoca visita, y la ventana corre.")
     lineas.append("\n— Loveo Construcciones (aviso automático). No responder a este correo.")
     return asunto, "\n".join(lineas)
 

@@ -56,6 +56,20 @@ python download.py                  # todas las admisibles sin docs
   `calibration/viewattachment.html` (cierro el último selector).
 - Los archivos quedan en `storage/<codigo>/`.
 
+### Visita a terreno — se detecta al INGESTAR, no al analizar
+```bash
+python visitas.py 1658-171-LE26     # detecta y guarda el carácter de la visita de una licitación
+python visitas.py --pendientes      # las que tienen visita detectada y siguen abiertas
+python visitas.py --riesgo          # vigentes SIN bases con la ventana de visita ya corriendo
+```
+- `Fechas.FechaVisitaTerreno` del API viene **null siempre** (40/40 medidas): la visita está escrita
+  en el pliego, no en el API. Por eso la alerta vieja de `alertas.py` nunca se disparó.
+- `ingest_bases` corre la detección sola cada vez que registra documentos nuevos, y rellena las
+  viejas de a poco (topes `LOVEO_VISITA_MAX_BACKFILL`=25 y `LOVEO_VISITA_MAX_SEG`=120 s por corrida,
+  porque un pliego escaneado se va en OCR).
+- `visita_caracter` NULL ≠ `'sin_visita'`: NULL es "todavía no se leyó el pliego", `sin_visita` es
+  "se leyó y no la menciona". Las NULL con bases pendientes son las que salen en `--riesgo`.
+
 ### Capa C — leer las bases con IA (necesita ANTHROPIC_API_KEY)
 ```bash
 # 1) primero un dry-run: estima tokens, NO gasta
@@ -92,4 +106,14 @@ streamlit run tablero3.py
 - El **margen final** del score (GO/NO-GO) necesita la **cubicación de Valentina** — Capa C aporta el
   techo de presupuesto y la complejidad, no el costo real.
 - Un **código real de Mercado Público** solo lleva su **dato real**; nada inventado en las vistas.
+- La **visita a terreno se lee del pliego**, nunca del API. Una visita excluyente no detectada
+  elimina la oferta sin importar precio ni capacidad técnica: en agosto de 2026 costó cinco
+  licitaciones en un solo lote, una de ellas la única financieramente sana de dieciséis.
+- Un **dato que falta no es un dato en cero**. Una licitación sin `fecha_cierre` no la saca ningún
+  filtro y queda "vigente" para siempre; una sin bases no dice "no hay visita", dice "no sabemos".
+  `run_daily` cura las dos solo (`_curar_sin_detalle` y `visitas.en_riesgo`); si agregás un filtro
+  nuevo, preguntate qué hace con el NULL antes de darlo por bueno.
+- Una decisión (descarte, aprobación, resultado) **no existe hasta que está en la base**. Un análisis
+  que concluye "inadmisible" y no llama a `feedback.descartar()` deja la licitación viva en el
+  tablero: pasó con las cinco de la visita y sólo se detectó cuando la alerta las volvió a mostrar.
 - Base de datos: `loveo.db` · documentos: `storage/<codigo>/` · credenciales: `config_local.py` (no se sube).

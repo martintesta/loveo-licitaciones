@@ -15,7 +15,6 @@ D=cantidad, E=unidad, F=precio unit, G=total, H=devengado, I=estado pago; abajo 
 import os
 import sys
 import unicodedata
-import datetime
 import openpyxl
 import db
 
@@ -121,7 +120,10 @@ def ingest(path, proyecto=None, codigo=None):
     data = parse(path)
     proyecto = proyecto or _infer_proyecto(path)
     archivo = os.path.basename(path)
-    fecha = datetime.date.today().isoformat()
+    # timestamp completo (no solo la fecha): precios_referencia.fecha es lo que ORDER BY DESC usa
+    # para decidir cuál es "el punto más reciente" en tendencia() — dos importaciones el mismo día
+    # con solo la fecha (sin hora) empatan y el orden queda indefinido.
+    fecha = db._now()
     items = data["items"]
 
     with db.conn() as conn:
@@ -135,6 +137,7 @@ def ingest(path, proyecto=None, codigo=None):
              data["costo_total"], data["margen"], data["margen_pct"], fecha, _version(path)))
         cid = cur.fetchone()[0]
         precios = 0
+        con_precio = []
         for it in items:
             conn.execute("""
                 INSERT INTO cubicacion_items(cubicacion_id, partida, grupo, descripcion, cantidad,
@@ -143,16 +146,27 @@ def ingest(path, proyecto=None, codigo=None):
                 (cid, it["partida"], it["grupo"], it["descripcion"], it["cantidad"], it["unidad"],
                  it["precio_unitario"], it["total"], it["devengado"], it["estado_pago"]))
             if it["precio_unitario"] is not None and it["descripcion"]:
+                # DELETE de arriba ya sacó la fila 'valentina' vieja de ESTE proyecto — el punto
+                # anterior en precios_referencia (si el material se repite en OTRO proyecto/fecha)
+                # queda intacto, así que esta INSERT suma un punto nuevo al historial, no lo pisa.
                 conn.execute("""
                     INSERT INTO precios_referencia(descripcion, descripcion_norm, unidad, precio_unitario,
                                                    fuente, proyecto, region, fecha)
                     VALUES (?,?,?,?, 'valentina', ?, NULL, ?)""",
                     (it["descripcion"], _na(it["descripcion"]), it["unidad"], it["precio_unitario"], proyecto, fecha))
                 precios += 1
+                con_precio.append(it["descripcion"])
+
+    import cubicacion_ia   # tendencia: comparar contra la cotización anterior de este mismo material
+    tendencias = []
+    for desc in con_precio:
+        t = cubicacion_ia.tendencia(desc)
+        if t and t["direccion"] != "estable":
+            tendencias.append({"descripcion": desc, **t})
 
     return {"proyecto": proyecto, "archivo": archivo, "items": len(items), "precios": precios,
             "ingreso_sin_iva": data["ingreso_sin_iva"], "costo_total": data["costo_total"],
-            "margen": data["margen"], "margen_pct": data["margen_pct"]}
+            "margen": data["margen"], "margen_pct": data["margen_pct"], "tendencias": tendencias}
 
 
 if __name__ == "__main__":

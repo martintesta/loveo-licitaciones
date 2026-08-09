@@ -174,11 +174,16 @@ def build_data(usuario=None):
                 "ci.unidad, ci.precio_unitario, ci.total, ci.precio_fuente, ci.precio_url "
                 "FROM cubicaciones cu JOIN cubicacion_items ci ON ci.cubicacion_id = cu.id "
                 "WHERE cu.origen='ia' ORDER BY cu.codigo, ci.id").fetchall():
+            # tendencia de precio (Fase 6): compara contra la cotización anterior del mismo
+            # material, mirando TODO precios_referencia (web+valentina+interno), no solo esta lic.
+            tend = cubicacion_ia.tendencia(ci["descripcion"]) if ci["precio_unitario"] is not None else None
             cubic_ia.setdefault(ci["codigo"], []).append(
                 {"partida": ci["partida"], "grupo": ci["grupo"], "descripcion": ci["descripcion"],
                  "cantidad": ci["cantidad"], "unidad": ci["unidad"],
                  "precio": ci["precio_unitario"], "total": ci["total"],
-                 "fuente": ci["precio_fuente"], "url": ci["precio_url"]})
+                 "fuente": ci["precio_fuente"], "url": ci["precio_url"],
+                 "tend": ({"var": tend["variacion_pct"], "dir": tend["direccion"],
+                          "ant": tend["anterior"]} if tend and tend["direccion"] != "estable" else None)})
         # Recetas por tipo de producto (Fase 5): cuántas partidas hay por tipo, para ofrecer pre-llenar.
         recetas_n = {rr["proyecto"]: rr["n"] for rr in c.execute(
             "SELECT cu.proyecto AS proyecto, COUNT(ci.id) AS n FROM cubicaciones cu "

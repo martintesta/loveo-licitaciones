@@ -65,6 +65,22 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
             except Exception:
                 pass
 
+    # Ventana de visita a terreno. Va DESPUÉS de la ingesta a propósito: las que quedan sin bases
+    # después de intentar ingestarlas son exactamente las que no podemos leer, y por lo tanto
+    # aquellas de las que no sabemos si convocan visita. El silencio no es "no hay visita".
+    visita = None
+    try:
+        import visitas
+        visita = {"sin_bases_en_riesgo": visitas.en_riesgo(),
+                  "con_visita_abierta": visitas.pendientes_de_visita()}
+    except Exception as e:                # un fallo de la alerta NUNCA frena el pipeline
+        visita = {"error": str(e)}
+        try:
+            import observabilidad
+            observabilidad.capturar("run_daily.visitas", e)
+        except Exception:
+            pass
+
     try:
         avisos = notificar.correr()       # avisos de deadline; no-op si no hay SMTP configurado
     except Exception as e:                # un fallo de notificación NUNCA frena el pipeline
@@ -77,7 +93,7 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
 
     return {"fecha": fecha, "total": len(listado), "candidatos": len(candidatos),
             "admisibles": admisibles, "errores": errores, "relicitaciones": enlaces,
-            "bases_local": bases, "avisos": avisos}
+            "bases_local": bases, "visita_terreno": visita, "avisos": avisos}
 
 
 def procesar_codigo(codigo, manual=True):
@@ -158,7 +174,46 @@ def _main():
         # registro externo. Acotado por corrida — cada día es una llamada más a la API.
         if not args:
             res["cobertura"] = _curar_cobertura()
+            res["sin_detalle"] = _curar_sin_detalle()
         print(json.dumps(res, indent=2, ensure_ascii=False))
+
+
+CURAR_SIN_DETALLE_POR_CORRIDA = int(os.environ.get("LOVEO_CURAR_SIN_DETALLE", "15"))
+
+
+def _curar_sin_detalle(limite=None):
+    """Completa las licitaciones que quedaron a medias: sin `json_detalle`, o sin fecha de cierre.
+
+    `procesar_dia(traer_detalles=False)` (modo caché, o un día en que la API de detalle falló) las
+    da de alta sólo con código y nombre. Sin fecha de cierre NINGÚN filtro las saca: quedan
+    'vigentes' para siempre y aparecen en los listados como si estuvieran abiertas. Se encontraron
+    dos así, de junio de 2026 — una de $160M con score 80 que nadie miró porque parecía ruido.
+
+    Es el mismo patrón que la visita a terreno: un dato que FALTA se lee como 'todo bien' en vez
+    de como 'no sabemos'. Acotado por corrida: cada una es una llamada a la API."""
+    limite = CURAR_SIN_DETALLE_POR_CORRIDA if limite is None else limite
+    db.init_db()
+    with db.conn() as c:
+        pendientes = [r["codigo"] for r in c.execute(
+            "SELECT codigo FROM licitaciones "
+            "WHERE (json_detalle IS NULL OR fecha_cierre IS NULL) AND vigente_oferta=1 "
+            "ORDER BY fecha_descubierta DESC LIMIT ?", (limite,)).fetchall()]
+    completadas, fallidas = [], []
+    for cod in pendientes:
+        try:
+            r = procesar_codigo(cod, manual=False)
+            if r.get("ok"):
+                completadas.append({"codigo": cod, "score": r.get("score")})
+            else:
+                fallidas.append({"codigo": cod, "error": (r.get("error") or "")[:100]})
+        except Exception as e:                 # una licitación que falla no frena la curación
+            fallidas.append({"codigo": cod, "error": str(e)[:100]})
+        time.sleep(1.0)                        # mismo respeto por la API que en procesar_dia
+    with db.conn() as c:
+        quedan = c.execute(
+            "SELECT COUNT(*) n FROM licitaciones "
+            "WHERE (json_detalle IS NULL OR fecha_cierre IS NULL) AND vigente_oferta=1").fetchone()["n"]
+    return {"completadas": completadas, "fallidas": fallidas, "pendientes": quedan}
 
 
 def _curar_cobertura(limite=None):

@@ -10,9 +10,14 @@ pytesseract==0.3.13
 pdf2image==1.17.0
 anthropic>=0.40.0
 openpyxl>=3.1                 # ingestión del Excel de cubicación (cubicacion.py) + informe.py (export)
+                               # + bases.xlsx_a_texto: anexos económicos e itemizados de las bases
+python-docx>=1.1              # bases.docx_a_texto: anexos y formularios .docx de las bases (traen las
+                               # cantidades y el presupuesto; antes se descartaban en silencio)
 google-api-python-client>=2.0  # Capa Drive: leer carpetas de licitaciones (drive.py)
 google-auth>=2.0
 google-auth-httplib2>=0.2
 google-auth-oauthlib>=1.0
 psycopg[binary]>=3.1         # backend Postgres (producción, H1); SQLite sigue siendo default
 extra-streamlit-components>=0.1  # cookie manager → sesión de login persistente
+ezdxf>=1.4                    # cad.py: lee DXF (texto/cotas/bloques) para cruzar planos DWG contra las bases.
+                               # DWG→DXF requiere ODA File Converter instalado aparte (gratis, opendesign.com)

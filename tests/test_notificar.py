@@ -151,3 +151,64 @@ def test_disponible_refleja_env(monkeypatch):
     assert notificar.disponible() is False        # falta SMTP_HOST
     monkeypatch.setenv("SMTP_HOST", "smtp.test")
     assert notificar.disponible() is True
+
+
+# --- visita a terreno leída del PLIEGO (no del API, que la trae null siempre) ---
+
+def test_aviso_de_cierre_grita_la_visita_excluyente(tmp_path, monkeypatch):
+    """La visita es lo único que ya no se puede arreglar después: si el cierre entra en la ventana
+    y el pliego dice visita obligatoria, el aviso tiene que decirlo — y decirlo en el asunto."""
+    _setup(tmp_path, monkeypatch)
+    _lic("V1", cierre=_fecha(3))
+    with db.conn() as c:
+        c.execute("UPDATE licitaciones SET visita_caracter='obligatoria' WHERE codigo='V1'")
+    cands = notificar.candidatas(hoy=HOY)
+    assert [x["visita"] for x in cands] == ["obligatoria"]
+    asunto, cuerpo = notificar.render(cands)
+    assert "EXCLUYENTE" in asunto
+    assert "INADMISIBLE" in cuerpo
+
+
+def test_visita_puntuada_avisa_sin_gritar_en_el_asunto(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _lic("V2", cierre=_fecha(2))
+    with db.conn() as c:
+        c.execute("UPDATE licitaciones SET visita_caracter='puntuada' WHERE codigo='V2'")
+    asunto, cuerpo = notificar.render(notificar.candidatas(hoy=HOY))
+    assert "EXCLUYENTE" not in asunto
+    assert "cuesta puntaje" in cuerpo
+
+
+def test_sin_visita_no_agrega_ruido(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _lic("V3", cierre=_fecha(2))
+    with db.conn() as c:
+        c.execute("UPDATE licitaciones SET visita_caracter='sin_visita' WHERE codigo='V3'")
+    _, cuerpo = notificar.render(notificar.candidatas(hoy=HOY))
+    assert "VISITA A TERRENO" not in cuerpo
+
+
+def test_sin_bases_entra_al_digest(tmp_path, monkeypatch):
+    """El único aviso que se dispara por AUSENCIA de dato: sin bases no se puede leer el pliego."""
+    _setup(tmp_path, monkeypatch)
+    _lic("SB1", cierre=_fecha(4))
+    pub = (HOY - timedelta(days=8)).strftime("%Y-%m-%dT%H:%M:%S")
+    with db.conn() as c:
+        c.execute("UPDATE licitaciones SET admisible=1, vigente_oferta=1, estado_revision='nueva', "
+                  "score_provisional=75, docs_estado='pendiente', fecha_descubierta=? "
+                  "WHERE codigo='SB1'", (pub,))
+    cands = notificar.candidatas(hoy=HOY)
+    tipos = {x["tipo"] for x in cands}
+    assert tipos == {"cierre", "sin_bases"}          # el mismo código entra por las dos vías
+    _, cuerpo = notificar.render(cands)
+    assert "SIN BASES" in cuerpo and "hace 8 días" in cuerpo
+
+
+def test_el_digest_no_se_cae_si_falla_la_alerta_nueva(tmp_path, monkeypatch):
+    """REGRESIÓN: los deadlines son el aviso viejo y probado; la alerta nueva no puede tumbarlos."""
+    _setup(tmp_path, monkeypatch)
+    _lic("D1", cierre=_fecha(1))
+    import visitas
+    monkeypatch.setattr(visitas, "en_riesgo", lambda **kw: (_ for _ in ()).throw(RuntimeError("boom")))
+    cands = notificar.candidatas(hoy=HOY)
+    assert [x["codigo"] for x in cands] == ["D1"]

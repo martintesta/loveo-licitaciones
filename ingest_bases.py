@@ -61,12 +61,14 @@ def desde_local(carpeta=None):
 
     subs = [s for s in sorted(raiz.iterdir()) if s.is_dir()]
     matched, registrados, huerfanos, detalle = 0, 0, [], []
+    con_nuevos, matcheados = [], []
     for sub in subs:
         cod = sub.name.strip()
         if cod not in codigos:            # subcarpeta que no matchea ninguna licitación → huérfana
             huerfanos.append(sub.name)
             continue
         matched += 1
+        matcheados.append(cod)
         n = 0
         for f in sorted(sub.iterdir()):
             if not f.is_file():
@@ -77,9 +79,28 @@ def desde_local(carpeta=None):
             if _registrar_local(cod, real):
                 n += 1
                 registrados += 1
+        if n:
+            con_nuevos.append(cod)
         detalle.append({"codigo": cod, "archivos": n})
     return {"ok": True, "subcarpetas": len(subs), "matched": matched, "registrados": registrados,
-            "huerfanos": huerfanos, "detalle": detalle}
+            "huerfanos": huerfanos, "detalle": detalle,
+            "visitas": _detectar_visitas(con_nuevos, matcheados)}
+
+
+def _detectar_visitas(con_nuevos, matcheados):
+    """Corre la detección de visita a terreno sobre lo recién ingestado.
+
+    Va acá y no en la Capa C porque ESTE es el primer momento en que el dato existe: la visita
+    está escrita en el pliego (el `Fechas.FechaVisitaTerreno` del API viene null siempre) y suele
+    convocarse a los pocos días de publicada. Detectarla al analizar es detectarla tarde.
+
+    Aislada en su propia función y con try/except porque la ingesta de bases no puede fallar por
+    un pliego escaneado que rompa el OCR."""
+    try:
+        import visitas
+        return visitas.al_ingestar(con_nuevos, matcheados)
+    except Exception as e:
+        return {"error": str(e)[:200]}
 
 
 def _registrar(cod, nombre, path, contenido, fuente="drive"):
@@ -115,11 +136,13 @@ def desde_drive(link=None, drv=None):
 
     subs = drv.list_subfolders(gid, svc)
     matched, bajados, fallidos, detalle = 0, 0, 0, []
+    con_nuevos, matcheados = [], []
     for sub in subs:
         cod = (sub["name"] or "").strip()
         if cod not in codigos:                 # subcarpeta que no matchea ninguna licitación → ignorar
             continue
         matched += 1
+        matcheados.append(cod)
         n = 0
         dest = (db.STORAGE_DIR / cod).resolve()
         for f in drv.list_folder(sub["id"], svc):
@@ -137,9 +160,12 @@ def desde_drive(link=None, drv=None):
                 bajados += 1
             except Exception:                      # un archivo que falla no frena el resto
                 fallidos += 1
+        if n:
+            con_nuevos.append(cod)
         detalle.append({"codigo": cod, "archivos": n})
     return {"ok": True, "subcarpetas": len(subs), "matched": matched, "bajados": bajados,
-            "fallidos": fallidos, "detalle": detalle}
+            "fallidos": fallidos, "detalle": detalle,
+            "visitas": _detectar_visitas(con_nuevos, matcheados)}
 
 
 if __name__ == "__main__":

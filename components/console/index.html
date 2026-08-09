@@ -354,11 +354,17 @@ function renderRequisitos(l){
   for(var ri=0;ri<reqs.length;ri++)h+='<div class="ptxt">☐ '+esc(reqs[ri])+'</div>';
   return h+'</div>';
 }
+function cubTend(t,precioActual){
+  if(!t)return '';
+  var up=t.dir==='sube',color=up?'#B4472A':'#2B7A4B',arrow=up?'▲':'▼';
+  var tip='Antes '+clp(t.ant)+' · ahora '+clp(precioActual)+' — comparado con la última vez que se cotizó este material (en cualquier licitación).';
+  return ' <span style="color:'+color+';font-size:10.5px;font-weight:600;white-space:nowrap" title="'+escA(tip)+'">'+arrow+(t.var>0?'+':'')+t.var+'%</span>';
+}
 function cubPrecio(it){
   if(it.precio==null)return '<span class="mut" style="min-width:78px;text-align:right;font-size:11px">—</span>';
   var src=esUrl(it.url)?' <a href="'+escA(it.url)+'" target="_blank" rel="noopener" title="Ver referencia ('+escA(it.fuente||'')+')">🔗</a>'
                        :(it.fuente?' <span class="mut" title="fuente: '+escA(it.fuente)+'">·'+esc((it.fuente||'')[0])+'</span>':'');
-  return '<span style="min-width:78px;text-align:right;font-size:11px;white-space:nowrap" title="'+escA((it.fuente||'')+(it.total!=null?' · total '+clp(it.total):''))+'">'+clp(it.precio)+src+'</span>';
+  return '<span style="min-width:78px;text-align:right;font-size:11px;white-space:nowrap" title="'+escA((it.fuente||'')+(it.total!=null?' · total '+clp(it.total):''))+'">'+clp(it.precio)+src+cubTend(it.tend,it.precio)+'</span>';
 }
 function cubRow(it){it=it||{};
   return '<div class="cub-row" style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'

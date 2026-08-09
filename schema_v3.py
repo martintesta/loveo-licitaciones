@@ -243,6 +243,20 @@ def _crear_tablas():
         _asegurar_columna(c, "plan_feedback", "peso", "REAL")      # negativo = evidencia en contra
         _asegurar_columna(c, "plan_feedback", "motivo", "TEXT")    # por qué (explicabilidad)
         _asegurar_columna(c, "cubicaciones", "curada", "INTEGER DEFAULT 0")  # solo lo curado alimenta la receta
+        # Caché de extracción de texto (incluido OCR). Sin esto, cada corrida de Capa C vuelve a
+        # OCR-ear las mismas páginas escaneadas: en un pliego de 28 páginas son minutos por corrida,
+        # y hay que re-analizar cada vez que el comprador publica respuestas del foro.
+        _asegurar_columna(c, "documentos", "texto_cache", "TEXT")      # texto ya extraído
+        _asegurar_columna(c, "documentos", "texto_firma", "TEXT")      # mtime+tamaño: invalida si cambia
+        _asegurar_columna(c, "documentos", "texto_ocr_paginas", "TEXT")  # JSON con las páginas OCR-eadas
+        _asegurar_columna(c, "documentos", "texto_at", "TEXT")         # cuándo se extrajo
+        # Visita a terreno leída del PLIEGO. El API devuelve Fechas.FechaVisitaTerreno en null
+        # casi siempre, así que la alerta de alertas.py nunca se disparaba; una visita excluyente
+        # no detectada cuesta la licitación entera, sin importar precio ni capacidad técnica.
+        _asegurar_columna(c, "licitaciones", "visita_caracter", "TEXT")   # obligatoria|puntuada|prohibida|voluntaria|sin_visita
+        _asegurar_columna(c, "licitaciones", "visita_fecha_txt", "TEXT")  # fecha literal (orientativa)
+        _asegurar_columna(c, "licitaciones", "visita_fragmento", "TEXT")  # texto real para verificar
+        _asegurar_columna(c, "licitaciones", "visita_detectada_at", "TEXT")
 
 
 def _asegurar_columna(c, tabla, columna, tipo):

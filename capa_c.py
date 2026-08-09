@@ -1,6 +1,7 @@
 """
 capa_c.py — Capa C (parte 2): análisis de bases con Claude. SOLO TEXTO (nunca el PDF como imagen).
-Usa bases.py para extraer y recortar; manda el texto recortado a la API y devuelve:
+Usa bases.py para extraer y recortar PDFs; los .dwg/.dxf se despachan a cad.py (convierte con
+ODA File Converter y extrae texto/cotas/bloques del plano). Manda el texto recortado a la API y devuelve:
   - extracción estructurada (presupuesto, plazo, garantías, criterios+pesos, requisitos, subcontrato, anticipo)
     → alimenta las dimensiones pendientes del score (complejidad; y el techo de presupuesto para margen).
   - Q&A N3 sobre el contenido de las bases.
@@ -14,8 +15,16 @@ Modelo: barato por defecto (Haiku) porque se leen muchas bases; configurable.
 """
 import os, sys, json, argparse
 import bases
+import cad
 
 MODEL = os.environ.get("LOVEO_MODEL", "claude-haiku-4-5")   # barato para lectura masiva; subir a sonnet si hace falta
+
+# Presupuesto de contexto POR LICITACIÓN (no por documento). Referencia medida sobre expedientes
+# reales: las líneas que deciden (%, $, criterio, plazo, inadmisibilidad) son ~13% del texto, así
+# que 60.000 chars ≈ 15k tokens entran holgados y cuestan ~CLP 50 con Haiku. El tope por documento
+# es alto a propósito: la limpieza (dedup + boilerplate) se hace después, sobre el conjunto.
+PRESUPUESTO_LICITACION = int(os.environ.get("LOVEO_CTX_LICITACION", "60000"))
+POR_DOCUMENTO = int(os.environ.get("LOVEO_CTX_DOCUMENTO", "25000"))
 
 SYSTEM_EXTRACT = (
     "Sos un analista de licitaciones de Mercado Público (Chile) para una empresa de construcción modular en acero. "
@@ -66,19 +75,55 @@ def analizar_bases(pdf=None, codigo=None, dry=False):
     meta = []
     for r in rutas:
         try:
-            ex = bases.texto_para_analisis(r, max_chars=12000)
+            if str(r).lower().endswith(cad.EXTENSIONES_CAD):
+                ex = cad.texto_para_analisis(r, max_chars=POR_DOCUMENTO)
+            else:
+                ex = bases.texto_para_analisis(r, max_chars=POR_DOCUMENTO)
         except Exception as e:
-            # un archivo ilegible (no-PDF como .docx, o PDF corrupto) NO debe tirar todo el análisis:
-            # se saltea y se sigue con los legibles. Queda registrado en meta para trazabilidad.
+            # un archivo ilegible (formato no soportado —.zip/.rar/.doc antiguo/imágenes— o corrupto)
+            # NO debe tirar todo el análisis: se saltea y se sigue con los legibles. Queda registrado
+            # en meta para trazabilidad. PDF, DOCX y XLSX ya los cubre bases.documento_a_texto().
             meta.append({"archivo": r, "error": str(e)[:150]})
             continue
         bloques.append(ex["texto"])
-        meta.append({"archivo": r, "paginas": ex["n_paginas"],
-                     "ocr": ex["ocr_paginas"], "secciones": ex["secciones_halladas"]})
+        m = {"archivo": r, "paginas": ex["n_paginas"],
+             "ocr": ex["ocr_paginas"], "secciones": ex["secciones_halladas"]}
+        # Documento decisivo que quedó ilegible pese al OCR (típicamente un acta manuscrita):
+        # se marca para revisión visual en vez de dejar el hueco silencioso en el análisis.
+        if bases.necesita_vision(r, ex):
+            m["revisar_a_mano"] = (
+                "URGENTE: ilegible pese al OCR y define admisibilidad (acta de visita/apertura). "
+                "Revisar a mano o con visión antes de decidir."
+                if bases.es_critico(r) else
+                "Texto ilegible pese al OCR (probable manuscrito o escaneo malo). Revisar a mano.")
+        meta.append(m)
     if not bloques:
         return {"error": f"Ningún documento legible para {codigo or pdf} "
                          f"(¿PDFs corruptos o formatos no soportados?).", "meta": meta}
-    texto = "\n\n=====\n\n".join(bloques)
+
+    # El presupuesto de contexto es POR LICITACIÓN, no por documento: antes un anexo de 3 páginas
+    # y un pliego de 57 recibían los mismos 12.000 chars. Se limpia primero (gratis, sin API) y
+    # recién después se recorta, así lo que se descarta es relleno y no la matriz de evaluación.
+    crudo = sum(len(b) for b in bloques)
+    bloques = bases.dedup_lineas(bloques)                       # ~11% del expediente
+    bloques = [bases.sin_boilerplate(b) for b in bloques]       # ~4% más
+    texto = "\n\n=====\n\n".join(b for b in bloques if b.strip())
+    limpio = len(texto)
+    if limpio > PRESUPUESTO_LICITACION:
+        texto = texto[:PRESUPUESTO_LICITACION]
+    meta.append({"limpieza": {"chars_crudos": crudo, "chars_limpios": limpio,
+                              "chars_enviados": len(texto),
+                              "ahorro_limpieza_pct": round(100 * (1 - limpio / crudo)) if crudo else 0}})
+
+    # Visita a terreno leída del PLIEGO, no del API: `Fechas.FechaVisitaTerreno` viene null casi
+    # siempre, así que la alerta de alertas.py nunca se disparaba. Cuando la visita es excluyente
+    # define quién puede ofertar — no detectarla ya costó una licitación completa.
+    vis = bases.visita_a_terreno("\n".join(bloques))
+    if vis["menciona"] and not vis["prohibida"]:
+        vis["urgencia"] = ("EXCLUYENTE: no asistir deja la oferta inadmisible" if vis["obligatoria"]
+                           else "PUNTUADA: no asistir cuesta puntaje" if vis["puntuada"]
+                           else "voluntaria")
+    meta.append({"visita_terreno": vis})
 
     if dry:
         return {"DRY_RUN": True, "modelo": MODEL, "tokens_estimados_entrada": _estimar_tokens(texto + SYSTEM_EXTRACT),

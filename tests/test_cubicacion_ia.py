@@ -239,6 +239,106 @@ def test_preciar_sin_borrador(tmp_path, monkeypatch):
     assert r["ok"] is False
 
 
+# ---------------------------------------------------------------- Fase 6: tendencia de precio
+def _sembrar_precio(desc, precio, fuente, fecha, unidad="ml"):
+    import cubicacion
+    with db.conn() as c:
+        c.execute("INSERT INTO precios_referencia (descripcion, descripcion_norm, unidad, "
+                  "precio_unitario, fuente, fecha) VALUES (?,?,?,?,?,?)",
+                  (desc, cubicacion._na(desc), unidad, precio, fuente, fecha))
+
+
+def test_tendencia_sin_historial_da_none():
+    assert cubicacion_ia.tendencia("Material nunca cotizado antes") is None
+
+
+def test_tendencia_un_solo_punto_da_none(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _sembrar_precio("Perfil acero 100", 5000, "web", "2026-08-01 10:00:00")
+    assert cubicacion_ia.tendencia("Perfil acero 100") is None
+
+
+def test_tendencia_calcula_variacion_y_direccion(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _sembrar_precio("Perfil acero 100", 5000, "web", "2026-07-01 10:00:00")
+    _sembrar_precio("Perfil acero 100", 5600, "web", "2026-08-01 10:00:00")   # +12%
+    t = cubicacion_ia.tendencia("Perfil acero 100")
+    assert t["actual"] == 5600 and t["anterior"] == 5000
+    assert t["variacion_pct"] == 12.0 and t["direccion"] == "sube" and t["n_puntos"] == 2
+
+
+def test_tendencia_baja_de_precio(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _sembrar_precio("Plancha zinc", 8000, "web", "2026-07-01 10:00:00")
+    _sembrar_precio("Plancha zinc", 7000, "web", "2026-08-01 10:00:00")   # -12.5%
+    t = cubicacion_ia.tendencia("Plancha zinc")
+    assert t["direccion"] == "baja" and t["variacion_pct"] == -12.5
+
+
+def test_tendencia_variacion_chica_es_estable(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _sembrar_precio("Panel OSB", 10000, "web", "2026-07-01 10:00:00")
+    _sembrar_precio("Panel OSB", 10100, "web", "2026-08-01 10:00:00")   # +1%, dentro del ruido
+    t = cubicacion_ia.tendencia("Panel OSB")
+    assert t["direccion"] == "estable"
+
+
+def test_preciar_reusa_precio_web_reciente_sin_llamar_de_nuevo(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Perfil acero 100", "cantidad": 10, "unidad": "ml"}])
+    _sembrar_precio("Perfil acero 100", 5000, "web", db._now())   # recién cotizado, no vencido
+    llamado = []
+    r = cubicacion_ia.preciar("A", buscar=lambda d, u: llamado.append(d))
+    assert r["ok"] and r["preciados"] == 1 and not llamado
+    it = cubicacion_ia.borrador("A")[0]
+    assert it["precio_unitario"] == 5000 and it["precio_fuente"] == "interno"
+
+
+def test_preciar_recotiza_precio_web_vencido_y_suma_historial(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Perfil acero 100", "cantidad": 10, "unidad": "ml"}])
+    vieja = "2026-01-01 10:00:00"   # más de PRECIO_VENCE_DIAS atrás
+    _sembrar_precio("Perfil acero 100", 5000, "web", vieja)
+    r = cubicacion_ia.preciar("A", buscar=lambda d, u: {"precio": 5800, "url": "https://x.cl/p"})
+    assert r["ok"] and r["preciados"] == 1 and r["web"] == 1   # SE re-cotizó, no usó el cache viejo
+    it = cubicacion_ia.borrador("A")[0]
+    assert it["precio_unitario"] == 5800
+    import cubicacion
+    with db.conn() as c:
+        n = c.execute("SELECT COUNT(*) FROM precios_referencia WHERE descripcion_norm=?",
+                      (cubicacion._na("Perfil acero 100"),)).fetchone()[0]
+    assert n == 2   # el punto viejo NO se borró: ahora hay historial de 2 puntos
+
+
+def test_preciar_web_vencida_sin_resultado_usa_el_cache_igual(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Perfil acero 100", "cantidad": 10, "unidad": "ml"}])
+    _sembrar_precio("Perfil acero 100", 5000, "web", "2026-01-01 10:00:00")
+    r = cubicacion_ia.preciar("A", buscar=lambda d, u: None)   # web no encuentra nada mejor
+    assert r["ok"] and r["preciados"] == 1   # mejor el precio vencido que ningún precio
+    assert cubicacion_ia.borrador("A")[0]["precio_unitario"] == 5000
+
+
+def test_preciar_reporta_tendencia_cuando_el_precio_cambio(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Perfil acero 100", "cantidad": 10, "unidad": "ml"}])
+    _sembrar_precio("Perfil acero 100", 5000, "web", "2026-01-01 10:00:00")   # vencido
+    r = cubicacion_ia.preciar("A", buscar=lambda d, u: {"precio": 6000, "url": "https://x.cl/p"})  # +20%
+    assert len(r["tendencias"]) == 1
+    t = r["tendencias"][0]
+    assert t["descripcion"] == "Perfil acero 100" and t["direccion"] == "sube" and t["variacion_pct"] == 20.0
+
+
+def test_preciar_valentina_no_vence_nunca(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    _borrador("A", [{"descripcion": "Perfil acero 100", "cantidad": 10, "unidad": "ml"}])
+    _sembrar_precio("Perfil acero 100", 4500, "valentina", "2020-01-01 10:00:00")   # viejísimo, es real
+    llamado = []
+    r = cubicacion_ia.preciar("A", buscar=lambda d, u: llamado.append(d))
+    assert r["ok"] and not llamado   # 'valentina' no vence: no se re-cotiza
+    assert cubicacion_ia.borrador("A")[0]["precio_unitario"] == 4500
+
+
 # ---------------------------------------------------------------- Fase 4: margen real → score
 def _techo(codigo, presupuesto):
     with db.conn() as c:
