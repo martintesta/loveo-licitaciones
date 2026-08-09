@@ -248,7 +248,11 @@ def _sembrar_precio(desc, precio, fuente, fecha, unidad="ml"):
                   (desc, cubicacion._na(desc), unidad, precio, fuente, fecha))
 
 
-def test_tendencia_sin_historial_da_none():
+def test_tendencia_sin_historial_da_none(tmp_path, monkeypatch):
+    # _setup NO es opcional acá: sin él el test pega contra la base por defecto. En la máquina del
+    # desarrollador esa base existe y tiene `precios_referencia`, así que pasaba; en CI (checkout
+    # limpio, loveo.db gitignored) sqlite abre una base vacía y revienta con "no such table".
+    _setup(tmp_path, monkeypatch)
     assert cubicacion_ia.tendencia("Material nunca cotizado antes") is None
 
 
