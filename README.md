@@ -122,6 +122,40 @@ La plataforma mejora con el uso, y ese conocimiento queda del lado del usuario:
 - **Audita su propia cobertura**: registra lo que el filtro descartó para cazar falsos negativos.
 - **Estimación asistida que compone**: a partir de las bases arma un borrador que el usuario cura, y
   cada curación afina las próximas — la curación se achica proyecto a proyecto.
+- **Un catálogo de costos que no envejece**: los precios se refrescan solos una vez al mes contra
+  fuentes públicas, se pueden corregir a mano cuando llega una cotización firme, y **nunca se
+  pisan** — cada precio es un punto con su fecha, su hora y el link de donde salió. Así el margen se
+  calcula con costos vigentes y se puede auditar de dónde salió cada peso, en vez de arrastrar la
+  carga inicial hasta que miente.
+
+## Del score a la decisión: el análisis integral
+
+El score dice **a cuáles prestarles atención**. Para decidir si presentarse y **a qué precio** hay
+que bajar un nivel: eso es el análisis integral, un Excel de 8-9 hojas que se genera desde la ficha
+de la licitación (Resumen · Objeto y Alineación · Cubicación · Compras · Financiero · Riesgos · RACI
+· Estrategia Ganar · Competencia).
+
+Dos propiedades lo definen:
+
+- **Es un modelo, no un reporte.** Nada derivado va congelado: editar Cantidad o Precio unitario en
+  «Cubicación» recalcula la cadena entera — costo base → sobrecosto → financiamiento → escenarios de
+  oferta → P&L → KPIs del Resumen. El documento sirve para *negociar consigo mismo*, no solo para
+  leer. (La única tabla estática es la simulación Monte Carlo, y la hoja lo dice.)
+- **Es híbrido y honesto sobre su origen.** Lo que la plataforma ya calculó sale de la base (misma
+  fuente que la consola: el Excel no puede contradecir a la UI), y una única llamada al modelo cubre
+  lo que solo está en las bases — riesgos, compras, y la anatomía de la matriz de evaluación. Los
+  costos se precian contra el catálogo de precios realmente pagados, nunca contra lo que el modelo
+  recuerde; lo que no tiene precio se declara faltante en vez de completarse a ojo. Si el modelo no
+  está disponible, el informe igual se genera con las hojas que sí tienen datos.
+
+La hoja **Estrategia Ganar** responde la pregunta que decide la licitación: dónde está realmente el
+puntaje. Con la matriz de evaluación desarmada en escalones se puede calcular cuánto más caro puede
+ser uno y aún ganar, cuánto vale en pesos cada punto no-precio, y qué precio resiste los escenarios
+adversos (minimax regret) — que suele ser distinto del óptimo del caso base.
+
+El archivo queda **guardado junto a las bases** de esa licitación, además de descargarse. Para
+decidir a cuál de todas dedicarle el equipo, `consolidado.py` arma el mismo criterio en un tablero
+de una fila por licitación vigente.
 
 ## Cómo correr
 
@@ -141,7 +175,8 @@ streamlit run tablero3.py                       # consola: login, listado, ficha
 ```
 
 Para que corra solo (Windows), registrá las tareas programadas: `scripts\install_daily_task.ps1`
-(run diario: descubrir + scoring + avisos) y `scripts\install_worker_task.ps1` (worker Capa B+C).
+(run diario: descubrir + scoring + avisos), `scripts\install_worker_task.ps1` (worker Capa B+C) y
+`scripts\install_precios_task.ps1` (refresco mensual del catálogo de precios).
 
 Config por entorno: las credenciales del mercado y de la IA van en `.env` (nunca en el código).
 `config_local.py` (gitignored) tiene los parámetros/criterios locales; `config_local_example.py` es
@@ -156,6 +191,8 @@ la plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
 | Score y su honestidad | `scoring.py`, `capac_score.py` |
 | Obtener + leer bases (IA) | `worker.py`, `download.py`, `bases.py`, `capa_c.py` |
 | Cubicación asistida | `cubicacion_ia.py`, `cubicacion.py` |
+| Análisis integral + consolidado | `informe.py`, `analisis.py`, `excel_analisis.py`, `digest.py`, `consolidado.py` |
+| Catálogo de precios vivo | `precios.py`, `scripts/install_precios_task.ps1` |
 | Aprendizaje | `feedback.py`, `aprendizaje.py`, `comprador.py` |
 | Avisos de plazo | `notificar.py` |
 | Inteligencia de mercado | `extract.py`, `competencia.py`, `relicitaciones.py` |
@@ -171,9 +208,16 @@ la plantilla pública. Avisos por email: ver `NOTIFICACIONES.md`.
 4. **Cubicación asistida → margen** ✅ — estimación de costos desde las bases que el usuario cura y
    que la plataforma aprende (recetas por tipo de producto), para cerrar el margen del score sin
    depender de un tercero. Spec completa en `specs/cubicacion-asistida/`.
-5. **Más mercados de Latinoamérica** ◻ — nuevos adaptadores (fuente + reglas + parámetros) sobre el
+5. **Del score a la oferta** ✅ — análisis integral por licitación: un Excel de 8-9 hojas que es un
+   modelo vivo (editar la cubicación recalcula margen, escenarios y P&L) y que desarma la matriz de
+   evaluación para responder *dónde está el puntaje* y *qué precio resiste el peor escenario*. Se
+   guarda solo junto a las bases. Spec completa en `specs/analisis-integral/`.
+6. **Costos que no envejecen** ✅ — catálogo de precios vivo: refresco mensual automático contra
+   fuentes públicas, correcciones manuales, e historial append-only donde cada precio guarda su
+   fecha, su hora y el link de origen. Spec completa en `specs/precios-al-dia/`.
+7. **Más mercados de Latinoamérica** ◻ — nuevos adaptadores (fuente + reglas + parámetros) sobre el
    mismo núcleo.
-6. **Endurecer operación** ✅ — captura de errores (tabla `errores` + Sentry opcional vía
+8. **Endurecer operación** ✅ — captura de errores (tabla `errores` + Sentry opcional vía
    `SENTRY_DSN`; panel de salud en el Inicio), backup de la base (`scripts/backup_db.py`, por cron),
    **roles** (admin / analista, enforcement server-side) y **warm-up** contra el cold-start del free
    tier (`.github/workflows/keep-warm.yml`: pinguea la app cada ~10 min; definí la repo variable

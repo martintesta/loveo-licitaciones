@@ -17,6 +17,11 @@ python scripts/review.py             # reviewer ADVERSARIAL del diff (advisory, 
 python -m pytest tests/ -q           # solo tests
 python usuarios.py passwd <user>     # cambiar contraseña (pega contra la base activa)
 python schema_v3.py                  # aplicar migraciones (idempotente)
+python informe.py <codigo>           # análisis integral (8-9 hojas) → carpeta de bases + stdout
+python consolidado.py                # tablero del lote vigente (sin IA, sin costo de tokens)
+python precios.py vencidos           # qué materiales toca re-cotizar (gratis)
+python precios.py refrescar          # refresco del catálogo (lo corre solo la tarea mensual)
+python precios.py corregir "<desc>" 3200000 --url <link> --nota "<de dónde salió>"
 ```
 
 ## Cómo trabajamos (spec → sensores → loop)
@@ -43,7 +48,10 @@ Tras clonar el repo: `python scripts/preflight.py --install-hook` (los hooks no 
 - **El score es PROVISIONAL** hasta la cubicación real de Valentina. Las vistas no inventan nada: un código MP real lleva solo su data real.
 - **Secretos**: el ticket de ChileCompra va en **`.env`** (`LOVEO_CHILECOMPRA_TICKET`), jamás en `config_local.py`. **Nunca** sobrescribir ni commitear `.env`, `config_local.py`, `credentials/`, `service_account.json`, `token.json` (todos gitignored). `config_local.py` tiene las keywords competitivas → se mantiene fuera de git.
 - **Capa B y Ficha Comprador** están bloqueadas por WAF desde IP de datacenter → requieren worker con IP residencial chilena. La UI hosteada (Render) anda en cloud; solo el worker necesita IP CL.
-- **Modelo LLM**: `LOVEO_MODEL` (default `claude-haiku-4-5`) lo leen Capa C, asistente (text-to-SQL) y `/kw eval`. Barato para lectura masiva. Subir a `claude-sonnet-4-6` solo si el análisis lo amerita — vía env var, sin tocar código.
+- **Modelo LLM**: `LOVEO_MODEL` (default `claude-haiku-4-5`) lo leen Capa C, asistente (text-to-SQL) y `/kw eval`. Barato para lectura masiva. Subir a `claude-sonnet-4-6` solo si el análisis lo amerita — vía env var, sin tocar código. El **análisis integral** usa su propia var, `LOVEO_MODEL_ANALISIS` (default `claude-opus-5`): es una sola llamada por licitación sobre el digest completo, ahí el modelo bueno se paga solo.
+- **El Excel del análisis integral es un MODELO, no un reporte**: las celdas derivadas son fórmulas encadenadas (Cubicación → Financiero → Resumen). Si tocás `excel_analisis.py`, el sensor que manda es `tests/test_excel_analisis.py::test_editar_la_cantidad_recalcula_toda_la_cadena` — **ejecuta** las fórmulas con el motor `formulas`, no las mira como strings. Pegar un valor calculado en Python donde iba una fórmula rompe el producto sin romper ningún test de texto.
+- **Los precios no se inventan**: la cubicación del análisis se precia contra `precios_referencia` (lo que Loveo realmente pagó). Lo que no tiene precio se declara en INFO FALTANTE; nunca se completa con lo que el modelo recuerde.
+- **`precios_referencia` es APPEND-ONLY**: cada cotización es un punto nuevo con fecha **y hora** + `fuente` + `source_url` (el link). Nunca hacer `UPDATE` sobre un precio: se perdería el historial y la tendencia. El "precio vigente" es el último punto (`precios.catalogo()`). Una sola cotizadora web para todo el proyecto: `precios.buscar_precio_web` (cubicacion_ia delega ahí).
 
 ## Antipatterns a evitar
 - Truncar inputs en silencio (PDFs, bases) — avisar y chunkear, no recortar callado.

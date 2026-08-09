@@ -50,7 +50,7 @@ $Trigger = New-ScheduledTaskTrigger -Daily -At $Hora
 
 # Si la máquina estaba apagada a esa hora, correr cuando vuelva; correr con o sin batería.
 $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd `
-    -AllowStartIfOnBatteries -StopIfGoingOnBatteries:$false -MultipleInstances IgnoreNew
+    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
 
 if (Get-ScheduledTask -TaskName $NombreTarea -ErrorAction SilentlyContinue) {
     Unregister-ScheduledTask -TaskName $NombreTarea -Confirm:$false   # idempotente

@@ -192,14 +192,20 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
                 st.session_state.flash = f"✓ Reputación de '{org}': {comprador.NIVEL_LABEL[nivel]}."
         elif act == "informe_export":
             if cod:
-                r = informe.generar_xlsx(cod)
-                if isinstance(r, dict):
+                # Análisis integral: lee las bases (OCR incluido), llama a la IA una vez y arma el
+                # Excel de 8-9 hojas. Tarda y cuesta tokens — por eso el flash dice qué salió.
+                r = informe.generar(cod)
+                if not r.get("ok"):
                     st.session_state.flash = r.get("error", "No se pudo generar el informe.")
                 else:
                     st.session_state.informe_listo = {
-                        "cod": cod, "filename": f"informe_{cod}.xlsx",
-                        "b64": base64.b64encode(r).decode("ascii")}
-                    st.session_state.flash = "✓ Informe generado — se descarga solo."
+                        "cod": cod, "filename": informe.nombre_archivo(cod),
+                        "b64": base64.b64encode(r["xlsx"]).decode("ascii")}
+                    donde = (f" Guardado en la carpeta de bases ({r['ruta']})."
+                             if r.get("ruta") else f" ⚠ {r.get('aviso') or 'no se pudo guardar en disco'}.")
+                    sin_ia = "" if r.get("con_ia") else " (sin IA: riesgos y estrategia quedaron vacíos)"
+                    st.session_state.flash = (f"✓ Análisis integral: {len(r['hojas'])} hojas{sin_ia}."
+                                              f"{donde} Se descarga solo.")
         elif act == "cubic_ia":
             if cod:
                 r = cubicacion_ia.generar(cod)
@@ -230,9 +236,24 @@ if isinstance(val, dict) and val.get("nonce") and val["nonce"] != st.session_sta
         elif act == "cubic_preciar":
             if cod:
                 r = cubicacion_ia.preciar(cod)
-                st.session_state.flash = (
-                    f"✓ Preciado: {r['preciados']} partidas ({r['web']} por web). Costo ≈ ${r['costo']:,.0f}."
-                    .replace(",", ".") if r.get("ok") else r.get("error", "No se pudo preciar."))
+                if r.get("ok"):
+                    msg = (f"✓ Preciado: {r['preciados']} partidas ({r['web']} por web). "
+                          f"Costo ≈ ${r['costo']:,.0f}.".replace(",", "."))
+                    tends = r.get("tendencias") or []
+                    if tends:
+                        subs = sum(1 for t in tends if t["direccion"] == "sube")
+                        bajs = sum(1 for t in tends if t["direccion"] == "baja")
+                        partes = []
+                        if subs:
+                            partes.append(f"{subs} subieron")
+                        if bajs:
+                            partes.append(f"{bajs} bajaron")
+                        peor = max(tends, key=lambda t: abs(t["variacion_pct"] or 0))
+                        msg += (f" ⚠ {' y '.join(partes)} de precio vs. la cotización anterior "
+                               f"— la mayor: '{peor['descripcion'][:40]}' {peor['variacion_pct']:+.1f}%.")
+                    st.session_state.flash = msg
+                else:
+                    st.session_state.flash = r.get("error", "No se pudo preciar.")
         elif act == "error_resuelto":
             eid = val.get("eid")
             if eid:

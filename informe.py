@@ -1,274 +1,118 @@
 """
-informe.py — Exporta un .xlsx de una licitación con TODO lo que el sistema ya sabe.
+informe.py — Genera el ANÁLISIS INTEGRAL de una licitación en .xlsx y lo deja donde corresponde.
 
-Es deliberadamente de una sola fuente: no dispara research nuevo (eso es otro tipo de trabajo,
-más caro y manual). Ensambla lo que el pipeline ya calculó — header, score 6-D, análisis de Capa C,
-cubicación — en un Excel con FÓRMULAS reales (no valores pegados): el subtotal de cada partida y
-el margen recalculan solos si el usuario edita cantidad o precio, igual que la plantilla de
-referencia. Reusa scoring.PESOS/triage (misma fuente que el tablero) para que el informe nunca
-pueda decir un número distinto al que muestra la UI.
+Orquesta tres piezas y no hace nada más:
+    digest.py         → lee TODOS los documentos de las bases (con OCR) y los reduce a un digest
+    analisis.py       → arma los datos: determinista de la base + UNA llamada a Claude
+    excel_analisis.py → los baja a un Excel de 8-9 hojas con FÓRMULAS encadenadas
 
-  generar_xlsx(codigo) -> bytes (.xlsx) o {"error": ...} si el código no existe
+Hojas: Resumen · Objeto y Alineación · Cubicación · Compras · Financiero · Riesgos · RACI ·
+       Estrategia Ganar (si hay matriz de evaluación) · Competencia (si hay censo).
+
+EL PUNTO DEL EXCEL: nada derivado va congelado. Editar Cantidad o Precio unitario en «Cubicación»
+recalcula costo base → sobrecosto → financiamiento → escenarios de oferta → P&L → KPIs del Resumen.
+
+GUARDADO: el archivo SIEMPRE queda en la carpeta de bases de la licitación (la misma donde están
+los PDFs), además de devolverse como bytes para la descarga del tablero. Si esa carpeta no existe
+todavía, se crea; si no hay carpeta madre configurada, cae a storage/<codigo>.
+
+  generar(codigo)      -> {ok, xlsx, ruta, hojas, con_ia} | {ok: False, error}
+  generar_xlsx(codigo) -> bytes | {"error": ...}     (forma corta, la que usa el tablero)
 """
+import datetime
 import io
-import json
+import os
+import pathlib
+import sys
 
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-
+import analisis
 import db
-import scoring
-import cubicacion_ia
-
-OXIDE = "B0501B"
-STEEL = "6B7883"
-HEADER_FILL = PatternFill("solid", fgColor="1C232B")
-HEADER_FONT = Font(color="FFFFFF", bold=True, size=10)
-TITLE_FONT = Font(color=OXIDE, bold=True, size=16)
-SUB_FONT = Font(italic=True, size=11)
-LABEL_FONT = Font(color=STEEL, bold=True, size=9.5)
-TOTAL_FONT = Font(bold=True, size=11)
-THIN = Side(style="thin", color="D3DAE0")
-BORDER = Border(bottom=THIN)
-
-DIM_LABELS = {"margen": "Margen potencial", "cashflow": "Cash flow timing",
-              "complejidad": "Complejidad técnica", "logistico": "Riesgo logístico",
-              "alineacion": "Alineación", "repetibilidad": "Repetibilidad"}
+import excel_analisis
 
 
-def _lista(v):
-    if isinstance(v, list):
-        return v
-    if isinstance(v, str) and v.strip():
-        return [v.strip()]
-    return []
-
-
-def _header_row(ws, row, textos):
-    for i, t in enumerate(textos, 1):
-        cel = ws.cell(row=row, column=i, value=t)
-        cel.font = HEADER_FONT
-        cel.fill = HEADER_FILL
-        cel.alignment = Alignment(vertical="center")
-
-
-def _kv(ws, row, k, v):
-    ws.cell(row=row, column=1, value=k).font = LABEL_FONT
-    ws.cell(row=row, column=2, value=v)
-    return row + 1
-
-
-def _anchos(ws, anchos):
-    for i, a in enumerate(anchos, 1):
-        ws.column_dimensions[get_column_letter(i)].width = a
-
-
-def _recopilar(codigo):
+def carpeta_destino(codigo):
+    """Dónde vive esta licitación. En orden de preferencia:
+      1) la carpeta real donde están sus documentos registrados (la de verdad, la que abre Martín),
+      2) LOVEO_BASES_LOCAL/<codigo> (carpeta madre configurada, aunque todavía esté vacía),
+      3) storage/<codigo> (fallback: app hosteada, sin carpeta local).
+    Devuelve un Path ya creado."""
     with db.conn() as c:
-        lic = c.execute("SELECT * FROM licitaciones WHERE codigo=?", (codigo,)).fetchone()
-        if not lic:
-            return None
-        lic = dict(lic)
-        a = c.execute("SELECT * FROM analisis_bases WHERE codigo=? ORDER BY id DESC LIMIT 1",
-                      (codigo,)).fetchone()
-        analisis = dict(a) if a else None
-        extraccion = {}
-        if analisis and analisis.get("json_extraccion"):
-            try:
-                extraccion = json.loads(analisis["json_extraccion"])
-            except (ValueError, TypeError):
-                extraccion = {}
-        items = cubicacion_ia.borrador(codigo)
-    sj = {}
-    if lic.get("score_json"):
-        try:
-            sj = json.loads(lic["score_json"])
-        except (ValueError, TypeError):
-            sj = {}
-    return {"lic": lic, "analisis": analisis, "extraccion": extraccion, "items": items, "score_json": sj}
+        row = c.execute("SELECT ruta_local FROM documentos WHERE codigo=? AND ruta_local IS NOT NULL "
+                        "ORDER BY id LIMIT 1", (codigo,)).fetchone()
+    if row and row[0]:
+        p = pathlib.Path(str(row[0])).parent
+        if p.is_dir():
+            return p
+    madre = os.environ.get("LOVEO_BASES_LOCAL", "").strip()
+    if madre:
+        raiz = pathlib.Path(madre).expanduser()
+        if raiz.is_dir():
+            destino = db.safe_child(raiz, codigo)       # confinado a la carpeta madre
+            if destino:
+                destino.mkdir(parents=True, exist_ok=True)
+                return destino
+    destino = db.STORAGE_DIR / codigo
+    destino.mkdir(parents=True, exist_ok=True)
+    return destino
 
 
-def _hoja_resumen(wb, codigo, lic, analisis, ex, sj):
-    ws = wb.active
-    ws.title = "Resumen"
-    _anchos(ws, [26, 46, 14, 14])
-
-    ws["A1"] = f"ANÁLISIS LICITACIÓN — {codigo}"
-    ws["A1"].font = TITLE_FONT
-    ws["A2"] = lic.get("nombre") or "—"
-    ws["A2"].font = SUB_FONT
-    ws.merge_cells("A1:D1")
-    ws.merge_cells("A2:D2")
-
-    row = 4
-    for k, v in [("Organismo", lic.get("organismo") or "—"),
-                 ("Región", lic.get("region") or "—"),
-                 ("Cierre", (lic.get("fecha_cierre") or "—")[:16]),
-                 ("Presupuesto (portal)", lic.get("monto_estimado")),
-                 ("Estado", f"{lic.get('estado_revision') or '—'} / {lic.get('estado_resultado') or 'pendiente'}"),
-                 ("Admisible", "Sí" if lic.get("admisible") else ("No" if lic.get("admisible") is not None else "—"))]:
-        row = _kv(ws, row, k, v)
-    row += 1
-
-    ws.cell(row=row, column=1, value="SCORING 6 DIMENSIONES").font = Font(bold=True, size=12)
-    row += 1
-    hdr_row = row
-    _header_row(ws, row, ["Dimensión", "Peso", "Puntaje (1-10)", "Subtotal", "¿Evaluado?"])
-    row += 1
-    dims = sj.get("dimensiones") or {}
-    primer_dato = row
-    for k, peso in scoring.PESOS.items():
-        dv = dims.get(k) or {}
-        puntaje = dv.get("score")
-        ws.cell(row=row, column=1, value=DIM_LABELS.get(k, k))
-        ws.cell(row=row, column=2, value=peso)
-        c_pje = ws.cell(row=row, column=3, value=puntaje if puntaje is not None else 0)
-        # fórmula real: Subtotal = Peso × Puntaje — igual que la plantilla de referencia
-        ws.cell(row=row, column=4, value=f"=B{row}*C{row}")
-        ws.cell(row=row, column=5, value="Sí" if dv.get("evaluado") else "Pendiente")
-        for col in range(1, 6):
-            ws.cell(row=row, column=col).border = BORDER
-        row += 1
-    ultimo_dato = row - 1
-    ws.cell(row=row, column=1, value="TOTAL / 120").font = TOTAL_FONT
-    tot_cell = ws.cell(row=row, column=4, value=f"=SUM(D{primer_dato}:D{ultimo_dato})")
-    tot_cell.font = TOTAL_FONT
-    row += 2
-
-    total_hoy = sj.get("score_provisional")
-    ws.cell(row=row, column=1, value="Recomendación (según score al generar)").font = LABEL_FONT
-    ws.cell(row=row, column=2, value=scoring.triage(total_hoy) if total_hoy is not None else "sin score")
-    row += 2
-
-    if analisis:
-        ws.cell(row=row, column=1, value="ANÁLISIS DE BASES (CAPA C)").font = Font(bold=True, size=12)
-        row += 1
-        if analisis.get("resumen"):
-            ws.cell(row=row, column=1, value=analisis["resumen"])
-            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
-            ws.row_dimensions[row].height = 30
-            ws.cell(row=row, column=1).alignment = Alignment(wrap_text=True, vertical="top")
-            row += 1
-        for k, v in [("Presupuesto (bases)", analisis.get("presupuesto_clp")),
-                     ("Plazo de entrega", f"{analisis['plazo_dias']} días" if analisis.get("plazo_dias") else "—"),
-                     ("Subcontratación prohibida", str(ex.get("subcontratacion_prohibida") or "—")),
-                     ("Anticipo", str(ex.get("anticipo") or "—"))]:
-            row = _kv(ws, row, k, v)
-        row += 1
-        reqs = _lista(ex.get("requisitos_clave"))
-        if reqs:
-            ws.cell(row=row, column=1, value="Requisitos clave (checklist)").font = Font(bold=True, size=10.5)
-            row += 1
-            for x in reqs:
-                ws.cell(row=row, column=1, value="☐")
-                ws.cell(row=row, column=2, value=str(x))
-                row += 1
-            row += 1
-        gars = _lista(ex.get("garantias"))
-        if gars:
-            ws.cell(row=row, column=1, value="Garantías").font = Font(bold=True, size=10.5)
-            row += 1
-            for g in gars:
-                txt = f"{g.get('tipo', '')} — {g.get('monto_o_pct', '')}" if isinstance(g, dict) else str(g)
-                ws.cell(row=row, column=1, value="☐")
-                ws.cell(row=row, column=2, value=txt)
-                row += 1
-            row += 1
-        crits = _lista(ex.get("criterios_evaluacion"))
-        if crits:
-            ws.cell(row=row, column=1, value="Criterios de evaluación").font = Font(bold=True, size=10.5)
-            row += 1
-            for cr in crits:
-                if isinstance(cr, dict):
-                    ws.cell(row=row, column=1, value=cr.get("nombre", ""))
-                    ws.cell(row=row, column=2, value=f"{cr.get('peso_pct', '')}%")
-                else:
-                    ws.cell(row=row, column=1, value=str(cr))
-                row += 1
-
-    ws.freeze_panes = "A4"
-    return hdr_row  # por si algún caller quiere referenciarlo (no usado hoy)
+def nombre_archivo(codigo, fecha=None):
+    fecha = fecha or datetime.date.today()
+    return f"Analisis_{str(codigo).replace('/', '-')}_{fecha.isoformat()}.xlsx"
 
 
-def _hoja_cubicacion(wb, codigo, items, analisis):
-    ws = wb.create_sheet("Cubicación")
-    _anchos(ws, [10, 42, 11, 9, 15, 15])
-    ws["A1"] = "CUBICACIÓN"
-    ws["A1"].font = Font(bold=True, size=13)
-    ws["A2"] = "✏️ Editable: cambiá Cantidad o Precio unitario y el Total de esa fila recalcula solo."
-    ws["A2"].font = Font(italic=True, size=9, color=STEEL)
-    ws.merge_cells("A2:F2")
+def generar(codigo, enriquecer=None, hoy=None):
+    """Análisis integral completo. Devuelve los bytes y la ruta donde quedó guardado.
+    `enriquecer` se pasa a analisis.datos() (inyectable para tests sin red)."""
+    hoy = hoy or datetime.date.today()
+    D = analisis.datos(codigo, enriquecer=enriquecer, hoy=hoy)
+    if D.get("error"):
+        return {"ok": False, "error": D["error"]}
 
-    hdr = 4
-    _header_row(ws, hdr, ["Partida", "Descripción", "Cantidad", "Unidad", "Precio unitario", "Total"])
-    row = hdr + 1
-    primer = row
-    if items:
-        for it in items:
-            ws.cell(row=row, column=1, value=it.get("partida") or "")
-            ws.cell(row=row, column=2, value=it.get("descripcion") or "")
-            ws.cell(row=row, column=3, value=it.get("cantidad"))
-            ws.cell(row=row, column=4, value=it.get("unidad") or "")
-            ws.cell(row=row, column=5, value=it.get("precio_unitario"))
-            # fórmula: Total = Cantidad × Precio unitario (recalcula si se editan)
-            ws.cell(row=row, column=6, value=f"=IF(AND(C{row}<>\"\",E{row}<>\"\"),C{row}*E{row},\"\")")
-            ws.cell(row=row, column=5).number_format = "#,##0"
-            ws.cell(row=row, column=6).number_format = "#,##0"
-            for col in range(1, 7):
-                ws.cell(row=row, column=col).border = BORDER
-            row += 1
-    else:
-        ws.cell(row=row, column=1, value="Sin borrador de cubicación todavía.")
-        row += 1
-    ultimo = row - 1
-
-    row += 1
-    ws.cell(row=row, column=5, value="Costo base (Σ Total)").font = TOTAL_FONT
-    costo_row = row
-    ws.cell(row=row, column=6, value=(f"=SUM(F{primer}:F{ultimo})" if items else 0)).font = TOTAL_FONT
-    ws.cell(row=row, column=6).number_format = "#,##0"
-    row += 1
-
-    techo = analisis.get("presupuesto_clp") if analisis else None
-    if techo:
-        ws.cell(row=row, column=5, value="Techo / presupuesto (bases)").font = LABEL_FONT
-        ws.cell(row=row, column=6, value=techo).number_format = "#,##0"
-        techo_row = row
-        row += 1
-        ws.cell(row=row, column=5, value="Margen (techo − costo)").font = TOTAL_FONT
-        ws.cell(row=row, column=6, value=f"=F{techo_row}-F{costo_row}").number_format = "#,##0"
-        margen_row = row
-        row += 1
-        ws.cell(row=row, column=5, value="Margen %").font = LABEL_FONT
-        ws.cell(row=row, column=6, value=f"=IF(F{techo_row}=0,\"\",F{margen_row}/F{techo_row})")
-        ws.cell(row=row, column=6).number_format = "0.0%"
-        row += 1
-    else:
-        ws.cell(row=row, column=5, value="Sin techo de presupuesto (bases): falta Capa C.").font = Font(
-            italic=True, size=9, color=STEEL)
-        row += 1
-
-    sin_precio = sum(1 for it in items if it.get("total") is None) if items else 0
-    if sin_precio:
-        ws.cell(row=row, column=1,
-               value=f"⚠ {sin_precio} partida(s) sin precio o cantidad — el margen no cierra hasta completarlas.")
-        ws.cell(row=row, column=1).font = Font(italic=True, size=9, color=STEEL)
-
-    ws.freeze_panes = f"A{hdr + 1}"
-
-
-def generar_xlsx(codigo):
-    """Arma el .xlsx en memoria. Devuelve bytes, o {"error": ...} si el código no existe."""
-    d = _recopilar(codigo)
-    if d is None:
-        return {"error": f"No se encontró la licitación {codigo}."}
-    lic, analisis, ex, items, sj = d["lic"], d["analisis"], d["extraccion"], d["items"], d["score_json"]
-
-    wb = Workbook()
-    _hoja_resumen(wb, codigo, lic, analisis, ex, sj)
-    _hoja_cubicacion(wb, codigo, items, analisis)
-
+    wb = excel_analisis.construir(D)
     buf = io.BytesIO()
     wb.save(buf)
-    return buf.getvalue()
+    xlsx = buf.getvalue()
+
+    ruta, error_guardado = None, None
+    try:
+        destino = carpeta_destino(codigo) / nombre_archivo(codigo, hoy)
+        destino.write_bytes(xlsx)
+        ruta = str(destino)
+    except OSError as e:      # disco lleno, permisos, OneDrive desconectado: la descarga igual sirve
+        error_guardado = f"No se pudo guardar en la carpeta de bases ({e.__class__.__name__}: {e})."
+
+    with db.conn() as c:
+        db.log_evento(c, codigo, "informe",
+                      f"Análisis integral generado ({len(wb.sheetnames)} hojas"
+                      f"{', con IA' if D.get('_ia') else ', sin IA'})."
+                      + (f" Guardado en {ruta}." if ruta else f" {error_guardado}"))
+
+    return {"ok": True, "xlsx": xlsx, "ruta": ruta, "hojas": list(wb.sheetnames),
+            "con_ia": bool(D.get("_ia")), "aviso": error_guardado,
+            "info_faltante": D.get("info_faltante") or []}
+
+
+def generar_xlsx(codigo, enriquecer=None):
+    """Forma corta: bytes del .xlsx, o {"error": ...} si el código no existe.
+    Guarda igual en la carpeta de bases (es el requisito, no un efecto secundario opcional)."""
+    r = generar(codigo, enriquecer=enriquecer)
+    return r["xlsx"] if r.get("ok") else {"error": r.get("error", "No se pudo generar el informe.")}
+
+
+def _p(txt):
+    """La consola de Windows es cp1252 y revienta con '≥', '·' o cualquier tilde rara: un análisis
+    que se generó bien no puede morir en el print del resumen."""
+    codec = getattr(sys.stdout, "encoding", None) or "utf-8"
+    print(str(txt).encode(codec, errors="replace").decode(codec))
+
+
+if __name__ == "__main__":
+    r = generar(sys.argv[1])
+    if not r.get("ok"):
+        _p(f"ERROR: {r['error']}")
+        raise SystemExit(1)
+    _p(f"OK: {len(r['xlsx'])} bytes - hojas: {', '.join(r['hojas'])}")
+    _p(f"IA: {'si' if r['con_ia'] else 'no'} - guardado en: {r['ruta'] or '(no se pudo guardar)'}")
+    for x in r["info_faltante"]:
+        _p(f"  falta: {x}")

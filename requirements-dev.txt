@@ -3,3 +3,6 @@
 #   python scripts/preflight.py --install-hook   # re-instala el pre-push tras clonar
 pytest>=8.0
 ruff>=0.6
+# Motor de planillas: ejecuta las formulas del .xlsx del analisis integral y verifica que editar
+# Cantidad recalcule toda la cadena. Sin esto ese sensor se saltea (el resto de los tests corre igual).
+formulas>=1.3

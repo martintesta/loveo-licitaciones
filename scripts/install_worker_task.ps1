@@ -53,10 +53,12 @@ $Trigger.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
     -RepetitionInterval (New-TimeSpan -Hours $IntervaloHoras) `
     -RepetitionDuration ([TimeSpan]::MaxValue)).Repetition
 
-# Correr en tu sesión, sin admin. AllowStartIfOnBatteries + StopIfGoingOnBatteries:$false para que
+# Correr en tu sesión, sin admin. AllowStartIfOnBatteries + DontStopIfGoingOnBatteries para que
 # una descarga en curso NO se corte si el notebook pasa a batería (dejaría bases a medias).
+# OJO: el switch es -DontStopIfGoingOnBatteries; NO existe un -StopIfGoingOnBatteries:$false
+# (escrito así, el registro de la tarea falla entero).
 $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopOnIdleEnd `
-    -AllowStartIfOnBatteries -StopIfGoingOnBatteries:$false -MultipleInstances IgnoreNew
+    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
 
 if (Get-ScheduledTask -TaskName $NombreTarea -ErrorAction SilentlyContinue) {
     Unregister-ScheduledTask -TaskName $NombreTarea -Confirm:$false   # idempotente: re-registra limpio

@@ -321,39 +321,64 @@ def _precio_num(v):
 
 
 def _buscar_web_real(descripcion, unidad):
-    """Punto pluggable de la búsqueda web de precios (recomendación: catálogo interno + web con URL
-    clickeable). Usa la herramienta de web search de Claude y devuelve {precio, url} o None.
-    Defensivo: cualquier fallo → None (el precio interno igual funciona). Apagable con
-    LOVEO_PRECIOS_WEB=0. El mecanismo exacto (Claude web search / API de búsqueda / scraping) se
-    puede cambiar acá sin tocar el resto."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return None
+    """Punto pluggable de la búsqueda web de precios: delega en `precios.buscar_precio_web`, que es
+    la fuente ÚNICA de cotización del proyecto (la misma que usa el refresco mensual del catálogo).
+    Tenerlo en un solo lugar evita que el precio que se guarda al preciar un BOM y el que guarda el
+    job mensual salgan de prompts distintos. Sigue siendo defensivo: cualquier fallo → None.
+    Import local: `precios` importa este módulo, así que a nivel de módulo sería circular."""
+    import precios
+    return precios.buscar_precio_web(descripcion, unidad)
+
+
+# Un precio 'web' (estimado de mercado) se da por vencido y se re-cotiza pasados estos días, para
+# que el historial de precios_referencia efectivamente vaya acumulando puntos en el tiempo y la
+# tendencia tenga con qué compararse. Un precio 'valentina' (lo que Loveo REALMENTE pagó en un
+# proyecto) no vence por esta regla: no es una estimación de mercado, es un hecho.
+PRECIO_VENCE_DIAS = int(os.environ.get("LOVEO_PRECIO_VENCE_DIAS", "45"))
+
+
+def _vencido(fecha_str):
+    import datetime
+    if not fecha_str:
+        return True
     try:
-        import json
-        import anthropic
-        cl = anthropic.Anthropic()
-        pregunta = (f"Buscá en ecommerces chilenos (Sodimac, Easy, MercadoLibre, etc.) el precio de: "
-                    f"'{descripcion}'" + (f" (unidad {unidad})" if unidad else "") + ". "
-                    "Devolvé SOLO un JSON {\"precio_clp\": número, \"url\": \"la URL del producto\"}. "
-                    "Si no encontrás un precio claro, devolvé {\"precio_clp\": null, \"url\": null}.")
-        msg = cl.messages.create(
-            model=os.environ.get("LOVEO_MODEL", "claude-haiku-4-5"), max_tokens=400,
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
-            messages=[{"role": "user", "content": pregunta}])
-        txt = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
-        raw = txt[txt.find("{"):txt.rfind("}") + 1]
-        data = json.loads(raw) if raw else {}
-        precio = _precio_num(data.get("precio_clp"))
-        return {"precio": precio, "url": data.get("url")} if precio is not None else None
-    except Exception:
+        f = datetime.datetime.fromisoformat(str(fecha_str)[:19])
+    except ValueError:
+        return True
+    return (datetime.datetime.now() - f).days > PRECIO_VENCE_DIAS
+
+
+def tendencia(descripcion, n=6):
+    """Tendencia de precio de un material: compara el último precio guardado en precios_referencia
+    contra el anterior (mismo descripcion_norm, cualquier fuente, ordenado por fecha). None si hay
+    menos de 2 puntos — recién con la segunda cotización/curación hay algo que comparar.
+    Devuelve {actual, anterior, variacion_pct, direccion (sube/baja/estable), n_puntos, historial}."""
+    import cubicacion
+    norm = cubicacion._na(descripcion)
+    with db.conn() as c:
+        # id DESC como desempate de fecha DESC: dos importaciones/cotizaciones el mismo segundo
+        # (o el mismo día, en el caso de precios 'valentina') empatan en fecha; el id autoincrement
+        # sí refleja el orden real de inserción sin depender de la resolución del reloj.
+        rows = [dict(r) for r in c.execute(
+            "SELECT precio_unitario AS precio, fuente, fecha FROM precios_referencia "
+            "WHERE descripcion_norm=? AND precio_unitario IS NOT NULL "
+            "ORDER BY fecha DESC, id DESC LIMIT ?", (norm, n)).fetchall()]
+    if len(rows) < 2:
         return None
+    actual, anterior = rows[0]["precio"], rows[1]["precio"]
+    var = round(100 * (actual - anterior) / anterior, 1) if anterior else None
+    direccion = "sube" if (var or 0) > 2 else ("baja" if (var or 0) < -2 else "estable")
+    return {"actual": actual, "anterior": anterior, "variacion_pct": var,
+            "direccion": direccion, "n_puntos": len(rows), "historial": rows}
 
 
 def preciar(codigo, buscar=None, web=None):
-    """Precia el BOM IA: catálogo interno (precios_referencia) primero, y para los huecos una
-    búsqueda web que deja el precio con su URL clickeable. Actualiza cubicacion_items y cachea los
-    precios web en el catálogo propio. `buscar` inyectable (tests sin red). Devuelve
-    {ok, preciados, web, sin_precio, costo}."""
+    """Precia el BOM IA: catálogo interno (precios_referencia) primero, y para los huecos (o un
+    precio 'web' vencido, ver PRECIO_VENCE_DIAS) una búsqueda web que deja el precio con su URL
+    clickeable. Actualiza cubicacion_items y cachea los precios web en el catálogo propio SIN
+    pisar el punto anterior (INSERT, no UPDATE) — así precios_referencia va quedando como
+    historial y `tendencia()` tiene con qué comparar. `buscar` inyectable (tests sin red).
+    Devuelve {ok, preciados, web, sin_precio, costo, tendencias}."""
     import cubicacion  # su _na fue la que escribió descripcion_norm en precios_referencia
     schema_v3.migrate()
     if web is None:
@@ -369,14 +394,16 @@ def preciar(codigo, buscar=None, web=None):
 
     preciados = web_n = 0
     costo = 0.0
+    tendencias = []
     for it in rows:
         norm = cubicacion._na(it["descripcion"])
         precio, fuente, url = None, None, None
-        with db.conn() as c:   # 1) catálogo interno
-            m = c.execute("SELECT precio_unitario, source_url FROM precios_referencia "
+        with db.conn() as c:   # 1) catálogo interno (id DESC desempata fecha DESC, ver tendencia())
+            m = c.execute("SELECT precio_unitario, source_url, fuente, fecha FROM precios_referencia "
                           "WHERE descripcion_norm=? AND precio_unitario IS NOT NULL "
-                          "ORDER BY fecha DESC", (norm,)).fetchone()
-        if m:
+                          "ORDER BY fecha DESC, id DESC LIMIT 1", (norm,)).fetchone()
+        usar_cache = m and not (m["fuente"] == "web" and _vencido(m["fecha"]))
+        if usar_cache:
             precio, fuente, url = m["precio_unitario"], "interno", m["source_url"]
         elif web:             # 2) búsqueda web (fuera de toda conexión abierta: es lento)
             try:
@@ -386,10 +413,14 @@ def preciar(codigo, buscar=None, web=None):
             precio = _precio_num(r.get("precio"))
             if precio is not None:
                 fuente, url = "web", r.get("url")
-                with db.conn() as c:   # cachear en el catálogo propio para la próxima
+                with db.conn() as c:   # nuevo punto de historial (no pisa el anterior)
                     c.execute("INSERT INTO precios_referencia (descripcion, descripcion_norm, unidad, "
                               "precio_unitario, fuente, source_url, fecha) VALUES (?,?,?,?,?,?,?)",
                               (it["descripcion"], norm, it["unidad"], precio, "web", url, db._now()))
+            elif m:            # la web no encontró nada mejor: mejor un precio vencido que ninguno
+                precio, fuente, url = m["precio_unitario"], "interno", m["source_url"]
+        elif m:                # web desactivada (LOVEO_PRECIOS_WEB=0) pero había uno vencido: usarlo
+            precio, fuente, url = m["precio_unitario"], "interno", m["source_url"]
         if precio is not None:
             total = round(precio * it["cantidad"], 2) if it["cantidad"] is not None else None
             costo += total or 0
@@ -398,11 +429,16 @@ def preciar(codigo, buscar=None, web=None):
             with db.conn() as c:
                 c.execute("UPDATE cubicacion_items SET precio_unitario=?, total=?, precio_fuente=?, "
                           "precio_url=? WHERE id=?", (precio, total, fuente, url, it["id"]))
+            t = tendencia(it["descripcion"])
+            if t and t["direccion"] != "estable":
+                tendencias.append({"descripcion": it["descripcion"], **t})
     with db.conn() as c:
+        tend_txt = f" {len(tendencias)} con tendencia de precio." if tendencias else ""
         db.log_evento(c, codigo, "cubicacion_ia",
-                      f"Cubicación preciada: {preciados}/{len(rows)} partidas (web {web_n}). Costo ≈ {costo:.0f}.")
+                      f"Cubicación preciada: {preciados}/{len(rows)} partidas (web {web_n}). "
+                      f"Costo ≈ {costo:.0f}.{tend_txt}")
     return {"ok": True, "preciados": preciados, "web": web_n,
-            "sin_precio": len(rows) - preciados, "costo": costo}
+            "sin_precio": len(rows) - preciados, "costo": costo, "tendencias": tendencias}
 
 
 # ---------------------------------------------------------------- Fase 4: margen real → score
