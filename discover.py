@@ -14,6 +14,7 @@ Uso:
     correr_dia("11062026")            # descubre, filtra, trae detalle de los que matchean, persiste
 """
 
+import re
 import time
 import json
 import requests
@@ -102,6 +103,53 @@ def matchea(nombre: str) -> bool:
     if any(rx.search(n) for rx in _cargar_aprendidas()):
         return False
     return any(rx.search(n) for rx in kw_re)
+
+
+# --------------------------------------------------------------------------
+# Segunda pasada: las que el título esconde
+# --------------------------------------------------------------------------
+# `matchea()` sólo puede leer el TÍTULO porque el listado diario del API trae únicamente
+# {CodigoExterno, Nombre, CodigoEstado, FechaCierre} — la descripción y la categoría ONU están
+# en el detalle, que es una llamada por licitación.
+#
+# El agujero es real y caro. Caso medido: "ADQUIS E INST PUNTO DE SEGURIDAD AMERICO VESPUCIO"
+# (Recoleta, $15,0M) es un container habilitado como oficina modular — pero la palabra "container"
+# aparece SÓLO en la descripción. Ninguna keyword de título la pesca. La encontró Martín a mano.
+#
+# Medido sobre un listado real de 1.186 licitaciones: 13 matchean por título. De las 1.173
+# restantes, 430 traen un verbo de compra y 337 quedan tras sacar el ruido evidente. Esas 337
+# son el costo de la segunda pasada: ~6 minutos más por corrida. A cambio se recupera la
+# descripción Y la categoría ONU, que es con lo que decide `triage.gate_producto()`.
+_RX_VERBO_COMPRA = re.compile(
+    r"\badquis|\binstalac|\binstal\b|\binst\b|\bprovision|\bsuministro|\bhabilitac|"
+    r"\bconstrucc|\bfabricac|\bimplementac|\bmejoramiento|\breposicion|\bcompra\b")
+# Ruido obvio que se descarta por título, para no gastar una llamada en él.
+_RX_RUIDO = re.compile(
+    r"\binsumo|\bmedicament|\bfarmac|\balimento|\bracion|\bviver|\bcombustib|\bvestuario|"
+    r"\bcapacitac|\bcurso\b|\basesor|\bconsultor|\bsoftware|\blicencia|\barriendo de vehic|"
+    r"\bmantenc|\bmantenimiento|\bservicio de aseo|\btransporte de|\bpasaje|\bseguro\b|"
+    r"\bpublicidad|\bimprenta|\bcomputador|\bnotebook|\btoner|\bpapeleria|\bmobiliario|"
+    r"\bmamadera|\bmarcapaso|\bsuero|\boxigeno|\blena\b|\bcortina")
+
+
+def candidatas_segunda_pasada(listado, ya_matcheadas=None):
+    """Las que NO matchean por título pero podrían esconder el producto en la descripción.
+
+    Filtro barato y sólo sobre el título: verbo de compra sí, ruido evidente no. Lo que sobrevive
+    merece gastar una llamada de detalle."""
+    ya = set(ya_matcheadas or [])
+    out = []
+    for x in listado or []:
+        cod = x.get("CodigoExterno")
+        if cod in ya:
+            continue
+        n = _na(x.get("Nombre") or "")
+        if matchea(x.get("Nombre") or ""):
+            continue
+        if not _RX_VERBO_COMPRA.search(n) or _RX_RUIDO.search(n):
+            continue
+        out.append(x)
+    return out
 
 
 def listar_dia(fecha_ddmmaaaa: str) -> list[dict]:

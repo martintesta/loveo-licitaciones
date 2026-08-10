@@ -50,6 +50,22 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
                 db.log_evento(c, codigo, "error", f"run_daily: {e}")
         db.record_run(c, fecha, len(listado), len(candidatos), admisibles, errores)
 
+    # SEGUNDA PASADA: las que el título esconde. El listado diario sólo trae el nombre, así que
+    # una licitación cuyo producto está en la descripción no llega nunca al filtro. Caso real:
+    # "ADQUIS E INST PUNTO DE SEGURIDAD AMERICO VESPUCIO" (Recoleta, $15,0M) era un container
+    # habilitado como oficina — la palabra "container" sólo aparecía en la descripción.
+    rescatadas = []
+    if traer_detalles and listado and os.environ.get("LOVEO_SEGUNDA_PASADA", "1") == "1":
+        try:
+            rescatadas = _segunda_pasada(listado, {x["CodigoExterno"] for x in candidatos}, c=None)
+        except Exception as e:
+            rescatadas = [{"error": str(e)[:120]}]
+            try:
+                import observabilidad
+                observabilidad.capturar("run_daily.segunda_pasada", e)
+            except Exception:
+                pass
+
     enlaces = relicitaciones.detectar()   # enlaza desiertas con su re-licitación (conn propia)
 
     bases = None
@@ -93,7 +109,45 @@ def procesar_dia(fecha, listado=None, traer_detalles=True):
 
     return {"fecha": fecha, "total": len(listado), "candidatos": len(candidatos),
             "admisibles": admisibles, "errores": errores, "relicitaciones": enlaces,
-            "bases_local": bases, "visita_terreno": visita, "avisos": avisos}
+            "rescatadas": rescatadas, "bases_local": bases, "visita_terreno": visita,
+            "avisos": avisos}
+
+
+MAX_SEGUNDA_PASADA = int(os.environ.get("LOVEO_MAX_SEGUNDA_PASADA", "150"))
+
+
+def _segunda_pasada(listado, ya, c=None):
+    """Pide el detalle de las que el título no delata y las pasa por el embudo.
+
+    Sobre un listado real de 1.186: 13 matchean por título, 337 quedan como candidatas tras el
+    filtro barato. Acotado por MAX_SEGUNDA_PASADA porque cada una es una llamada al API — el
+    tope se gasta primero en lo que cierra más lejos, que es lo que todavía se puede trabajar.
+
+    Devuelve sólo las RESCATADAS: las que el embudo aprueba y por lo tanto valen un alta."""
+    import discover as disc
+    import triage
+    cands = disc.candidatas_segunda_pasada(listado, ya)[:MAX_SEGUNDA_PASADA]
+    rescatadas = []
+    for item in cands:
+        cod = item.get("CodigoExterno")
+        try:
+            det = discover.traer_detalle(cod)
+            time.sleep(1.0)
+        except Exception:
+            continue
+        if not det:
+            continue
+        row = discover._aplanar_detalle(det)
+        row["json_detalle"] = json.dumps(det, ensure_ascii=False)
+        g = triage.gate_producto(row)
+        if not g["pasa"]:
+            continue
+        r = procesar_codigo(cod, manual=False)      # alta completa: upsert + extract + score
+        if r.get("ok"):
+            rescatadas.append({"codigo": cod, "nombre": row.get("nombre"),
+                               "senal": g["senal"], "confianza": g["confianza"],
+                               "score": r.get("score")})
+    return rescatadas
 
 
 def procesar_codigo(codigo, manual=True):
