@@ -38,3 +38,29 @@ def test_logistico_lejos_penaliza_y_dispara_x3():
 def test_cashflow_sin_modalidad_queda_pendiente():
     sc = scoring.score_provisional({"nombre": "container", "region": RM})  # sin modalidad
     assert sc["dimensiones"]["cashflow"]["evaluado"] is False
+
+
+# =========================== base única: Pirque ============================
+
+def test_la_distancia_se_mide_desde_la_base_activa_no_desde_la_mas_cercana():
+    """INSTRUCCIÓN DE MARTÍN (ago-2026): el traslado se calcula SIEMPRE desde Pirque.
+
+    Antes `_dist_min` tomaba la base MÁS CERCANA de las dos, lo que supone que el módulo puede
+    salir indistintamente de Pirque o de Puerto Montt. Con la fabricación en un solo lugar eso
+    subestima el flete, que es la partida que más varía entre una licitación cerca y una lejos:
+    Los Lagos daba 30 km (Puerto Montt) y en realidad son 1.000 desde Pirque."""
+    km_pirque, base = scoring._dist_min("Región de los Lagos", base="Pirque")
+    assert base == "Pirque" and km_pirque == 1000
+    km_pm, base_pm = scoring._dist_min("Región de los Lagos", base="Puerto Montt")
+    assert base_pm == "Puerto Montt" and km_pm == 30
+
+
+def test_magallanes_desde_pirque_dispara_la_penalizacion():
+    sc, nota, trigger = scoring._logistico("Región de Magallanes y de la Antártica", "Punta Arenas")
+    assert trigger is True and sc == 1
+    assert "Pirque" in nota
+
+
+def test_la_region_metropolitana_sigue_siendo_cerca():
+    sc, nota, trigger = scoring._logistico("Región Metropolitana de Santiago", "Recoleta")
+    assert trigger is False and sc == 9

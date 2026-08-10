@@ -72,18 +72,41 @@ ONE_OFF = ["mejoramiento", "remodelación", "remodelacion", "mantención", "mant
            "habilitación", "habilitacion", "reparación", "reparacion", "ampliación", "ampliacion"]
 
 
-def _dist_min(region):
+# Nombre interno de config (pirque / puerto_montt) → clave de la tabla BASES de arriba.
+_ALIAS_BASE = {"pirque": "Pirque", "puerto_montt": "Puerto Montt", "puertomontt": "Puerto Montt"}
+
+
+def _base_activa():
+    """La base desde la que se mide el traslado. Instrucción de Martín (ago-2026): SIEMPRE desde
+    Pirque hasta nuevo aviso.
+
+    Antes esto tomaba la base MÁS CERCANA de las dos, que es una operación distinta: suponía que
+    el módulo puede salir indistintamente de Pirque o de Puerto Montt. Mientras la fabricación
+    esté en un solo lugar, medir contra la más cercana subestima el flete — y el flete es la
+    partida que más varía entre una licitación cerca y una lejos."""
+    try:
+        from config import BASE_OPERATIVA
+        return _ALIAS_BASE.get(str(BASE_OPERATIVA).strip().lower())
+    except Exception:
+        return None
+
+
+def _dist_min(region, base=None):
+    """(km, base). Mide contra la base ACTIVA; sólo si no hay una configurada cae al mínimo
+    entre todas, que es el comportamiento viejo."""
     if not region:
         return None, None
     r = region.lower()
-    best = None; base = None
-    for bname, mp in BASES.items():
+    activa = base or _base_activa()
+    candidatas = ({activa: BASES[activa]} if activa in BASES else BASES)
+    best = None; base_n = None
+    for bname, mp in candidatas.items():
         for key, km in mp.items():
             if key in r:
                 if best is None or km < best:
-                    best, base = km, bname
+                    best, base_n = km, bname
                 break
-    return best, base
+    return best, base_n
 
 
 def _logistico(region, comuna=None):
