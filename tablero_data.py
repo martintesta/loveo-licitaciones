@@ -142,6 +142,7 @@ def build_data(usuario=None):
             "       vigente_oferta, estado_revision, estado_resultado, score_provisional, "
             "       score_json, fecha_descubierta, fecha_actualizada, "
             "       margen_neto, veredicto_fin, costo_base_est, veredicto_fuente, "
+            "       unidad, direccion_unidad, contacto, contacto_cargo, "
             "       triage_gate, triage_motivo, triage_confianza, visita_caracter, "
             "       visita_fecha_txt, "
             "       (json_detalle IS NULL) AS sin_detalle "
@@ -225,6 +226,10 @@ def build_data(usuario=None):
         lics[cod] = {
             "cod": cod, "nom": r["nombre"] or "—", "org": r["organismo"] or "",
             "reg": r["region"] or "", "regc": _region_corta(r["region"]),
+            # MANDANTE: la unidad que recibe la obra. El organismo firma la orden de
+            # compra; la unidad es con quien se coordina la visita y la entrega.
+            "unidad": r["unidad"] or "", "dirUnidad": r["direccion_unidad"] or "",
+            "contacto": r["contacto"] or "", "contactoCargo": r["contacto_cargo"] or "",
             "monto": _clp(r["monto_estimado"]), "moneda": r["moneda"] or "",
             "cierreFmt": cierre.strftime("%d-%m-%Y %H:%M") if cierre else "", "dias": dias,
             "visita": (_vis.strftime("%d-%m-%Y %H:%M") if _vis else ""),

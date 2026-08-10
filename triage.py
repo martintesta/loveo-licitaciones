@@ -92,7 +92,15 @@ TOKENS_CORE = ["contenedor", "contenedores", "container", "containers", "contein
                "mediagua", "mediaguas",
                # Loveo persigue fotovoltaico de hecho: 4 licitaciones vivas en revisión. Se
                # reconoce como core hasta que el negocio diga lo contrario — la asimetría manda.
-               "fotovoltaico", "fotovoltaica", "fotovoltaicos", "fotovoltaicas"]
+               "fotovoltaico", "fotovoltaica", "fotovoltaicos", "fotovoltaicas",
+               # MÓVILES: Martín confirmó que la clínica dental móvil es core (ago-2026). Loveo
+               # fabrica el habitáculo clínico; que vaya sobre ruedas no lo saca del oficio. El
+               # código ONU las archiva en "2518 Carrocerías y remolques" y por eso el embudo las
+               # mataba — es el mismo error de confiar en la familia ONU, que dice cómo archivó
+               # la compra el comprador y no qué se fabrica.
+               "clinica dental movil", "clínica dental móvil", "clinica movil", "clínica móvil",
+               "dental movil", "dental móvil", "veterinaria movil", "veterinaria móvil",
+               "sala dental", "salas dentales", "clinica dental", "clínica dental"]
 # Negativas DURAS: nombran un producto que Loveo no fabrica. Matan siempre, haya o no core.
 TOKENS_NEGATIVOS_DUROS = [
     "software", "plataforma", "sistema informatico", "sistema informático", "aplicacion movil",

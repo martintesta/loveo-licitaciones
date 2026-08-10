@@ -277,6 +277,14 @@ def _crear_tablas():
         _asegurar_columna(c, "licitaciones", "veredicto_fin", "TEXT")    # GO|LIMITE|AJUSTADO|NO-GO
         _asegurar_columna(c, "licitaciones", "veredicto_fuente", "TEXT")  # cubicacion|parametrico
         _asegurar_columna(c, "licitaciones", "veredicto_at", "TEXT")
+        # MANDANTE y contacto. Venían en el detalle del API desde siempre (Comprador.NombreUnidad,
+        # DireccionUnidad, NombreUsuario) y se descartaban al aplanar. El organismo dice quién
+        # firma la orden de compra; la unidad dice para quién es la obra y con quién se coordina
+        # la visita — que no son lo mismo: La Cisterna compra, pero el mandante es SALUD.
+        _asegurar_columna(c, "licitaciones", "unidad", "TEXT")
+        _asegurar_columna(c, "licitaciones", "direccion_unidad", "TEXT")
+        _asegurar_columna(c, "licitaciones", "contacto", "TEXT")
+        _asegurar_columna(c, "licitaciones", "contacto_cargo", "TEXT")
 
 
 def _asegurar_columna(c, tabla, columna, tipo):

@@ -171,6 +171,14 @@ def _aplanar_detalle(d: dict) -> dict:
         "codigo": d.get("CodigoExterno"),
         "nombre": d.get("Nombre"),
         "organismo": comprador.get("NombreOrganismo") or comprador.get("NombreUnidad"),
+        # MANDANTE: la unidad que compra dentro del organismo (SALUD, SECPLAN, DAEM, un hospital…).
+        # Es quien realmente recibe la obra y con quien se coordina, y no es lo mismo que el
+        # organismo: "I. MUNICIPALIDAD DE LA CISTERNA" compra, pero el mandante es "SALUD".
+        # Estaba en el detalle desde siempre y se descartaba al aplanar.
+        "unidad": (comprador.get("NombreUnidad") or "").strip() or None,
+        "direccion_unidad": (comprador.get("DireccionUnidad") or "").strip() or None,
+        "contacto": (comprador.get("NombreUsuario") or "").strip() or None,
+        "contacto_cargo": (comprador.get("CargoUsuario") or "").strip() or None,
         "region": region,
         "comuna": (comprador.get("ComunaUnidad") or "").strip() or None,
         "modalidad": d.get("Modalidad"),

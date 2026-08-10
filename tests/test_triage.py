@@ -250,3 +250,30 @@ def test_el_techo_de_costo_es_coherente_con_el_margen_que_promete():
     base = cp.techo_costo(techo_neto, 0.25)
     m = cp.margenes(techo_neto, base, margen_error=0)
     assert abs(m["margen_optimista"] - 0.25) < 0.01
+
+
+# =========================== móviles: corrección de Martín ==================
+
+def test_la_clinica_dental_movil_es_core():
+    """CORRECCIÓN DE MARTÍN (ago-2026): el embudo la mataba por la familia ONU 2518
+    'Carrocerías y remolques'. Loveo fabrica el habitáculo clínico; que vaya sobre ruedas no lo
+    saca del oficio. Tercer caso en que la familia ONU dice cómo ARCHIVÓ la compra el comprador
+    y no qué se fabrica."""
+    lic = _con_onu("Adquisición de una clínica dental móvil", "2518",
+                   "Adquirir una clínica dental móvil para la Posta de Salud Rural de Quilimarí.")
+    r = triage.gate_producto(lic, excluir=[])
+    assert r["pasa"] is True and r["senal"] == "core"
+
+
+def test_la_veterinaria_movil_tambien():
+    lic = _con_onu("ADQUISICION VETERINARIA MOVIL COMUNA LOS VILOS", "2518",
+                   "Adquisición de una clínica veterinaria móvil.")
+    assert triage.gate_producto(lic, excluir=[])["pasa"] is True
+
+
+def test_el_camion_a_secas_sigue_muriendo():
+    """La corrección no puede abrir la puerta a cualquier vehículo: lo que entra es el habitáculo
+    clínico, no el chasis."""
+    lic = _con_onu("ADQUISICIÓN DE CAMIÓN TOLVA PARA LA MUNICIPALIDAD", "2518",
+                   "Adquisición de camión tolva con polibrazo.")
+    assert triage.gate_producto(lic, excluir=[])["pasa"] is False

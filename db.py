@@ -170,6 +170,10 @@ def init_db():
             codigo            TEXT PRIMARY KEY,
             nombre            TEXT NOT NULL,
             organismo         TEXT,
+            unidad            TEXT,                  -- MANDANTE: la unidad que recibe la obra
+            direccion_unidad  TEXT,
+            contacto          TEXT,
+            contacto_cargo    TEXT,
             region            TEXT,
             comuna            TEXT,                  -- usada por scoring._logistico
             modalidad         TEXT,                  -- usada por scoring._cashflow
@@ -265,7 +269,11 @@ def upsert_licitacion(c, row: dict):
     # comuna/modalidad las produce discover._aplanar_detalle y las CONSUME scoring (_logistico y
     # _cashflow): si no se persisten, cualquier re-score desde la DB da cashflow neutro y logístico
     # sin comuna, en silencio. Se guardan.
-    cols = ["nombre", "organismo", "region", "comuna", "modalidad", "monto_estimado", "moneda",
+    # `unidad` (el MANDANTE), su dirección y el contacto vienen del bloque Comprador del detalle y
+    # se descartaban al aplanar. El organismo dice quién firma la orden de compra; la unidad dice
+    # para quién es la obra y con quién se coordina la visita.
+    cols = ["nombre", "organismo", "unidad", "direccion_unidad", "contacto", "contacto_cargo",
+            "region", "comuna", "modalidad", "monto_estimado", "moneda",
             "fecha_cierre", "fecha_visita", "tipo_pago", "estado_mp", "descripcion",
             "prohibicion_subc", "subcontratacion", "direccion_visita", "json_detalle"]
     if existe:
