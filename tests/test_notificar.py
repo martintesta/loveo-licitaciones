@@ -194,9 +194,11 @@ def test_sin_bases_entra_al_digest(tmp_path, monkeypatch):
     _lic("SB1", cierre=_fecha(4))
     pub = (HOY - timedelta(days=8)).strftime("%Y-%m-%dT%H:%M:%S")
     with db.conn() as c:
+        # `triage_senal` es lo que ahora habilita la alerta: la gobierna el embudo, no el
+        # score (ver tests/test_visitas.py — con score entraban plazas, canchas y veredas).
         c.execute("UPDATE licitaciones SET admisible=1, vigente_oferta=1, estado_revision='nueva', "
-                  "score_provisional=75, docs_estado='pendiente', fecha_descubierta=? "
-                  "WHERE codigo='SB1'", (pub,))
+                  "score_provisional=75, docs_estado='pendiente', triage_senal='core', "
+                  "fecha_descubierta=? WHERE codigo='SB1'", (pub,))
     cands = notificar.candidatas(hoy=HOY)
     tipos = {x["tipo"] for x in cands}
     assert tipos == {"cierre", "sin_bases"}          # el mismo código entra por las dos vías

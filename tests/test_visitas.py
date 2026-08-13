@@ -250,7 +250,7 @@ def _cierra_en(dias):
 def test_en_riesgo_pesca_la_publicada_sin_bases(tmp_path, monkeypatch):
     """La alerta que faltaba: sin bases no se puede leer el pliego, y por eso mismo hay que avisar."""
     _setup(tmp_path, monkeypatch)
-    _lic("3000-1-LE26", nombre="Módulos clínicos", admisible=1, vigente_oferta=1,
+    _lic("3000-1-LE26", triage_senal="core", nombre="Módulos clínicos", admisible=1, vigente_oferta=1,
          estado_revision="nueva", score_provisional=80, docs_estado="pendiente",
          json_detalle=_publicada_hace(6), fecha_cierre=_cierra_en(5))
     r = visitas.en_riesgo()
@@ -260,7 +260,7 @@ def test_en_riesgo_pesca_la_publicada_sin_bases(tmp_path, monkeypatch):
 
 def test_en_riesgo_ignora_las_que_ya_tienen_bases(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
-    _lic("3000-2-LE26", admisible=1, vigente_oferta=1, estado_revision="nueva",
+    _lic("3000-2-LE26", triage_senal="core", admisible=1, vigente_oferta=1, estado_revision="nueva",
          score_provisional=80, docs_estado="descargado",
          json_detalle=_publicada_hace(6), fecha_cierre=_cierra_en(5))
     assert visitas.en_riesgo() == []
@@ -268,31 +268,35 @@ def test_en_riesgo_ignora_las_que_ya_tienen_bases(tmp_path, monkeypatch):
 
 def test_en_riesgo_ignora_descartadas_y_recien_publicadas(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
-    _lic("3000-3-LE26", admisible=1, vigente_oferta=1, estado_revision="descartada",
+    _lic("3000-3-LE26", triage_senal="core", admisible=1, vigente_oferta=1, estado_revision="descartada",
          score_provisional=90, docs_estado="pendiente",
          json_detalle=_publicada_hace(9), fecha_cierre=_cierra_en(5))
-    _lic("3000-4-LE26", admisible=1, vigente_oferta=1, estado_revision="nueva",
+    _lic("3000-4-LE26", triage_senal="core", admisible=1, vigente_oferta=1, estado_revision="nueva",
          score_provisional=90, docs_estado="pendiente",
          json_detalle=_publicada_hace(0), fecha_cierre=_cierra_en(20))   # aún dentro de plazo
     assert visitas.en_riesgo() == []
 
 
-def test_en_riesgo_ignora_score_bajo(tmp_path, monkeypatch):
-    """No sirve alertar de lo que igual se va a descartar: la alerta se gasta y deja de leerse."""
+def test_en_riesgo_ignora_lo_que_el_embudo_mato(tmp_path, monkeypatch):
+    """No sirve alertar de lo que igual se va a descartar: la alerta se gasta y deja de leerse.
+
+    ANTES esto lo decidía el score (<60 no alertaba). El score resultó ser mal juez: le daba
+    60-84 a plazas, canchas y luminarias por su puntaje logístico, y la bandeja quedaba con 26
+    avisos de los cuales ~22 eran ruido. Ahora decide el embudo, que descarta con un motivo."""
     _setup(tmp_path, monkeypatch)
     _lic("3000-5-LE26", admisible=1, vigente_oferta=1, estado_revision="nueva",
-         score_provisional=30, docs_estado="pendiente",
+         score_provisional=84, docs_estado="pendiente",     # score ALTO y aun así no alerta
+         triage_gate="producto", triage_senal="onu_fuera",
          json_detalle=_publicada_hace(9), fecha_cierre=_cierra_en(5))
     assert visitas.en_riesgo() == []
-    assert len(visitas.en_riesgo(score_min=0)) == 1        # el umbral es configurable
 
 
 def test_en_riesgo_ordena_por_cierre_mas_proximo(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
-    _lic("3000-6-LE26", admisible=1, vigente_oferta=1, estado_revision="nueva",
+    _lic("3000-6-LE26", triage_senal="core", admisible=1, vigente_oferta=1, estado_revision="nueva",
          score_provisional=70, docs_estado="pendiente",
          json_detalle=_publicada_hace(4), fecha_cierre=_cierra_en(9))
-    _lic("3000-7-LE26", admisible=1, vigente_oferta=1, estado_revision="nueva",
+    _lic("3000-7-LE26", triage_senal="core", admisible=1, vigente_oferta=1, estado_revision="nueva",
          score_provisional=70, docs_estado="pendiente",
          json_detalle=_publicada_hace(4), fecha_cierre=_cierra_en(2))
     assert [x["codigo"] for x in visitas.en_riesgo()] == ["3000-7-LE26", "3000-6-LE26"]
@@ -303,7 +307,7 @@ def test_en_riesgo_usa_fecha_descubierta_si_falta_el_detalle(tmp_path, monkeypat
     run_daily corre a diario."""
     _setup(tmp_path, monkeypatch)
     vieja = (datetime.now() - timedelta(days=7)).isoformat(sep=" ", timespec="seconds")
-    _lic("3000-8-LE26", admisible=1, vigente_oferta=1, estado_revision="nueva",
+    _lic("3000-8-LE26", triage_senal="core", admisible=1, vigente_oferta=1, estado_revision="nueva",
          score_provisional=70, docs_estado="pendiente", json_detalle=None,
          fecha_descubierta=vieja, fecha_cierre=_cierra_en(4))
     r = visitas.en_riesgo()
@@ -340,7 +344,7 @@ def test_run_daily_expone_la_ventana_de_visita(tmp_path, monkeypatch):
     import run_daily
     _setup(tmp_path, monkeypatch)
     monkeypatch.delenv("LOVEO_BASES_LOCAL", raising=False)
-    _lic("5000-1-LE26", admisible=1, vigente_oferta=1, estado_revision="nueva",
+    _lic("5000-1-LE26", triage_senal="core", admisible=1, vigente_oferta=1, estado_revision="nueva",
          score_provisional=90, docs_estado="pendiente",
          json_detalle=_publicada_hace(7), fecha_cierre=_cierra_en(3))
 
@@ -402,3 +406,66 @@ def test_curar_sin_detalle_respeta_el_limite_y_aguanta_fallos(tmp_path, monkeypa
     r = run_daily._curar_sin_detalle(limite=2)
     assert len(r["fallidas"]) == 2 and r["completadas"] == []
     assert r["pendientes"] == 4                            # ninguna se pudo completar
+
+
+# --------------------------------------------------------------------------------------------
+# La alerta la gobierna el EMBUDO, no el score
+# --------------------------------------------------------------------------------------------
+# Con el score de 6 dimensiones la alerta tiraba 26 avisos, de los cuales ~22 eran plazas,
+# canchas, luminarias y veredas: fuera de core, pero con score 60-84 porque la suma ponderada
+# premia lo logístico. Una alerta que hay que filtrar a ojo deja de leerse — y ésta existe
+# justamente porque perder una visita obligatoria descalifica. Pasó dos veces este mes.
+
+def _sembrar(c, codigo, nombre, gate, senal, score, dias_pub=10):
+    import datetime as _dt
+    pub = (_dt.datetime.now() - _dt.timedelta(days=dias_pub)).strftime("%Y-%m-%d %H:%M:%S")
+    cierre = (_dt.datetime.now() + _dt.timedelta(days=10)).strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT INTO licitaciones(codigo, nombre, vigente_oferta, admisible, "
+              "  estado_revision, docs_estado, score_provisional, triage_gate, triage_senal, "
+              "  triage_motivo, fecha_cierre, fecha_descubierta, fecha_actualizada) "
+              "VALUES (?,?,1,1,'nueva','pendiente',?,?,?,?,?,?,?)",
+              (codigo, nombre, score, gate, senal, "motivo", cierre, pub, pub))
+
+
+def test_la_alerta_ignora_lo_que_el_embudo_descarto(tmp_path, monkeypatch):
+    """Una plaza con score 84 no puede seguir generando una alerta de visita."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "v.db")
+    db.init_db()
+    import schema_v3
+    schema_v3.migrate()
+    with db.conn() as c:
+        _sembrar(c, "PLAZA-1", "MEJORAMIENTO PLAZA DE ARMAS", "producto", "onu_fuera", 84)
+        _sembrar(c, "CONT-1", "ADQUISICION DE CONTAINERS", None, "core", 61)
+
+    codigos = [x["codigo"] for x in visitas.en_riesgo()]
+    assert "CONT-1" in codigos, "el producto core tiene que alertar"
+    assert "PLAZA-1" not in codigos, "el embudo ya la descartó: no puede alertar"
+
+
+def test_la_que_no_paso_por_el_embudo_no_alerta_a_ciegas(tmp_path, monkeypatch):
+    """Sin veredicto del embudo no hay señal de que sea nuestro producto. Antes bastaba el score,
+    que es exactamente lo que llenaba la bandeja de ruido."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "v2.db")
+    db.init_db()
+    import schema_v3
+    schema_v3.migrate()
+    with db.conn() as c:
+        _sembrar(c, "SINEVAL-1", "ALGO CON SCORE ALTO", None, None, 90)
+
+    assert [x["codigo"] for x in visitas.en_riesgo()] == []
+
+
+def test_la_alerta_lleva_la_señal_del_embudo(tmp_path, monkeypatch):
+    """Para poder decidir sin abrir la ficha hay que saber POR QUÉ entró."""
+    monkeypatch.setattr(db, "DATABASE_URL", "")
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "v3.db")
+    db.init_db()
+    import schema_v3
+    schema_v3.migrate()
+    with db.conn() as c:
+        _sembrar(c, "CONT-2", "CONTAINERS OFICINA", None, "core", 61)
+
+    a = visitas.en_riesgo()[0]
+    assert a["senal"] == "motivo"

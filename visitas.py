@@ -34,8 +34,15 @@ import schema_v3
 # Ventana de riesgo: días desde la publicación a partir de los cuales una licitación sin bases
 # descargadas se considera en peligro. Las visitas suelen convocarse dentro de la primera semana.
 DIAS_RIESGO = int(os.environ.get("LOVEO_VISITA_DIAS_RIESGO", "3"))
-# Score mínimo para que valga la pena alertar: no interesa avisar de lo que igual se descarta.
+# Score mínimo para que valga la pena alertar. LEGACY: quedó del score de 6 dimensiones y sólo se
+# usa cuando el embudo todavía no evaluó la licitación (triage_gate/triage_senal en NULL).
 SCORE_MIN_RIESGO = int(os.environ.get("LOVEO_VISITA_SCORE_MIN", "60"))
+# Filtrar por score hacía la alerta inservible: de 26 avisos, ~22 eran plazas, canchas, luminarias
+# y veredas — fuera de core, con score alto porque la suma ponderada premia lo logístico. Una
+# alerta que hay que filtrar a ojo no se lee, y la visita perdida es cara: dos licitaciones se
+# cayeron este mes por no ir (1867-28-LR26 y 1057501-454-LE26). Ahora manda el embudo, que decide
+# por motivo. `USAR_EMBUDO=0` vuelve al comportamiento viejo.
+USAR_EMBUDO = os.environ.get("LOVEO_VISITA_USAR_EMBUDO", "1") == "1"
 # Tope de documentos leídos por licitación. La visita se declara en las bases, no en el anexo 14.
 MAX_DOCS = int(os.environ.get("LOVEO_VISITA_MAX_DOCS", "12"))
 # Topes del BACKFILL por corrida (las de documentos nuevos no consumen presupuesto: son las que
@@ -246,21 +253,33 @@ def en_riesgo(hoy=None, dias_min=None, score_min=None, limite=50):
 
     Es la alerta que faltaba: cuando no hay bases no se puede leer el pliego, así que no se puede
     saber si hay visita — y precisamente por eso hay que avisar. El silencio no es 'no hay visita',
-    es 'no lo sabemos y el reloj corre'."""
+    es 'no lo sabemos y el reloj corre'.
+
+    QUIÉN ENTRA. Manda el EMBUDO (`triage_gate IS NULL` = sobrevive los tres gates), no el score.
+    Con el score, de 26 alertas ~22 eran plazas, canchas, luminarias y veredas: la suma ponderada
+    les daba 60-84 por lo logístico aunque estuvieran fuera de core. Una alerta que hay que
+    filtrar a ojo deja de leerse, y ese es el peor final para un aviso que existe justamente
+    porque perder una visita descalifica."""
     hoy = hoy or datetime.now()
     dias_min = DIAS_RIESGO if dias_min is None else dias_min
     score_min = SCORE_MIN_RIESGO if score_min is None else score_min
     schema_v3.migrate()
+    # El embudo decide; el score sólo entra si la licitación todavía no pasó por el embudo.
+    filtro = ("  AND (triage_senal IS NOT NULL OR triage_gate IS NOT NULL)"
+              "  AND triage_gate IS NULL " if USAR_EMBUDO
+              else "  AND COALESCE(score_provisional,0) >= ? ")
+    params = () if USAR_EMBUDO else (score_min,)
     out = []
     with db.conn() as c:
         filas = c.execute(
             "SELECT codigo, nombre, organismo, comuna, region, monto_estimado, fecha_cierre, "
-            "       score_provisional, docs_estado, json_detalle, fecha_descubierta "
+            "       score_provisional, docs_estado, json_detalle, fecha_descubierta, "
+            "       triage_motivo, triage_confianza "
             "FROM licitaciones "
             "WHERE vigente_oferta=1 AND admisible=1 "
             "  AND estado_revision NOT IN ('descartada','aprobada') "
             "  AND (docs_estado IS NULL OR docs_estado != 'descargado') "
-            "  AND COALESCE(score_provisional,0) >= ?", (score_min,)).fetchall()
+            + filtro, params).fetchall()
         for f in filas:
             pub = _fecha_publicacion(f["json_detalle"], f["fecha_descubierta"])
             d_pub = _dias_desde(pub, hoy)
@@ -272,6 +291,7 @@ def en_riesgo(hoy=None, dias_min=None, score_min=None, limite=50):
             out.append({"codigo": f["codigo"], "nombre": f["nombre"], "organismo": f["organismo"],
                         "comuna": f["comuna"], "region": f["region"],
                         "monto": f["monto_estimado"], "score": f["score_provisional"],
+                        "senal": f["triage_motivo"], "confianza": f["triage_confianza"],
                         "fecha_cierre": f["fecha_cierre"], "dias_publicada": d_pub,
                         "dias_al_cierre": d_cierre,
                         "motivo": f"Publicada hace {d_pub} días y sin bases descargadas: "
