@@ -211,7 +211,44 @@ function confLine(l){if(l.evDims==null)return '';var full=l.evDims>=l.nDims;retu
 function getGroup(key){if(D.groups[key])return D.groups[key];var p=key.indexOf(':'),pre=key.slice(0,p),val=key.slice(p+1),out=[];for(var i=0;i<D.order.length;i++){var l=D.lics[D.order[i]];if(pre==='reg'&&l.reg===val)out.push(l.cod);else if(pre==='org'&&l.org===val)out.push(l.cod);}return out;}
 function backBtn(){return '<button class="backbtn" data-back="1"><span style="font-size:14px">←</span> Volver</button>';}
 
-function listRow(cod){var l=D.lics[cod];var last=l.incompleto?'<span class="pill" style="color:#B45309;background:#FEF3C7" title="No se bajó el detalle: extracción pendiente o fallida (solo código y nombre)">SIN DETALLE</span>':pill(l.tri);return '<div class="lrow" data-ficha="'+escA(cod)+'"><span class="code">'+esc(l.cod)+'</span><span class="lnom">'+esc(l.nom)+'</span><span class="lreg">'+esc(l.regc)+'</span><span class="lcie">'+diasTxt(l.dias)+'</span><span class="lsc">'+(l.score==null?'—':l.score)+confBadge(l)+'</span>'+last+'</div>';}
+// --- EMBUDO Y VEREDICTO FINANCIERO ---------------------------------------------------------
+// El score /120 es una OPINIÓN ponderada; el embudo y el veredicto son decisiones con motivo.
+// Vivían sólo en la base (licitaciones.triage_* y veredicto_*): la app los recibía en cada fila
+// y no los pintaba en ningún lado, así que el trabajo de calificación era invisible acá.
+var GATE_LBL={producto:['#B91C1C','#FEE2E2','FUERA DE CORE'],presupuesto:['#B45309','#FEF3C7','PRESUPUESTO'],
+              calendario:['#B45309','#FEF3C7','FUERA DE PLAZO']};
+var VERE_LBL={'GO':['#065F46','#D1FAE5'],'LIMITE':['#065F46','#ECFDF5'],'LÍMITE':['#065F46','#ECFDF5'],
+              'AJUSTADO':['#B45309','#FEF3C7'],'NO-GO':['#B91C1C','#FEE2E2']};
+var CONF_LBL={alta:'#047857',media:'#B45309',baja:'#B91C1C'};
+
+function gatePill(l){
+  if(!l.gateMot&&!l.gate)return '';                       // todavía no pasó por el embudo
+  var c=l.gate?(GATE_LBL[l.gate]||['#B91C1C','#FEE2E2',(''+l.gate).toUpperCase()])
+              :['#065F46','#D1FAE5','PASA EL EMBUDO'];
+  var tip=(l.gate?'Descartada en el gate «'+l.gate+'»':'Sobrevive los gates del embudo')
+         +(l.gateMot?'\nMotivo: '+l.gateMot:'')
+         +(l.gateConf?'\nConfianza de la señal: '+l.gateConf:'');
+  return '<span class="pill" title="'+escA(tip)+'" style="color:'+c[0]+';background:'+c[1]+'">'+c[2]+'</span>';
+}
+function gateDot(l){
+  if(!l.gateMot&&!l.gate)return '';
+  var col=l.gate?'#B91C1C':'#047857';
+  var tip=(l.gate?'Embudo: descartada en «'+l.gate+'»':'Embudo: pasa')+(l.gateMot?' — '+l.gateMot:'');
+  return '<span title="'+escA(tip)+'" style="color:'+col+';font-size:11px;margin-left:5px">●</span>';
+}
+function verePill(l){
+  if(!l.vere)return '';
+  var c=VERE_LBL[l.vere]||['#69727E','#F1EFE8'];
+  var tip='Veredicto financiero: '+l.vere
+    +(l.margen!=null?'\nMargen neto estimado (después de PPM, previsión de IVA y renta): '+(l.margen*100).toFixed(1)+'%':'')
+    +(l.costoBase?'\nCosto base estimado: '+l.costoBase:'')
+    +(l.vereFuente?'\nFuente del costo: '+l.vereFuente:'')
+    +'\n\nOJO: los umbrales (GO 35% · LÍMITE 25% · AJUSTADO 12%) siguen SIN calibrar contra los '
+    +'proyectos ejecutados de Loveo — ninguno de los cinco terminados llegaría a AJUSTADO.';
+  return '<span class="pill" title="'+escA(tip)+'" style="color:'+c[0]+';background:'+c[1]+'">'+esc(l.vere)+'</span>';
+}
+
+function listRow(cod){var l=D.lics[cod];var last=l.incompleto?'<span class="pill" style="color:#B45309;background:#FEF3C7" title="No se bajó el detalle: extracción pendiente o fallida (solo código y nombre)">SIN DETALLE</span>':pill(l.tri);return '<div class="lrow" data-ficha="'+escA(cod)+'"><span class="code">'+esc(l.cod)+'</span><span class="lnom">'+esc(l.nom)+'</span><span class="lreg">'+esc(l.regc)+'</span><span class="lcie">'+diasTxt(l.dias)+'</span><span class="lsc">'+(l.score==null?'—':l.score)+confBadge(l)+gateDot(l)+'</span>'+last+'</div>';}
 function listRowsHTML(arr){var h='';for(var i=0;i<arr.length;i++)h+=listRow(arr[i]);return h||'<div class="empty">Sin resultados.</div>';}
 function cierranRow(cod){var l=D.lics[cod];var b=(l.dias<=2)?'#B91C1C':'#F59E0B';return '<div class="crow" style="border-left:3px solid '+b+'" data-ficha="'+escA(cod)+'">'+diasChip(l.dias)+'<span class="code">'+esc(l.cod)+'</span><span class="nm">'+esc(l.nom)+'</span><span class="rg">'+esc(l.regc)+'</span>'+pill(l.tri)+'</div>';}
 
@@ -238,7 +275,7 @@ function renderCobertura(){
   var col=grave?'#B91C1C':'#B45309', bg=grave?'#FEE2E2':'#FEF3C7', bd=grave?'#FCA5A5':'#FCD34D';
   var det=[];
   if(c.faltantes&&c.faltantes.length)det.push(c.faltantes.length+' día(s) sin barrer');
-  if(c.sospechosos&&c.sospechosos.length)det.push(c.sospechosos.length+' con resultado sospechoso (la API falló y quedó marcado como OK)');
+  if(c.sospechosos&&c.sospechosos.length)det.push(c.sospechosos.length+' con resultado sospechoso (se barrió el día a medio publicar, o la API falló)');
   return '<div style="background:'+bg+';border:1px solid '+bd+';border-left:4px solid '+col+';'
     +'padding:10px 13px;border-radius:4px;margin:0 0 12px;font-size:12.5px">'
     +'<b style="color:'+col+'">COBERTURA DEL BARRIDO · '+c.pct+'%</b> — '+esc(det.join(' · '))
@@ -401,7 +438,7 @@ function renderCubicIA(l,cod){
 function renderFicha(cod){
   var l=D.lics[cod];if(!l)return backBtn()+'<div class="empty">No encontrada.</div>';
   var h='<div>'+backBtn();
-  h+='<div class="fhead"><div style="flex:1;min-width:240px"><div class="code" style="font-size:12px">'+esc(l.cod)+'</div><div class="h1" style="margin-top:4px">'+esc(l.nom)+'</div><div class="badges">'+pill(l.tri)+'<span class="badge">'+esc(l.estadoLbl)+'</span>'+(l.adm?'<span class="badge adm">Admisible</span>':'')+'<button class="b gh sm" data-informe="'+escA(cod)+'" title="Exportar informe .xlsx (con fórmulas) con lo que el sistema sabe de esta licitación">📊 Exportar informe</button></div></div><div class="verdict"><div class="vk">SCORE PROV.</div><div class="vv">'+(l.score==null?'—':l.score)+'<span>/120</span></div>'+confLine(l)+(l.reqBases?'<div class="vx">falta cubicación</div>':'')+'</div></div>';
+  h+='<div class="fhead"><div style="flex:1;min-width:240px"><div class="code" style="font-size:12px">'+esc(l.cod)+'</div><div class="h1" style="margin-top:4px">'+esc(l.nom)+'</div><div class="badges">'+pill(l.tri)+gatePill(l)+verePill(l)+'<span class="badge">'+esc(l.estadoLbl)+'</span>'+(l.adm?'<span class="badge adm">Admisible</span>':'')+'<button class="b gh sm" data-informe="'+escA(cod)+'" title="Exportar informe .xlsx (con fórmulas) con lo que el sistema sabe de esta licitación">📊 Exportar informe</button></div></div><div class="verdict"><div class="vk">SCORE PROV.</div><div class="vv">'+(l.score==null?'—':l.score)+'<span>/120</span></div>'+confLine(l)+(l.reqBases?'<div class="vx">falta cubicación</div>':'')+'</div></div>';
   var aj=l.ajuste;
   if(aj&&(aj.delta!==0||(aj.alertas&&aj.alertas.length))){
     var up=aj.delta>0;
@@ -420,6 +457,24 @@ function renderFicha(cod){
   h+='<input id="rep-nota" placeholder="Nota (opcional): ej. paga a 90+ días, tuvo atrasos…" style="margin-top:6px;width:100%;box-sizing:border-box">';
   h+='<div class="dochint" style="margin-top:6px">Es la señal de la <b>Ficha Comprador</b> (protegida por CAPTCHA), cargada a mano. No cambia el número del score: suma una alerta de cash flow. El descarte “mal pagador” sigue siendo el que ajusta el score.</div></div>';
   if(l.dims&&l.dims.length){h+='<div class="card"><div class="ct">SCORE · 6 DIMENSIONES'+(l.evDims!=null?' · '+l.evDims+'/'+l.nDims+' CON DATO':'')+'</div>';for(var i=0;i<l.dims.length;i++){var d=l.dims[i],w=(d.score!=null?d.score*10:0);h+='<div class="dim" title="'+escA(d.nota)+'"><div class="dl">'+esc(d.n)+(d.ev?'':'<span class="pend">pend.</span>')+'</div><div class="track"><div class="fill'+(d.ev?'':' pend')+'" style="width:'+w+'%"></div></div><div class="ds">'+(d.ev&&d.score!=null?d.score:'—')+'</div></div>';}h+='</div>';}
+  // EMBUDO + VEREDICTO: la calificación que el sistema ya hizo, con su motivo. Antes vivía sólo
+  // en la base y el usuario no tenía cómo verla ni cómo discutirla.
+  if(l.gateMot||l.vere){
+    h+='<div class="card"><div class="ct">EMBUDO · CALIFICACIÓN</div>';
+    h+='<div class="meta">';
+    h+='<div><div class="mk">Gate</div><div class="mv">'+(l.gate?('descartada en «'+esc(l.gate)+'»'):'pasa los tres gates')+'</div></div>';
+    if(l.gateConf)h+='<div><div class="mk">Confianza de la señal</div><div class="mv" style="color:'+(CONF_LBL[l.gateConf]||'#69727E')+'">'+esc(l.gateConf)+'</div></div>';
+    if(l.vere)h+='<div><div class="mk">Veredicto financiero</div><div class="mv">'+esc(l.vere)+'</div></div>';
+    if(l.margen!=null)h+='<div><div class="mk">Margen neto est.</div><div class="mv">'+(l.margen*100).toFixed(1)+'%</div></div>';
+    if(l.costoBase)h+='<div><div class="mk">Costo base est.</div><div class="mv">'+esc(l.costoBase)+'</div></div>';
+    if(l.vereFuente)h+='<div><div class="mk">Fuente del costo</div><div class="mv">'+esc(l.vereFuente)+'</div></div>';
+    h+='</div>';
+    if(l.gateMot)h+='<div class="ptxt" style="margin-top:6px">• '+esc(l.gateMot)+'</div>';
+    h+='<div class="dochint" style="margin-top:6px">El embudo <b>filtra con un motivo</b>; no promedia opiniones como el score /120. '
+      +'El veredicto financiero compara el costo estimado contra el techo del presupuesto, ya neto de IVA. '
+      +'<b>Los umbrales todavía no están calibrados</b>: con GO ≥35% ninguno de los cinco proyectos que Loveo terminó llegaría a AJUSTADO.</div>';
+    h+='</div>';
+  }
   if(l.admMot)h+='<div class="card"><div class="ct">ADMISIBILIDAD</div><div class="ptxt">'+esc(l.admMot)+'</div></div>';
   if(l.descr)h+='<div class="card"><div class="ct">DESCRIPCIÓN</div><div class="ptxt">'+esc(l.descr)+'</div></div>';
   if(l.eventos&&l.eventos.length){h+='<div class="card"><div class="ct">TRAZABILIDAD</div>';for(var j=0;j<l.eventos.length;j++){var ev=l.eventos[j];h+='<div class="tli"><span class="td"></span><div><div class="tev">'+esc(ev.tipo)+'</div><div class="tts">'+esc(ev.ts)+(ev.det?' · '+esc(ev.det):'')+'</div></div></div>';}h+='</div>';}
