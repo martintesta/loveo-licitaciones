@@ -8,8 +8,14 @@ la única fuente de verdad sobre la cobertura es el propio sistema.
 
 Dos tipos de agujero:
   FALTANTE   día hábil sin ninguna corrida registrada.
-  SOSPECHOSO día con corrida pero un total absurdamente bajo — la API falló (429/timeout) y quedó
-             marcado como "procesado", así que un backfill ingenuo lo saltearía para siempre.
+  SOSPECHOSO día con corrida pero un total absurdamente bajo — se barrió con el día a medio
+             publicar, o la API falló (429/timeout) — y quedó marcado como "procesado", así que
+             un backfill ingenuo lo saltearía para siempre.
+
+Y un tercer caso que NO es agujero: el día genuinamente flaco. 16/07/2026 tiene 9 publicaciones
+y la API devuelve 9 cada vez que se le pregunta. Sin distinguirlo, el curador lo reintentaría
+todas las mañanas para siempre. Por eso, tras MAX_REINTENTOS rebarridos que no traen nada nuevo,
+el día se da por confirmado y sale de la cola (ver db.record_run).
 
   estado(dias)         -> resumen para la UI y para decidir si hay que curar
   a_reprocesar(limite) -> los días a (re)procesar, del más reciente al más viejo
@@ -30,6 +36,10 @@ try:
     from config import COBERTURA_CURAR_POR_CORRIDA as CURAR_POR_CORRIDA
 except (ImportError, AttributeError):
     CURAR_POR_CORRIDA = 3   # días a recuperar por corrida diaria (cada uno es una llamada a la API)
+try:
+    from config import COBERTURA_MAX_REINTENTOS as MAX_REINTENTOS
+except (ImportError, AttributeError):
+    MAX_REINTENTOS = 2  # rebarridos sin novedad tras los cuales el día flaco se da por confirmado
 
 
 def _habiles(dias, hoy=None):
@@ -50,16 +60,20 @@ def estado(dias=None, hoy=None):
     dias = DIAS_VENTANA if dias is None else dias
     esperados = _habiles(dias, hoy)
     with db.conn() as c:
-        runs = {r["fecha"]: r["total_dia"] for r in
-                c.execute("SELECT fecha, total_dia FROM runs").fetchall()}
+        runs = {r["fecha"]: (r["total_dia"], r["reintentos"]) for r in
+                c.execute("SELECT fecha, total_dia, reintentos FROM runs").fetchall()}
     faltantes = [f for f in esperados if f not in runs]
-    sospechosos = [f for f in esperados if f in runs and (runs[f] or 0) < MIN_DIA]
+    flacos = [f for f in esperados if f in runs and (runs[f][0] or 0) < MIN_DIA]
+    # el que ya se rebarrió MAX_REINTENTOS veces sin novedad no es un agujero: ese día fue así
+    confirmados = [f for f in flacos if (runs[f][1] or 0) >= MAX_REINTENTOS]
+    sospechosos = [f for f in flacos if f not in confirmados]
     ok = len(esperados) - len(faltantes) - len(sospechosos)
     return {
         "esperados": len(esperados),
         "procesados": ok,
         "faltantes": faltantes,
         "sospechosos": sospechosos,
+        "confirmados_flacos": confirmados,
         "huecos": len(faltantes) + len(sospechosos),
         "pct": round(100 * ok / len(esperados), 1) if esperados else 100.0,
     }

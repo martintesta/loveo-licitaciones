@@ -244,6 +244,7 @@ def init_db():
             candidatos INTEGER,
             admisibles INTEGER,
             errores    INTEGER,
+            reintentos INTEGER DEFAULT 0,   -- veces que se rebarrió sin recuperar nada más
             UNIQUE(fecha)
         );
 
@@ -303,10 +304,18 @@ def set_score_provisional(c, codigo, score, score_json, requiere_bases):
 
 
 def record_run(c, fecha, total, candidatos, admisibles, errores):
-    c.execute("""INSERT INTO runs(fecha, ts, total_dia, candidatos, admisibles, errores)
-                 VALUES (?,?,?,?,?,?)
+    """Registra la corrida. Si el día ya estaba y el rebarrido NO trajo más licitaciones, cuenta
+    un reintento fallido; si trajo más, el día se curó y el contador vuelve a 0.
+
+    Sin este contador, un día genuinamente flaco (16/07/2026 tiene 9 publicaciones y la API
+    devuelve 9 las tres veces que se le pregunta) queda para siempre bajo el umbral de
+    `cobertura.MIN_DIA` y el auto-curador lo reintenta todas las mañanas sin que cambie nada."""
+    c.execute("""INSERT INTO runs(fecha, ts, total_dia, candidatos, admisibles, errores, reintentos)
+                 VALUES (?,?,?,?,?,?,0)
                  ON CONFLICT(fecha) DO UPDATE SET ts=excluded.ts, total_dia=excluded.total_dia,
-                   candidatos=excluded.candidatos, admisibles=excluded.admisibles, errores=excluded.errores""",
+                   candidatos=excluded.candidatos, admisibles=excluded.admisibles, errores=excluded.errores,
+                   reintentos = CASE WHEN COALESCE(excluded.total_dia,0) > COALESCE(runs.total_dia,0)
+                                     THEN 0 ELSE COALESCE(runs.reintentos,0) + 1 END""",
               (fecha, _now(), total, candidatos, admisibles, errores))
 
 

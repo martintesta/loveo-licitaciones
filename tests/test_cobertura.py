@@ -68,6 +68,39 @@ def test_ignora_fines_de_semana(tmp_path, monkeypatch):
         assert d.weekday() < 5, f"{f} cae fin de semana"
 
 
+def test_dia_genuinamente_flaco_deja_de_reintentarse(tmp_path, monkeypatch):
+    """16/07/2026 tiene 9 publicaciones y la API devuelve 9 cada vez. Sin memoria de reintentos,
+    el curador lo rebarre TODAS las mañanas para siempre y nunca cambia nada."""
+    habiles = cobertura._habiles(5, _viernes())
+    flaco = habiles[0]
+    _setup(tmp_path, monkeypatch, runs=[(f, 1000) for f in habiles[1:]])
+    with db.conn() as c:
+        for _ in range(cobertura.MAX_REINTENTOS + 1):     # barrido inicial + los reintentos
+            db.record_run(c, flaco, 9, 0, 0, 0)
+
+    e = cobertura.estado(dias=5, hoy=_viernes())
+    assert flaco in e["confirmados_flacos"]
+    assert flaco not in e["sospechosos"]
+    assert e["huecos"] == 0                                # deja de contar como agujero
+    assert cobertura.a_reprocesar(5, dias=5, hoy=_viernes()) == []
+
+
+def test_un_rebarrido_que_recupera_datos_resetea_los_reintentos(tmp_path, monkeypatch):
+    """Lo contrario: si el rebarrido SÍ trae más, el día se curó — no hay que darlo por flaco."""
+    habiles = cobertura._habiles(5, _viernes())
+    dia = habiles[0]
+    _setup(tmp_path, monkeypatch, runs=[(f, 1000) for f in habiles[1:]])
+    with db.conn() as c:
+        for _ in range(cobertura.MAX_REINTENTOS + 1):
+            db.record_run(c, dia, 4, 0, 0, 0)             # el cron barriendo el día a medio publicar
+        db.record_run(c, dia, 1385, 12, 12, 0)            # rebarrido con el día ya cerrado
+        r = c.execute("SELECT reintentos FROM runs WHERE fecha=?", (dia,)).fetchone()
+
+    assert r["reintentos"] == 0
+    e = cobertura.estado(dias=5, hoy=_viernes())
+    assert e["procesados"] == 5 and e["huecos"] == 0
+
+
 def test_los_faltantes_se_recuperan_antes_que_los_sospechosos(tmp_path, monkeypatch):
     """Prioridad: lo que nunca se vio pesa más que lo que se vio mal."""
     habiles = cobertura._habiles(5, _viernes())

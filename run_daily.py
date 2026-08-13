@@ -4,13 +4,27 @@ run_daily.py — Orquestador diario (paga deuda 5 y 6: bookkeeping + manejo de e
 Flujo:  descubrir -> filtrar -> [por cada candidato] detalle -> upsert -> admisibilidad
         -> scoring provisional (si admisible).  Registra la corrida en `runs`.
 
-  python run_daily.py                 # procesa el día de hoy
+  python run_daily.py                 # procesa AYER (hoy todavía se está publicando)
   python run_daily.py 11062026        # un día puntual
   python run_daily.py --backfill 5    # los últimos 5 días hábiles no procesados
   python run_daily.py --cache dia.json 11062026   # modo test: usa un listado cacheado
 """
 import os, sys, time, json
 import db, discover, rules, scoring, extract, relicitaciones, notificar
+
+
+def _ayer():
+    """El día hábil que el cron barre por defecto: AYER, no hoy.
+
+    Antes barría `time.strftime('%d%m%Y')` = hoy, y el cron corre a las 08:00. A esa hora Mercado
+    Público todavía no publicó casi nada del día: los runs quedaban con 3, 4 y 16 licitaciones
+    contra las 1.142, 1.385 y 1.201 que la API devuelve para esos mismos días una vez cerrados.
+    O sea que cada corrida diaria FABRICABA un día sospechoso nuevo, y el auto-curador (que
+    recupera 3 por corrida) estaba apagando incendios que el propio cron encendía.
+
+    Sábado y domingo no se saltean: la ventana de cobertura solo audita días hábiles, así que un
+    barrido de fin de semana no ensucia nada y sirve para pescar publicaciones tardías."""
+    return time.strftime("%d%m%Y", time.localtime(time.time() - 86400))
 
 
 def procesar_dia(fecha, listado=None, traer_detalles=True):
@@ -220,7 +234,7 @@ def _main():
                     print(json.dumps(procesar_dia(f), ensure_ascii=False)); done += 1
             d += 1
     else:
-        fecha = args[0] if args else time.strftime("%d%m%Y")
+        fecha = args[0] if args else _ayer()
         res = procesar_dia(fecha)
         # AUTO-CURACIÓN: además del día de hoy, recupera días hábiles que nunca se procesaron o
         # que se procesaron mal (la API falló y quedaron marcados como OK). Sin esto un día perdido
