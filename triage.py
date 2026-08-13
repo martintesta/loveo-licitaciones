@@ -40,10 +40,21 @@ from textnorm import na as _na, pat as _pat
 # n=1 sería sobreajuste, no aprendizaje.
 
 # n=47, 1 solo descarte por fuera-de-core · n=41, 1 solo descarte por fuera-de-core.
+# Familias que HABILITAN por sí solas: nombran el producto, no el rubro. Si el comprador archivó
+# la compra acá, describe una estructura prefabricada — no hay lectura razonable en que sea otra cosa.
 FAMILIAS_CORE = {
     "3020": "Estructuras prefabricadas, obras y construcciones",
-    "7213": "Servicios de construcción y mantenimiento",
     "3022": "Construcciones prefabricadas",
+}
+# Familias que sólo CORROBORAN: son el cajón donde ChileCompra archiva cualquier obra civil, así
+# que no distinguen nada por sí solas. Medido sobre un lote crudo de 36 licitaciones recuperadas
+# (ago-2026): habilitando por familia pasaban 35 de 36 — entre ellas veredas en Punta Arenas,
+# luminarias en La Pintana, un ascensor en Rancagua y canchas de pádel en Pudahuel.
+# La auditoría que en su momento dio 0 falsos positivos corrió sobre licitaciones YA filtradas por
+# keywords, donde la familia sólo desempataba; con entrada cruda el sesgo quedó a la vista.
+# Ahora exigen señal de producto en el texto (token core, o modular+objeto físico).
+FAMILIAS_CORROBORAN = {
+    "7213": "Servicios de construcción y mantenimiento",
     "3016": "Materiales de construcción",
     "3010": "Materiales estructurales",
     "3019": "Equipamiento para obras",
@@ -262,7 +273,8 @@ def gate_producto(lic, excluir=None):
         return {"pasa": True, "motivo": f"familia ONU {fam} — {FAMILIAS_CORE[fam]}",
                 "senal": "onu_core", "confianza": "media", "familia": fam}
     if modular and objeto:
-        return {"pasa": True, "motivo": f"'{modular[0]}' junto a objeto físico '{objeto[0]}'",
+        corrobora = f" (familia ONU {fam} acompaña)" if fam in FAMILIAS_CORROBORAN else ""
+        return {"pasa": True, "motivo": f"'{modular[0]}' junto a objeto físico '{objeto[0]}'{corrobora}",
                 "senal": "coexistencia", "confianza": "media", "familia": fam}
     # 'modular' suelto NO mata: pasa a revisión. Un falso positivo del embudo cuesta una
     # licitación; un falso negativo cuesta horas. Con esa asimetría, la duda deja pasar.
@@ -493,3 +505,51 @@ if __name__ == "__main__":
         print(json.dumps(evaluar(dict(r)), indent=2, ensure_ascii=False, default=str))
     else:
         print(__doc__)
+
+
+# ============================================================================================
+# SEÑALES DE OCUPACIÓN — lo que convirtió 22 días de taller en 120
+# ============================================================================================
+# Talagante (módulo de 12×3 m, sala dental con RX) cerró con +$12.000.000 de contribución, más
+# que ningún otro proyecto del año, y fue el peor negocio: ocupó 120 días-cuadrilla contra los
+# ~22 de un módulo clínico normal. Lo que lo estiró no fue el producto: fue que la estructura se
+# armó EN SITIO, hubo obras civiles, el módulo se movió dos veces y hubo terminaciones después
+# de instalado. Cada una de esas cuatro saca a las 3 personas del taller, y fuera del taller no
+# hay herramienta, no hay stock y manda el clima.
+#
+# Con una sola cuadrilla y ~250 días-cuadrilla al año, esas señales no encarecen el proyecto:
+# se comen los otros. Por eso se detectan acá, antes de cubicar.
+_RX_OCUPACION = {
+    "fabricacion_en_sitio": [
+        "en sitio", "en terreno", "in situ", "faena", "montaje en terreno",
+        "construccion en el lugar", "fabricacion en terreno",
+    ],
+    "obras_civiles": [
+        "obra civil", "obras civiles", "radier", "fundacion", "fundaciones", "excavacion",
+        "urbanizacion", "movimiento de tierra", "movimiento de tierras", "emplantillado",
+    ],
+    "traslado_multiple": [
+        "reubicacion", "reubicar", "traslado posterior", "segundo traslado", "relocalizacion",
+    ],
+    "terminaciones_destino": [
+        "terminaciones en destino", "habilitacion posterior", "mejoras posteriores",
+        "puesta en marcha en terreno", "terminaciones finales",
+    ],
+}
+_RX_OCUPACION_C = {k: [_pat(t) for t in v] for k, v in _RX_OCUPACION.items()}
+
+
+def senales_ocupacion(lic):
+    """Las señales de Talagante presentes en el texto. Devuelve (claves, evidencia).
+
+    Es una lectura del TÍTULO Y LA DESCRIPCIÓN, no del pliego: sirve para alertar y para estimar
+    días, no para afirmar. Cuando hay bases descargadas, el análisis manda sobre esto."""
+    t = _texto(lic)
+    encontradas, evidencia = [], {}
+    for clave, rxs in _RX_OCUPACION_C.items():
+        for rx, termino in zip(rxs, _RX_OCUPACION[clave]):
+            if rx.search(t):
+                encontradas.append(clave)
+                evidencia[clave] = termino
+                break
+    return encontradas, evidencia
