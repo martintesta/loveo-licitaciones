@@ -216,3 +216,137 @@ def techo_costo(monto_neto, margen_objetivo):
     costo_neto_max = c_sobre_p * monto_neto
     bruto = costo_neto_max / (FRACCION_COSTO_CON_IVA / 1.19 + (1 - FRACCION_COSTO_CON_IVA))
     return int(bruto / (1 + SOBRECOSTO_MEDIDO))
+
+
+# ============================================================================================
+# CAPACIDAD — la cuadrilla es el recurso escaso, no la plata
+# ============================================================================================
+# Dato de Martín (ago-2026): UNA cuadrilla fija de 3 personas, más subcontratos por oficio
+# (soldadores para la estructura, eléctrico, gasfitería). Los subcontratos escalan los OFICIOS
+# pero NO la capacidad: las 3 personas van a todo proyecto igual. El techo es ~250 días-cuadrilla
+# al año y no se compra con subcontratación.
+#
+# POR QUÉ ESTO DECIDE, Y NO EL MARGEN. Talagante cerró con +$12.000.000 de contribución — más del
+# doble que Vicuña, el segundo — y fue el peor negocio del año: ocupó 120 días-cuadrilla, o sea
+# $100.000 por día contra un piso de $192.000. Déficit $11.040.000, y un costo de oportunidad de
+# $10M a $37M (esos 120 días al ritmo de un proyecto normal dejaban entre $22M y $49M).
+# Ninguna métrica de margen porcentual ve eso.
+FIJO_MENSUAL = float(os.environ.get("LOVEO_FIJO_MENSUAL", "4000000"))   # cuota auto, previred,
+#   contadora, TAG, diésel, garage, agua y electricidad de la parcela
+DIAS_HABILES_ANO = int(os.environ.get("LOVEO_DIAS_HABILES", "250"))
+CUADRILLAS = int(os.environ.get("LOVEO_CUADRILLAS", "1"))
+
+
+def costo_fijo_por_dia():
+    """CLP de estructura que tiene que pagar cada día-cuadrilla ocupado. El piso de admisión."""
+    return FIJO_MENSUAL * 12 / (DIAS_HABILES_ANO * max(1, CUADRILLAS))
+
+
+# --- Días-cuadrilla por proyecto -------------------------------------------------------------
+# Medido: un módulo normal ocupa 8-22 días (promedio 8-15). Talagante, 120.
+DIAS_BASE = {
+    "container_20_usado":   8,
+    "modulo_simple":        8,
+    "modulo_estandar":     12,
+    "modulo_camarin":      16,
+    "modulo_clinico":      22,     # terminaciones clínicas, plomo, mobiliario
+    "reas":                16,
+}
+DIAS_POR_MODULO_EXTRA = 0.6        # el segundo módulo no cuesta otro ciclo completo
+
+# Las cuatro señales que convirtieron 22 días en 120. Son MULTIPLICADORAS, no aditivas: cada una
+# saca la cuadrilla del taller, y fuera del taller no hay herramienta, no hay stock y el clima manda.
+SENALES_OCUPACION = {
+    "fabricacion_en_sitio":  2.0,   # armar la estructura en terreno en vez de en taller
+    "obras_civiles":         1.6,   # radier, fundaciones, urbanización
+    "traslado_multiple":     1.4,   # movido más de una vez
+    "terminaciones_destino": 1.3,   # terminaciones y mejoras después de instalado
+}
+
+
+def dias_cuadrilla(tipo="modulo_estandar", n_modulos=1, senales=()):
+    """Días-cuadrilla estimados. `senales` son claves de SENALES_OCUPACION.
+
+    Validación contra Talagante (módulo clínico, las cuatro señales):
+        22 × 2,0 × 1,6 × 1,4 × 1,3 = 128 días  ·  real 120. Error 7%."""
+    base = DIAS_BASE.get(tipo, DIAS_BASE["modulo_estandar"])
+    d = base * (1 + DIAS_POR_MODULO_EXTRA * max(0, n_modulos - 1))
+    for s in senales:
+        d *= SENALES_OCUPACION.get(s, 1.0)
+    return round(d, 1)
+
+
+def contribucion(monto_neto, costo_base, margen_error=None, costo_ya_neto=False):
+    """Ingreso neto − costo directo (con sobrecosto). Es lo que queda para pagar la estructura.
+
+    OJO con la diferencia respecto de `margenes()`: contribución NO es utilidad. La cadena real es
+    contribución → estructura → utilidad antes de impuestos → PPM/IVA/renta. Aplicar la cascada
+    impositiva sobre la contribución, como si ya fuera utilidad, es lo que hacía que los umbrales
+    dieran números inalcanzables (GO 35% neto exigía 59% operativo; el récord de Loveo es 18,9%)."""
+    if not monto_neto:
+        return None
+    err = SOBRECOSTO_SIGMA if margen_error is None else margen_error
+    def con(mult):
+        bruto = costo_base * (1 + SOBRECOSTO_MEDIDO) * mult
+        return monto_neto - (bruto if costo_ya_neto else costo_a_neto(bruto))
+    return {"optimista": con(1.0), "conservador": con(1 + err)}
+
+
+def veredicto_capacidad(monto_neto, costo_base, dias, costo_ya_neto=False):
+    """El GO/NO-GO por ocupación: ¿paga la estructura que consume?
+
+    Bandas, todas derivadas — ninguna elegida a gusto:
+      NO-GO     no cubre $/día ni en el caso base -> hacerlo cuesta plata
+      AJUSTADO  cubre en el caso base pero cae abajo con 1σ de sobrecosto
+      GO        cubre incluso con 1σ (σ = 0,14, el error medido de la estimación)
+      GO fuerte cubre con 1σ y además dobla el piso"""
+    if not (monto_neto and dias):
+        return None
+    piso = costo_fijo_por_dia()
+    c = contribucion(monto_neto, costo_base, costo_ya_neto=costo_ya_neto)
+    if c is None:
+        return None
+    pd_opt, pd_cons = c["optimista"] / dias, c["conservador"] / dias
+    if pd_opt < piso:
+        et = "NO-GO"
+    elif pd_cons < piso:
+        et = "AJUSTADO"
+    elif pd_cons >= 2 * piso:
+        et = "GO FUERTE"
+    else:
+        et = "GO"
+    return {"veredicto": et, "dias": dias, "piso_dia": round(piso),
+            "por_dia": round(pd_opt), "por_dia_conservador": round(pd_cons),
+            "contribucion": round(c["optimista"]),
+            "sobre_el_piso": round((pd_opt - piso) * dias)}
+
+
+# --- Chequeo de cordura sobre la propia estimación -------------------------------------------
+# El mejor margen operativo que Loveo logró en un proyecto terminado es 18,9% (Vicuña). Cuando una
+# cubicación implica mucho más que eso, la explicación probable NO es que la licitación sea un
+# negocio excepcional: es que la cubicación se quedó corta — falta una partida, un flete, una
+# especialidad subcontratada. Al recalcular las 16 con cubicación, las cuatro que dieron GO FUERTE
+# implicaban entre 32,8% y 44,6% operativo, o sea 1,7 a 2,4 veces el récord. No se descartan
+# —podrían ser reales— pero el veredicto sale marcado, porque un GO sin marcar se lee como
+# certeza y este no lo es.
+MARGEN_OPERATIVO_RECORD = 0.189       # Vicuña, el techo histórico medido
+FACTOR_SOSPECHA = float(os.environ.get("LOVEO_FACTOR_SOSPECHA", "1.5"))
+
+
+def margen_operativo_implicito(monto_neto, costo_base, costo_ya_neto=False):
+    """El margen operativo que la cubicación está prometiendo, antes de impuestos."""
+    if not monto_neto:
+        return None
+    bruto = costo_base * (1 + SOBRECOSTO_MEDIDO)
+    costo = bruto if costo_ya_neto else costo_a_neto(bruto)
+    return (monto_neto - costo) / monto_neto
+
+
+def demasiado_bueno(monto_neto, costo_base, costo_ya_neto=False):
+    """(bool, motivo). True cuando el margen implícito supera el récord histórico por FACTOR."""
+    op = margen_operativo_implicito(monto_neto, costo_base, costo_ya_neto)
+    if op is None or op <= MARGEN_OPERATIVO_RECORD * FACTOR_SOSPECHA:
+        return False, None
+    return True, (f"margen operativo implícito {op:.1%} — {op / MARGEN_OPERATIVO_RECORD:.1f}× el "
+                  f"récord histórico de Loveo ({MARGEN_OPERATIVO_RECORD:.1%}, Vicuña). "
+                  f"Revisar la cubicación antes de confiar: lo más probable es que falte una partida.")

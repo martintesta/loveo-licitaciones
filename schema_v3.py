@@ -285,6 +285,14 @@ def _crear_tablas():
         _asegurar_columna(c, "licitaciones", "direccion_unidad", "TEXT")
         _asegurar_columna(c, "licitaciones", "contacto", "TEXT")
         _asegurar_columna(c, "licitaciones", "contacto_cargo", "TEXT")
+        # ¿`monto_estimado` viene con IVA o neto? NO es constante: el API publicó $20.501.280 para
+        # 3621-41 (Cabildo) y el pliego dice "$24.396.524 impuesto incluido" — o sea que el API
+        # traía el NETO. Asumir que siempre es bruto y dividir por 1,19 subestimaba el techo un
+        # 19% y volvía NO-GO una licitación que no lo era. 1=con IVA · 0=neto · NULL=no se sabe.
+        _asegurar_columna(c, "licitaciones", "monto_iva_incluido", "INTEGER")
+        # Cuántas veces se rebarrió un día sin recuperar nada más. Distingue "la API falló" de
+        # "ese día realmente tuvo 9 publicaciones" — ver db.record_run y cobertura.estado.
+        _asegurar_columna(c, "runs", "reintentos", "INTEGER DEFAULT 0")
 
 
 def _asegurar_columna(c, tabla, columna, tipo):

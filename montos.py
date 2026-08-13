@@ -228,8 +228,12 @@ def al_ingestar(codigos, solo_si_falta=True):
             continue
         try:
             with db.conn() as c:
-                c.execute("UPDATE licitaciones SET monto_estimado=?, moneda=COALESCE(moneda,'CLP') "
-                          "WHERE codigo=?", (r["monto"], cod))
+                # Se guarda el monto Y si viene con IVA: sin ese dato, el veredicto financiero
+                # tiene que suponerlo, y suponer mal mueve el techo un 19%.
+                c.execute("UPDATE licitaciones SET monto_estimado=?, moneda=COALESCE(moneda,'CLP'), "
+                          "monto_iva_incluido=? WHERE codigo=?",
+                          (r["monto"], None if r["iva_incluido"] is None else int(r["iva_incluido"]),
+                           cod))
                 iva = ("IVA incluido" if r["iva_incluido"] else
                        "NETO (sin IVA)" if r["iva_incluido"] is False else "IVA sin determinar")
                 db.log_evento(c, cod, "monto",
