@@ -38,3 +38,7 @@ node_modules/
 
 # backups locales (scripts/backup_db.py)
 backups/
+
+# Ticket de la API de ChileCompra. La fuente de verdad es .env (LOVEO_CHILECOMPRA_TICKET);
+# este archivo suelto es una copia local y NUNCA debe viajar al repo.
+TOKEN_licitaciones.txt
